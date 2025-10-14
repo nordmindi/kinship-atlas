@@ -1,0 +1,150 @@
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Flexible Family Tree Edge Animations */
+@keyframes dash {
+  to {
+    stroke-dashoffset: -12;
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    stroke-opacity: 0.8;
+  }
+  50% {
+    stroke-opacity: 1;
+  }
+}
+
+/* Smooth transitions for family tree elements */
+.react-flow__edge {
+  transition: all 0.3s ease-in-out;
+}
+
+.react-flow__edge-path {
+  transition: all 0.3s ease-in-out;
+}
+
+.react-flow__node {
+  transition: all 0.2s ease-in-out;
+}
+
+/* Flexible edge styling */
+.flexible-edge {
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transition: all 0.3s ease-in-out;
+}
+
+@layer base {
+  :root {
+    --background: 246 46% 98%;
+    --foreground: 240 23% 15%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 240 23% 15%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 240 23% 15%;
+
+    --primary: 252 82% 74%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 262 28% 54%;
+    --secondary-foreground: 0 0% 100%;
+
+    --muted: 246 21% 90%;
+    --muted-foreground: 240 10% 50%;
+
+    --accent: 26 93% 91%;
+    --accent-foreground: 240 23% 15%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 240 12% 90%;
+    --input: 240 12% 90%;
+    --ring: 252 82% 74%;
+
+    --radius: 0.75rem;
+
+    --sidebar-background: 0 0% 98%;
+    --sidebar-foreground: 240 5% 26%;
+    --sidebar-primary: 252 82% 74%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 240 5% 96%;
+    --sidebar-accent-foreground: 240 6% 10%;
+    --sidebar-border: 220 13% 91%;
+    --sidebar-ring: 252 82% 74%;
+  }
+
+  .dark {
+    --background: 240 23% 15%;
+    --foreground: 246 46% 98%;
+
+    --card: 240 23% 18%;
+    --card-foreground: 246 46% 98%;
+
+    --popover: 240 23% 18%;
+    --popover-foreground: 246 46% 98%;
+
+    --primary: 252 82% 74%;
+    --primary-foreground: 240 23% 15%;
+
+    --secondary: 262 28% 54%;
+    --secondary-foreground: 246 46% 98%;
+
+    --muted: 240 16% 25%;
+    --muted-foreground: 240 10% 70%;
+
+    --accent: 26 93% 91%;
+    --accent-foreground: 240 23% 15%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 246 46% 98%;
+
+    --border: 240 16% 25%;
+    --input: 240 16% 25%;
+    --ring: 252 82% 74%;
+
+    --sidebar-background: 240 23% 15%;
+    --sidebar-foreground: 246 46% 98%;
+    --sidebar-primary: 252 82% 74%;
+    --sidebar-primary-foreground: 240 23% 15%;
+    --sidebar-accent: 240 16% 25%;
+    --sidebar-accent-foreground: 246 46% 98%;
+    --sidebar-border: 240 16% 25%;
+    --sidebar-ring: 252 82% 74%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+@layer components {
+  .family-tree-link {
+    stroke: theme('colors.heritage.purple.medium');
+    stroke-width: 2px;
+  }
+  
+  .family-tree-node {
+    fill: theme('colors.heritage.purple.light');
+    stroke: theme('colors.heritage.purple.DEFAULT');
+    stroke-width: 2px;
+    transition: all 0.2s ease;
+  }
+  
+  .family-tree-node:hover {
+    fill: theme('colors.heritage.purple.DEFAULT');
+  }
+}

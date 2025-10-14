@@ -1,0 +1,290 @@
+# =========================================================
+# Cursor Development Rules & AI Collaboration Guide — Kinship Atlas
+# Generic, reusable baseline for genealogy apps
+# =========================================================
+
+## 📜 Core Philosophy
+principles:
+  - "Simplicity & Clarity: Prefer small, composable changes over large rewrites; optimize for readability and maintainability."
+  - "Separation of Concerns: Strictly separate End-User App area from Platform/Admin area in code, routing, and UI."
+  - "Privacy & Safety by Default: Treat living-person data as sensitive; explicit consent and strict access rules."
+  - "Test What Matters: Business rules, privacy/role access, and core flows must be tested."
+  - "Iterate with Evidence: Make incremental changes, measure impact, document outcomes in PR status notes."
+
+## 🧭 Project Context (Generic)
+product:
+  name: "Kinship Atlas"
+  description: "Genealogy platform where users create members, add connections, attach images & documents, write stories, and collaborate."
+user-groups:
+  end_user_side:
+    - viewer
+    - collaborator
+    - family_admin
+    - genealogist
+  platform_side:
+    - platform_admin
+    - owner
+key-domains:
+  - Members & Profiles (living/deceased, dates, places)
+  - Relationships (parent/child, spouse/partner, siblings, custom)
+  - Media (images, docs, audio), Stories & Timelines
+  - Privacy & Sharing (private/family/public)
+  - Collaboration & Roles per tree
+  - Audit logs & Activity feed
+  - Import/Export (GEDCOM), Duplicates merge
+  - Search & Hints
+tech-stack: # adapt as needed
+  frontend: "React 18 + TypeScript, Vite, Tailwind, React Router v6, TanStack Query v5, RHF + Zod, shadcn/ui + Radix, Recharts"
+  backend: "Supabase (Auth, DB, Storage) or compatible"
+  testing: "Vitest + Testing Library, Playwright/Cypress for E2E"
+
+must-read:
+  - "APPLICATION_DEVELOPMENT_INSTRUCTIONS.md"
+
+## 🏗️ Architecture Guardrails
+areas:
+  - name: "End-User App"
+    layout: "AppLayout = Sidebar + Header + <main/>"
+    routes: ["/app/*"]
+    allowedRoles: ["viewer","collaborator","family_admin","genealogist"]
+  - name: "Admin/Platform"
+    layout: "AdminLayout wraps pages in DashboardShell (shell owns header + nav)"
+    routes: ["/admin/*"]
+    allowedRoles: ["platform_admin","owner"]
+
+rules:
+  - "Never Mix Layouts: Pages must not import Sidebar, Header, or DashboardShell directly; layouts own navigation."
+  - "Shared Components: Only truly shared UI goes in components/common. Admin UI in components/admin, app-specific in components/app."
+  - "Service Layer: Use domain services under src/services with clear interfaces & typed DTOs. Prefer hook wrappers (useMembers, useStories, useTree, etc.)"
+  - "Feature Flags / Env: Use VITE_... flags; mock data allowed in dev only."
+
+## 🔐 Authentication, Privacy & RBAC (Must-Follow)
+roles:
+  END_USER_ROLES: ["viewer","collaborator","family_admin","genealogist"]
+  MANAGEMENT_ROLES: ["platform_admin","owner"]
+
+auth-lib:
+  path: "src/lib/auth/roles.ts"
+  snippet: |
+    export const END_USER_ROLES = ["viewer","collaborator","family_admin","genealogist"] as const;
+    export const MANAGEMENT_ROLES = ["platform_admin","owner"] as const;
+    export type Role = typeof END_USER_ROLES[number] | typeof MANAGEMENT_ROLES[number];
+    export const isEndUserRole = (r?: string) => !!r && (END_USER_ROLES as readonly string[]).includes(r!);
+    export const isManagementRole = (r?: string) => !!r && (MANAGEMENT_ROLES as readonly string[]).includes(r!);
+
+route-protection:
+  snippet: |
+    <Routes>
+      <Route path="/app/*" element={
+        <ProtectedRoute allowedRoles={END_USER_ROLES}>
+          <AppLayout><AppRoutes/></AppLayout>
+        </ProtectedRoute>
+      }/>
+      <Route path="/admin/*" element={
+        <ProtectedRoute allowedRoles={MANAGEMENT_ROLES}>
+          <AdminLayout><AdminRoutes/></AdminLayout>
+        </ProtectedRoute>
+      }/>
+    </Routes>
+
+protected-route-contract:
+  - "Unauthenticated → /login"
+  - "Unauthorized → /unauthorized"
+  - "No flashing wrong layout during loading"
+  - "End-User must never see DashboardShell; Admin must never see App Sidebar+Header"
+
+privacy:
+  policies:
+    - "Default to private for living persons; require explicit consent to broaden visibility."
+    - "Privacy levels: private (owner & invited), family (tree collaborators), public (anonymized if living)."
+    - "Per-entity privacy: member, media, story each carry a privacy scope; effective visibility = most restrictive."
+    - "Redact sensitive fields for living persons when viewer lacks permission (e.g., exact dates, precise locations)."
+    - "All access paths must enforce server-side checks; client checks are additive."
+
+## 🧩 Layout Contracts
+layouts:
+  AppLayout:
+    renders: ["Sidebar","Header","<main/>"]
+    testids: ["app-header","app-sidebar"]
+  AdminLayout:
+    renders: ["<DashboardShell>{children}</DashboardShell>"]
+    testids: ["shell-root"]
+
+## 📦 File & Folder Structure (Enforced)
+structure: |
+  src/
+    components/
+      common/         # Truly shared
+      app/            # End-user app features (tree, members, media, stories)
+      admin/          # Admin platform features (plans, moderation, platform settings)
+      layouts/
+        AppLayout/
+        AdminLayout/
+      ui/             # shadcn/ui wrappers
+    pages/            # Route components (thin; no layout imports)
+    hooks/            # useMembers, useStories, useRelationships, useMedia, useTree
+    services/         # MemberService, RelationshipService, MediaService, StoryService, TreeService, ImportExportService, AuditLogger
+    types/            # DTOs, domain types
+    utils/            # Helpers (date/place normalizers, GEDCOM utils)
+    config/           # env, feature flags
+    i18n/             # translations (if used)
+    styles/           # global styles
+rule: "Pages are presentation-only; business logic stays in hooks/services."
+
+## 🧪 Testing Rules & Quality Assurance
+strategy:
+  unit: "Components, hooks, services with Vitest + Testing Library"
+  integration: "Layouts + route guards + data hooks"
+  e2e: "Critical user flows + cross-area contamination + privacy redaction"
+coverage:
+  minNewFeatures: 80
+  minCriticalPaths: 90
+
+e2e-assertions:
+  - 'End-user route never contains data-testid="shell-root"'
+  - 'Admin route never contains data-testid="app-header"'
+  - "Living profiles redact sensitive fields for unauthorized viewers"
+  - "Media & story privacy respected across share links"
+
+mocking:
+  - "MSW for APIs"
+  - "Mock Supabase client & storage"
+  - "vi.mock() for modules"
+  - "Deterministic fake media uploads"
+
+## 🛡️ Security & Compliance
+security:
+  input-validation: "Zod schemas on all inputs; DOMPurify for any rendered HTML."
+  least-privilege: "Server/edge checks authoritative; client checks additive."
+  sensitive-storage: "No sensitive data in localStorage; prefer memory or secure cookies via auth session."
+  audit-logging: "AuditLogger for member edits, merges, privacy changes, collaborator invites, exports."
+  error-boundaries: "No sensitive stack traces in UI; secure logging channel."
+  living-person-protection:
+    - "Redact PII (dates/locations) without proper role or consent"
+    - "Require confirmation before broadening visibility on living profiles"
+    - "Anonymize or aggregate when exporting public data"
+
+## ⚙️ Code Style & Quality Standards
+typescript:
+  strict: true
+  rules:
+    - "No any unless documented and unavoidable"
+    - "Interfaces/Types for all DTOs"
+    - "Generics for reusable components/hooks"
+    - "Unions for state machines"
+react:
+  patterns:
+    - "Functional components with hooks"
+    - "Pure components; side effects only in hooks"
+    - "useMemo for expensive calculations"
+    - "Stable callbacks with useCallback"
+    - "Correct dependency arrays"
+styling:
+  tailwind:
+    - "Use semantic tokens (bg-background, text-primary); no raw color literals"
+    - "Mobile-first responsive design"
+    - "Consistent spacing via Tailwind scale"
+a11y:
+  standard: "WCAG 2.1 AA"
+  checklist:
+    - "Semantic HTML"
+    - "ARIA where needed"
+    - "Keyboard navigation"
+    - "Screen reader labels"
+    - "Color contrast upheld"
+
+quality-gates:
+  commands:
+    - "npm run lint"
+    - "npm run type-check"
+    - "npm run test"
+    - "npm run build"
+
+## 🔁 Workflow & Prompts (for Cursor & AI)
+before-coding:
+  - "Read APPLICATION_DEVELOPMENT_INSTRUCTIONS.md"
+  - "Identify area: End-User or Admin; confirm allowed roles"
+  - "Locate target files; outline smallest possible change"
+while-coding:
+  - "Keep diffs small and isolated"
+  - "No cross-area imports"
+  - "Add/update tests in the same PR"
+commits:
+  examples:
+    - "feat(app): add parent-child linking with duplicate detection"
+    - "fix(admin): enforce platform role guard on /admin/moderation"
+    - "refactor(common): extract media uploader with EXIF stripping"
+ai-prompt-examples:
+  - "Implement useMembers with Query v5, typed filters (name/date/place), and privacy-aware selection."
+  - "Update ProtectedRoute to prevent cross-layout flashes; add tests for both areas."
+  - "Add Zod validation for member form (dates/places), show RHF errors, and write unit tests."
+  - "Implement GEDCOM import with dry-run report and conflict detection; add integration tests."
+
+## 📈 Performance & DX
+performance:
+  tanstack-query: "Set sensible staleTime; avoid over-fetching; stable cache keys"
+  code-splitting: "Lazy-load heavy pages (timeline, media gallery, analytics)"
+  charts: "Memoize datasets; isolate Recharts"
+  devtools: "Enable React Query DevTools in dev; feature-flag heavy mocks"
+  bundle: "Tree-shake shadcn/ui & lucide-react"
+  media:
+    - "Generate responsive image sizes/thumbnails"
+    - "Strip EXIF on upload (privacy)"
+    - "Defer heavy processing (face detection, OCR) behind flags"
+
+## 🚨 Common Pitfalls (and What To Do)
+pitfalls:
+  - "Duplicate nav/header: move layout elements back to layouts; assert via E2E"
+  - "Unauthorized data leakage: re-check role & privacy mapping; add guard tests"
+  - "Infinite re-renders: verify hook deps; memoize selectors/callbacks"
+  - "Stale trees after mutations: invalidate precise query keys"
+  - "Mismatched privacy on media/story: enforce effective visibility rule in selectors & queries"
+  - "Date/place parsing issues: centralize parsing in utils and test edge cases"
+
+## ✅ Definition of Done (Checklist)
+development:
+  - "[ ] Feature implemented with strict TypeScript"
+  - "[ ] No unapproved any"
+  - "[ ] Proper error handling & loading states"
+  - "[ ] A11y (WCAG 2.1 AA) & responsive"
+testing:
+  - "[ ] Unit tests for components/hooks/services"
+  - "[ ] Integration tests for complex flows"
+  - "[ ] Coverage ≥ 80% (new), ≥ 90% (critical)"
+  - "[ ] Error paths & privacy redaction tested"
+quality:
+  - "[ ] ESLint passes"
+  - "[ ] Type-check passes"
+  - "[ ] Prettier applied"
+  - "[ ] Imports sorted"
+  - "[ ] No console.log in prod"
+architecture-security:
+  - "[ ] Layout rules respected (no cross-area UI)"
+  - "[ ] RBAC & privacy enforced server-side"
+  - "[ ] Zod input validation"
+  - "[ ] Audit logs for sensitive actions"
+  - "[ ] Performance reviewed; no obvious leaks/re-renders"
+build-deploy:
+  - "[ ] Build passes"
+  - "[ ] Bundle size reasonable (npm run analyze)"
+  - "[ ] Env vars configured"
+  - "[ ] Feature flags toggled as needed"
+docs:
+  - "[ ] README and API docs updated"
+  - "[ ] Changelog updated"
+  - "[ ] Migration notes if breaking"
+final-verification:
+  - "[ ] Manual QA in browser"
+  - "[ ] Cross-browser check"
+  - "[ ] Mobile responsiveness"
+  - "[ ] Screen reader spot-check"
+  - "[ ] Error boundaries verified"
+  - "[ ] Privacy views verified for viewer vs collaborator vs family_admin"
+
+## 📂 Quick References
+references:
+  app-doc: "APPLICATION_DEVELOPMENT_INSTRUCTIONS.md"
+  layouts: "components/layouts/{AppLayout,AdminLayout}"
+  rbac: "lib/auth/roles.ts, components/common/ProtectedRoute.tsx"
+  services: "src/services/* (MemberService, RelationshipService, MediaService, StoryService, TreeService, ImportExportService, AuditLogger)"
+  testing: "Vitest, Testing Library, MSW, Playwright/Cypress"

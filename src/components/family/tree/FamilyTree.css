@@ -1,0 +1,143 @@
+
+.family-tree {
+  width: 100%;
+  height: 100%;
+}
+
+/* Enhanced Edge styles */
+.family-tree .react-flow__edge-path {
+  stroke-width: 3;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  filter: drop-shadow(0px 1px 2px rgba(0, 0, 0, 0.1));
+}
+
+.family-tree .react-flow__edge-path:hover {
+  stroke-width: 4;
+  filter: drop-shadow(0px 2px 4px rgba(0, 0, 0, 0.15));
+}
+
+.family-tree .react-flow__edge-path[data-relationship="spouse"] {
+  stroke: #FF5733;
+  stroke-width: 3;
+}
+
+.family-tree .react-flow__edge-path[data-relationship="parent"] {
+  stroke: #4CAF50;
+}
+
+.family-tree .react-flow__edge-path[data-relationship="child"] {
+  stroke: #2196F3;
+}
+
+.family-tree .react-flow__edge-path[data-relationship="sibling"] {
+  stroke: #9C27B0;
+  stroke-dasharray: 5,5;
+}
+
+/* Enhanced Node styles */
+.family-member-node {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  width: 140px;
+  height: 180px;
+  will-change: transform;
+}
+
+.family-member-node:hover {
+  transform: translateY(-3px) scale(1.02);
+  box-shadow: 
+    0 20px 25px -5px rgba(0, 0, 0, 0.1), 
+    0 10px 10px -5px rgba(0, 0, 0, 0.04),
+    0 0 0 1px rgba(120, 86, 255, 0.1);
+}
+
+.family-member-node.selected {
+  transform: scale(1.08);
+  box-shadow: 
+    0 25px 50px -12px rgba(0, 0, 0, 0.25),
+    0 0 0 2px hsl(var(--primary)),
+    0 0 0 4px hsl(var(--primary) / 0.2);
+  z-index: 10;
+}
+
+/* Deceased member styling */
+.family-member-node.deceased {
+  filter: grayscale(0.6) opacity(0.8);
+}
+
+/* Handles */
+.family-member-node .react-flow__handle {
+  opacity: 0;
+  transition: opacity 0.3s;
+  width: 8px;
+  height: 8px;
+}
+
+.family-member-node:hover .react-flow__handle {
+  opacity: 1;
+}
+
+.family-member-node .react-flow__handle:hover {
+  opacity: 1;
+  background: #7856FF;
+}
+
+/* Enhanced Controls customization */
+.family-tree .react-flow__controls {
+  box-shadow: 
+    0 10px 15px -3px rgba(0, 0, 0, 0.1), 
+    0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  border-radius: 12px;
+  overflow: hidden;
+  background: hsl(var(--background));
+  border: 1px solid hsl(var(--border));
+}
+
+.family-tree .react-flow__controls button {
+  background: hsl(var(--background));
+  border-bottom: 1px solid hsl(var(--border));
+  border-right: none;
+  color: hsl(var(--foreground));
+  transition: all 0.2s ease;
+}
+
+.family-tree .react-flow__controls button:hover {
+  background: hsl(var(--muted));
+  color: hsl(var(--primary));
+}
+
+.family-tree .react-flow__controls button:last-child {
+  border-bottom: none;
+}
+
+/* Enhanced Minimap customization */
+.family-tree .react-flow__minimap {
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 
+    0 10px 15px -3px rgba(0, 0, 0, 0.1), 
+    0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  border: 1px solid hsl(var(--border));
+  background: hsl(var(--background));
+}
+
+/* Enhanced Background */
+.family-tree .react-flow__background {
+  background-color: hsl(var(--background));
+  background-image: 
+    radial-gradient(circle at 1px 1px, hsl(var(--muted-foreground) / 0.15) 1px, transparent 0);
+  background-size: 20px 20px;
+}
+
+/* Selected node */
+.family-tree .react-flow__node.selected {
+  box-shadow: 0 0 0 2px #7856FF;
+}
+
+.family-tree .react-flow__node-familyMember {
+  padding: 0;
+  border-radius: 8px;
+  overflow: hidden;
+  background: none;
+  border: none;
+  box-shadow: none;
+}
