@@ -18,35 +18,26 @@ INSERT INTO public.family_members (id, first_name, last_name, birth_date, death_
   ('550e8400-e29b-41d4-a716-446655440005', 'Emma', 'Smith', '2005-09-03', NULL, 'San Francisco, CA', 'Bright young student with a love for art.', 'female', NULL, NOW(), NOW()),
   ('550e8400-e29b-41d4-a716-446655440006', 'James', 'Smith', '2008-12-18', NULL, 'San Francisco, CA', 'Energetic boy who loves sports and video games.', 'male', NULL, NOW(), NOW());
 
--- Insert sample relationships
+-- Insert sample relationships (only one direction - triggers will create reciprocals)
 INSERT INTO public.relations (id, from_member_id, to_member_id, relation_type, created_at) VALUES
   -- John and Mary are married
   ('550e8400-e29b-41d4-a716-446655440037', '550e8400-e29b-41d4-a716-446655440001', '550e8400-e29b-41d4-a716-446655440002', 'spouse', NOW()),
-  ('550e8400-e29b-41d4-a716-446655440038', '550e8400-e29b-41d4-a716-446655440002', '550e8400-e29b-41d4-a716-446655440001', 'spouse', NOW()),
   
   -- David is John and Mary's child
   ('550e8400-e29b-41d4-a716-446655440039', '550e8400-e29b-41d4-a716-446655440001', '550e8400-e29b-41d4-a716-446655440003', 'parent', NOW()),
   ('550e8400-e29b-41d4-a716-446655440040', '550e8400-e29b-41d4-a716-446655440002', '550e8400-e29b-41d4-a716-446655440003', 'parent', NOW()),
-  ('550e8400-e29b-41d4-a716-446655440041', '550e8400-e29b-41d4-a716-446655440003', '550e8400-e29b-41d4-a716-446655440001', 'child', NOW()),
-  ('550e8400-e29b-41d4-a716-446655440042', '550e8400-e29b-41d4-a716-446655440003', '550e8400-e29b-41d4-a716-446655440002', 'child', NOW()),
   
   -- David and Sarah are married
   ('550e8400-e29b-41d4-a716-446655440043', '550e8400-e29b-41d4-a716-446655440003', '550e8400-e29b-41d4-a716-446655440004', 'spouse', NOW()),
-  ('550e8400-e29b-41d4-a716-446655440044', '550e8400-e29b-41d4-a716-446655440004', '550e8400-e29b-41d4-a716-446655440003', 'spouse', NOW()),
   
   -- Emma and James are David and Sarah's children
   ('550e8400-e29b-41d4-a716-446655440045', '550e8400-e29b-41d4-a716-446655440003', '550e8400-e29b-41d4-a716-446655440005', 'parent', NOW()),
   ('550e8400-e29b-41d4-a716-446655440046', '550e8400-e29b-41d4-a716-446655440004', '550e8400-e29b-41d4-a716-446655440005', 'parent', NOW()),
   ('550e8400-e29b-41d4-a716-446655440047', '550e8400-e29b-41d4-a716-446655440003', '550e8400-e29b-41d4-a716-446655440006', 'parent', NOW()),
   ('550e8400-e29b-41d4-a716-446655440048', '550e8400-e29b-41d4-a716-446655440004', '550e8400-e29b-41d4-a716-446655440006', 'parent', NOW()),
-  ('550e8400-e29b-41d4-a716-446655440049', '550e8400-e29b-41d4-a716-446655440005', '550e8400-e29b-41d4-a716-446655440003', 'child', NOW()),
-  ('550e8400-e29b-41d4-a716-446655440050', '550e8400-e29b-41d4-a716-446655440005', '550e8400-e29b-41d4-a716-446655440004', 'child', NOW()),
-  ('550e8400-e29b-41d4-a716-446655440051', '550e8400-e29b-41d4-a716-446655440006', '550e8400-e29b-41d4-a716-446655440003', 'child', NOW()),
-  ('550e8400-e29b-41d4-a716-446655440052', '550e8400-e29b-41d4-a716-446655440006', '550e8400-e29b-41d4-a716-446655440004', 'child', NOW()),
   
   -- Emma and James are siblings
-  ('550e8400-e29b-41d4-a716-446655440053', '550e8400-e29b-41d4-a716-446655440005', '550e8400-e29b-41d4-a716-446655440006', 'sibling', NOW()),
-  ('550e8400-e29b-41d4-a716-446655440054', '550e8400-e29b-41d4-a716-446655440006', '550e8400-e29b-41d4-a716-446655440005', 'sibling', NOW());
+  ('550e8400-e29b-41d4-a716-446655440053', '550e8400-e29b-41d4-a716-446655440005', '550e8400-e29b-41d4-a716-446655440006', 'sibling', NOW());
 
 -- Insert sample locations
 INSERT INTO public.locations (id, family_member_id, description, lat, lng, current_residence, created_at) VALUES

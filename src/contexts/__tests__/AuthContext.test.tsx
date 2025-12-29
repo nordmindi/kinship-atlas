@@ -1,0 +1,301 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { render, screen, waitFor } from '@testing-library/react'
+import { AuthProvider, useAuth } from '../AuthContext'
+import { supabase } from '@/integrations/supabase/client'
+
+// Mock the supabase client
+vi.mock('@/integrations/supabase/client')
+
+// Test component to access auth context
+const TestComponent = () => {
+  const { user, isLoading, signIn, signUp, signOut } = useAuth()
+  
+  return (
+    <div>
+      <div data-testid="user">{user ? user.email : 'No user'}</div>
+      <div data-testid="loading">{isLoading ? 'Loading' : 'Not loading'}</div>
+      <button onClick={() => signIn('test@example.com', 'password')}>Sign In</button>
+      <button onClick={() => signUp('test@example.com', 'password')}>Sign Up</button>
+      <button onClick={() => signOut()}>Sign Out</button>
+    </div>
+  )
+}
+
+describe('AuthContext', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  describe('Authentication State', () => {
+    it('should provide initial loading state', () => {
+      vi.mocked(supabase.auth.getUser).mockResolvedValue({
+        data: { user: null },
+        error: null
+      })
+
+      render(
+        <AuthProvider>
+          <TestComponent />
+        </AuthProvider>
+      )
+
+      expect(screen.getByTestId('loading')).toHaveTextContent('Loading')
+    })
+
+    it('should provide user when authenticated', async () => {
+      const mockUser = {
+        id: 'user-123',
+        email: 'test@example.com',
+        created_at: '2023-01-01T00:00:00Z'
+      }
+
+      vi.mocked(supabase.auth.getUser).mockResolvedValue({
+        data: { user: mockUser },
+        error: null
+      })
+
+      render(
+        <AuthProvider>
+          <TestComponent />
+        </AuthProvider>
+      )
+
+      await waitFor(() => {
+        expect(screen.getByTestId('user')).toHaveTextContent('test@example.com')
+        expect(screen.getByTestId('loading')).toHaveTextContent('Not loading')
+      })
+    })
+
+    it('should handle authentication errors', async () => {
+      vi.mocked(supabase.auth.getUser).mockResolvedValue({
+        data: { user: null },
+        error: new Error('Authentication failed')
+      })
+
+      render(
+        <AuthProvider>
+          <TestComponent />
+        </AuthProvider>
+      )
+
+      await waitFor(() => {
+        expect(screen.getByTestId('user')).toHaveTextContent('No user')
+        expect(screen.getByTestId('loading')).toHaveTextContent('Not loading')
+      })
+    })
+  })
+
+  describe('Sign In', () => {
+    it('should sign in successfully', async () => {
+      const mockUser = {
+        id: 'user-123',
+        email: 'test@example.com',
+        created_at: '2023-01-01T00:00:00Z'
+      }
+
+      vi.mocked(supabase.auth.getUser).mockResolvedValue({
+        data: { user: null },
+        error: null
+      })
+
+      vi.mocked(supabase.auth.signInWithPassword).mockResolvedValue({
+        data: { user: mockUser, session: null },
+        error: null
+      })
+
+      render(
+        <AuthProvider>
+          <TestComponent />
+        </AuthProvider>
+      )
+
+      await waitFor(() => {
+        expect(screen.getByTestId('loading')).toHaveTextContent('Not loading')
+      })
+
+      // Click sign in button
+      screen.getByText('Sign In').click()
+
+      await waitFor(() => {
+        expect(supabase.auth.signInWithPassword).toHaveBeenCalledWith({
+          email: 'test@example.com',
+          password: 'password'
+        })
+      })
+    })
+
+    it('should handle sign in errors', async () => {
+      vi.mocked(supabase.auth.getUser).mockResolvedValue({
+        data: { user: null },
+        error: null
+      })
+
+      vi.mocked(supabase.auth.signInWithPassword).mockResolvedValue({
+        data: { user: null, session: null },
+        error: new Error('Invalid credentials')
+      })
+
+      render(
+        <AuthProvider>
+          <TestComponent />
+        </AuthProvider>
+      )
+
+      await waitFor(() => {
+        expect(screen.getByTestId('loading')).toHaveTextContent('Not loading')
+      })
+
+      // Click sign in button
+      screen.getByText('Sign In').click()
+
+      await waitFor(() => {
+        expect(supabase.auth.signInWithPassword).toHaveBeenCalledWith({
+          email: 'test@example.com',
+          password: 'password'
+        })
+      })
+    })
+  })
+
+  describe('Sign Up', () => {
+    it('should sign up successfully', async () => {
+      const mockUser = {
+        id: 'user-123',
+        email: 'test@example.com',
+        created_at: '2023-01-01T00:00:00Z'
+      }
+
+      vi.mocked(supabase.auth.getUser).mockResolvedValue({
+        data: { user: null },
+        error: null
+      })
+
+      vi.mocked(supabase.auth.signUp).mockResolvedValue({
+        data: { user: mockUser, session: null },
+        error: null
+      })
+
+      render(
+        <AuthProvider>
+          <TestComponent />
+        </AuthProvider>
+      )
+
+      await waitFor(() => {
+        expect(screen.getByTestId('loading')).toHaveTextContent('Not loading')
+      })
+
+      // Click sign up button
+      screen.getByText('Sign Up').click()
+
+      await waitFor(() => {
+        expect(supabase.auth.signUp).toHaveBeenCalledWith({
+          email: 'test@example.com',
+          password: 'password'
+        })
+      })
+    })
+
+    it('should handle sign up errors', async () => {
+      vi.mocked(supabase.auth.getUser).mockResolvedValue({
+        data: { user: null },
+        error: null
+      })
+
+      vi.mocked(supabase.auth.signUp).mockResolvedValue({
+        data: { user: null, session: null },
+        error: new Error('Email already registered')
+      })
+
+      render(
+        <AuthProvider>
+          <TestComponent />
+        </AuthProvider>
+      )
+
+      await waitFor(() => {
+        expect(screen.getByTestId('loading')).toHaveTextContent('Not loading')
+      })
+
+      // Click sign up button
+      screen.getByText('Sign Up').click()
+
+      await waitFor(() => {
+        expect(supabase.auth.signUp).toHaveBeenCalledWith({
+          email: 'test@example.com',
+          password: 'password'
+        })
+      })
+    })
+  })
+
+  describe('Sign Out', () => {
+    it('should sign out successfully', async () => {
+      const mockUser = {
+        id: 'user-123',
+        email: 'test@example.com',
+        created_at: '2023-01-01T00:00:00Z'
+      }
+
+      vi.mocked(supabase.auth.getUser).mockResolvedValue({
+        data: { user: mockUser },
+        error: null
+      })
+
+      vi.mocked(supabase.auth.signOut).mockResolvedValue({
+        error: null
+      })
+
+      render(
+        <AuthProvider>
+          <TestComponent />
+        </AuthProvider>
+      )
+
+      await waitFor(() => {
+        expect(screen.getByTestId('user')).toHaveTextContent('test@example.com')
+      })
+
+      // Click sign out button
+      screen.getByText('Sign Out').click()
+
+      await waitFor(() => {
+        expect(supabase.auth.signOut).toHaveBeenCalled()
+      })
+    })
+
+    it('should handle sign out errors', async () => {
+      const mockUser = {
+        id: 'user-123',
+        email: 'test@example.com',
+        created_at: '2023-01-01T00:00:00Z'
+      }
+
+      vi.mocked(supabase.auth.getUser).mockResolvedValue({
+        data: { user: mockUser },
+        error: null
+      })
+
+      vi.mocked(supabase.auth.signOut).mockResolvedValue({
+        error: new Error('Sign out failed')
+      })
+
+      render(
+        <AuthProvider>
+          <TestComponent />
+        </AuthProvider>
+      )
+
+      await waitFor(() => {
+        expect(screen.getByTestId('user')).toHaveTextContent('test@example.com')
+      })
+
+      // Click sign out button
+      screen.getByText('Sign Out').click()
+
+      await waitFor(() => {
+        expect(supabase.auth.signOut).toHaveBeenCalled()
+      })
+    })
+  })
+})

@@ -1,4 +1,6 @@
 import { supabase } from '@/integrations/supabase/client';
+import { performDatabaseHealthCheck, getDatabaseStatistics, checkOrphanedData } from './databaseHealth';
+import { checkDatabaseHealth } from './migrationRunner';
 
 /**
  * Test Supabase connection and authentication
@@ -55,6 +57,56 @@ export const testUserAuth = async (email: string, password: string) => {
     return true;
   } catch (error) {
     console.error('❌ Authentication test failed:', error);
+    return false;
+  }
+};
+
+/**
+ * Comprehensive database health test
+ */
+export const testDatabaseHealth = async () => {
+  console.log('🏥 Running comprehensive database health check...');
+  
+  try {
+    const health = await performDatabaseHealthCheck();
+    
+    console.log('📊 Database Health Results:');
+    console.log('   Connection:', health.connection ? '✅' : '❌');
+    console.log('   Overall Health:', health.healthy ? '✅' : '❌');
+    console.log('   Migrations:', health.migrations.appliedCount, 'applied');
+    console.log('   Tables:');
+    Object.entries(health.tables).forEach(([table, exists]) => {
+      console.log(`     ${table}:`, exists ? '✅' : '❌');
+    });
+    
+    if (health.errors.length > 0) {
+      console.log('   Errors:');
+      health.errors.forEach(error => console.log(`     - ${error}`));
+    }
+    
+    // Get statistics
+    const stats = await getDatabaseStatistics();
+    console.log('📈 Database Statistics:');
+    console.log('   Family Members:', stats.familyMembers);
+    console.log('   Relations:', stats.relations);
+    console.log('   Locations:', stats.locations);
+    console.log('   Stories:', stats.stories);
+    console.log('   Events:', stats.events);
+    console.log('   Applied Migrations:', stats.appliedMigrations);
+    
+    // Check for orphaned data
+    const orphaned = await checkOrphanedData();
+    if (orphaned.hasIssues) {
+      console.log('⚠️  Orphaned Data Detected:');
+      console.log('   Orphaned Relations:', orphaned.orphanedRelations);
+      console.log('   Orphaned Locations:', orphaned.orphanedLocations);
+    } else {
+      console.log('✅ No orphaned data detected');
+    }
+    
+    return health.healthy;
+  } catch (error) {
+    console.error('❌ Database health check failed:', error);
     return false;
   }
 };

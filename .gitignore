@@ -25,3 +25,6 @@ env.template
 *.njsproj
 *.sln
 *.sw?
+
+# Docker persistent data
+docker-data/

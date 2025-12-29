@@ -11,7 +11,7 @@ interface StoryCardProps {
 
 const StoryCard: React.FC<StoryCardProps> = ({ story, authorName, onView }) => {
   return (
-    <Card className="overflow-hidden hover:shadow-md transition-shadow cursor-pointer" onClick={onView}>
+    <Card className="group overflow-hidden hover:shadow-lg hover:scale-[1.02] transition-all duration-200 cursor-pointer border-heritage-purple/10" onClick={onView}>
       {story.images && story.images.length > 0 && (
         <div className="aspect-video w-full overflow-hidden">
           <img 
@@ -24,7 +24,7 @@ const StoryCard: React.FC<StoryCardProps> = ({ story, authorName, onView }) => {
       
       <CardHeader className="p-4 pb-0">
         <div className="text-sm text-muted-foreground">{formatDate(story.date)}</div>
-        <h3 className="font-serif text-lg font-medium text-heritage-dark">{story.title}</h3>
+        <h3 className="font-serif text-lg font-medium text-heritage-dark group-hover:text-heritage-purple transition-colors">{story.title}</h3>
       </CardHeader>
       
       <CardContent className="p-4 pt-2">

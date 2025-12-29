@@ -21,16 +21,17 @@ npm install
 Create a `.env.local` file in the root directory:
 
 ```bash
-# Copy the example environment file
-cp .env.example .env.local
+# Copy the environment template
+cp env.template .env.local
 ```
 
 The `.env.local` file should contain:
 
 ```env
-# Local Supabase URLs (default local development URLs)
-VITE_SUPABASE_URL=http://localhost:54321
-VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0
+# Use local Supabase (Docker Compose)
+VITE_SUPABASE_MODE=local
+VITE_SUPABASE_URL_LOCAL=http://localhost:60011
+VITE_SUPABASE_ANON_KEY_LOCAL=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 ```
 
 ### 3. Start Supabase Local Development
@@ -63,9 +64,9 @@ npm run dev
 ### 6. Access the Application
 
 - **Frontend**: http://localhost:5173
-- **Supabase Studio**: http://localhost:54323
-- **API**: http://localhost:54321
-- **Database**: localhost:54322
+- **Supabase Studio**: http://localhost:60002
+- **API (via proxy)**: http://localhost:60011
+- **Database**: localhost:60000
 
 ## Development Workflow
 
@@ -90,6 +91,53 @@ npm run supabase:reset
 
 # Reset database and load seed data
 npm run supabase:seed
+```
+
+### Data Persistence
+
+The Docker setup uses **bind mounts** to store database and storage data in the `docker-data/` directory within your project. This ensures:
+
+- ✅ **Data persists through Docker container restarts**
+- ✅ **Data persists through Docker daemon restarts**
+- ✅ **Data persists through computer restarts**
+- ✅ **Easy backup** - just backup the `docker-data/` directory
+- ✅ **Easy inspection** - data is stored in a known location
+
+**Data Storage Locations:**
+- Database data: `./docker-data/db/`
+- Storage assets (uploaded files): `./docker-data/storage/`
+
+**Important Notes:**
+- The `docker-data/` directory is automatically created when you first start the containers
+- This directory is excluded from git (via `.gitignore`) to avoid committing large data files
+- To completely reset your data, you can delete the `docker-data/` directory and restart containers
+- Always stop containers before deleting the `docker-data/` directory to avoid data corruption
+
+**Backup Your Data:**
+```bash
+# Stop containers first
+npm run supabase:stop
+
+# Backup the data directory
+cp -r docker-data docker-data-backup
+
+# Or use tar for compression
+tar -czf docker-data-backup.tar.gz docker-data/
+```
+
+**Restore Your Data:**
+```bash
+# Stop containers
+npm run supabase:stop
+
+# Restore from backup
+cp -r docker-data-backup docker-data
+
+# Or from compressed backup
+tar -xzf docker-data-backup.tar.gz
+
+# Start containers
+npm run supabase:start
 ```
 
 ### Database Migrations
@@ -136,11 +184,13 @@ npm run dev:clean
 | Service | URL | Description |
 |---------|-----|-------------|
 | Frontend | http://localhost:5173 | React application |
-| Supabase Studio | http://localhost:54323 | Database admin interface |
-| API | http://localhost:54321 | Supabase API endpoint |
-| Database | localhost:54322 | PostgreSQL database |
-| Inbucket (Email) | http://localhost:54324 | Email testing interface |
-| Edge Functions | http://localhost:54325 | Edge Functions runtime |
+| Supabase Studio | http://localhost:60002 | Database admin interface |
+| API (via proxy) | http://localhost:60011 | Supabase API endpoint |
+| Database | localhost:60000 | PostgreSQL database |
+| Inbucket (Email) | http://localhost:60003 | Email testing interface |
+| Storage API | http://localhost:60006 | File storage API |
+| Realtime | http://localhost:60008 | Realtime subscriptions |
+| PostgREST | http://localhost:60009 | REST API |
 
 ## Sample Data
 
@@ -162,9 +212,9 @@ The seed file (`supabase/seed.sql`) includes:
    npm run supabase:stop
    
    # Check what's using the ports
-   lsof -i :54321
-   lsof -i :54322
-   lsof -i :54323
+   lsof -i :60000
+   lsof -i :60002
+   lsof -i :60011
    ```
 
 2. **Docker Issues**
@@ -201,12 +251,18 @@ If you encounter persistent issues:
 # Stop everything
 npm run supabase:stop
 
-# Remove Docker containers and volumes
-docker system prune -a --volumes
+# Option 1: Remove Docker containers and volumes (keeps docker-data/)
+docker-compose -f docker-compose.dev.yml down -v
+
+# Option 2: Complete reset (removes all data including docker-data/)
+docker-compose -f docker-compose.dev.yml down -v
+rm -rf docker-data/
 
 # Start fresh
 npm run dev:setup
 ```
+
+**Note:** Option 2 will permanently delete all your local database data and uploaded files. Use with caution!
 
 ## Production Deployment
 

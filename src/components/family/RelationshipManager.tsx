@@ -222,27 +222,29 @@ const RelationshipManager: React.FC<RelationshipManagerProps> = ({
   );
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {/* Current Relationships */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Users className="h-5 w-5" />
+      <Card className="shadow-sm">
+        <CardHeader className="pb-4">
+          <CardTitle className="flex items-center gap-3 text-xl">
+            <Users className="h-6 w-6" />
             Current Relationships
           </CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="pt-0">
           {currentMember.relations && currentMember.relations.length > 0 ? (
-            <div className="space-y-3">
+            <div className="space-y-4">
               {currentMember.relations.map((relation) => (
-                <div key={relation.id} className="flex items-center justify-between p-3 border rounded-lg">
-                  <div className="flex items-center gap-3">
-                    {getRelationshipIcon(relation.type)}
-                    <div>
-                      <p className="font-medium">
+                <div key={relation.id} className="flex items-center justify-between p-4 border rounded-xl hover:shadow-md transition-shadow bg-white">
+                  <div className="flex items-center gap-4">
+                    <div className="p-2 rounded-lg bg-gray-50">
+                      {getRelationshipIcon(relation.type)}
+                    </div>
+                    <div className="space-y-1">
+                      <p className="font-semibold text-lg">
                         {relation.person?.firstName} {relation.person?.lastName}
                       </p>
-                      <Badge className={getRelationshipColor(relation.type)}>
+                      <Badge className={`${getRelationshipColor(relation.type)} px-3 py-1`}>
                         {relation.type}
                       </Badge>
                     </div>
@@ -254,7 +256,7 @@ const RelationshipManager: React.FC<RelationshipManagerProps> = ({
                       relation.id, 
                       `${relation.person?.firstName} ${relation.person?.lastName}`
                     )}
-                    className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                    className="text-red-600 hover:text-red-700 hover:bg-red-50 p-2"
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>
@@ -262,9 +264,9 @@ const RelationshipManager: React.FC<RelationshipManagerProps> = ({
               ))}
             </div>
           ) : (
-            <div className="text-center py-8 text-muted-foreground">
-              <Users className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <p>No relationships added yet</p>
+            <div className="text-center py-12 text-muted-foreground">
+              <Users className="h-16 w-16 mx-auto mb-6 opacity-50" />
+              <p className="text-lg font-medium mb-2">No relationships added yet</p>
               <p className="text-sm">Add family members to build your family tree</p>
             </div>
           )}
@@ -274,8 +276,8 @@ const RelationshipManager: React.FC<RelationshipManagerProps> = ({
       {/* Add Relationship Dialog */}
       <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
         <DialogTrigger asChild>
-          <Button className="w-full">
-            <UserPlus className="h-4 w-4 mr-2" />
+          <Button className="w-full py-3 text-base">
+            <UserPlus className="h-5 w-5 mr-2" />
             Add Relationship
           </Button>
         </DialogTrigger>
@@ -357,32 +359,34 @@ const RelationshipManager: React.FC<RelationshipManagerProps> = ({
 
       {/* Relationship Suggestions */}
       {suggestions.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Info className="h-5 w-5" />
+        <Card className="shadow-sm">
+          <CardHeader className="pb-4">
+            <CardTitle className="flex items-center gap-3 text-xl">
+              <Info className="h-6 w-6" />
               Suggested Relationships
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
+          <CardContent className="pt-0">
+            <div className="space-y-4">
               {suggestions.slice(0, 5).map((suggestion, index) => (
-                <div key={index} className="flex items-center justify-between p-3 border rounded-lg bg-muted/50">
-                  <div className="flex items-center gap-3">
-                    {getRelationshipIcon(suggestion.suggestedRelationship)}
-                    <div>
-                      <p className="font-medium">
+                <div key={index} className="flex items-center justify-between p-4 border rounded-xl bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200 hover:shadow-md transition-shadow">
+                  <div className="flex items-center gap-4">
+                    <div className="p-2 rounded-lg bg-blue-100">
+                      {getRelationshipIcon(suggestion.suggestedRelationship)}
+                    </div>
+                    <div className="space-y-2">
+                      <p className="font-semibold text-lg">
                         {suggestion.member.firstName} {suggestion.member.lastName}
                       </p>
-                      <div className="flex items-center gap-2">
-                        <Badge className={getRelationshipColor(suggestion.suggestedRelationship)}>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <Badge className={`${getRelationshipColor(suggestion.suggestedRelationship)} px-3 py-1`}>
                           {suggestion.suggestedRelationship}
                         </Badge>
-                        <Badge variant="outline" className="text-xs">
+                        <Badge variant="outline" className="text-xs px-2 py-1 bg-white">
                           {Math.round(suggestion.confidence * 100)}% confidence
                         </Badge>
                       </div>
-                      <p className="text-sm text-muted-foreground mt-1">
+                      <p className="text-sm text-muted-foreground">
                         {suggestion.reason}
                       </p>
                     </div>
@@ -395,6 +399,7 @@ const RelationshipManager: React.FC<RelationshipManagerProps> = ({
                       setSelectedRelationshipType(suggestion.suggestedRelationship);
                       setIsAddDialogOpen(true);
                     }}
+                    className="px-4 py-2"
                   >
                     Add
                   </Button>

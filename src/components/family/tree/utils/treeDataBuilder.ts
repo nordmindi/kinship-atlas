@@ -17,6 +17,7 @@ export const buildTreeNodes = (
   onEdit?: (memberId: string) => void,
   onViewProfile?: (memberId: string) => void,
   onAddRelation?: (memberId: string) => void,
+  onViewTimeline?: (memberId: string) => void,
   draggedNodeId?: string | null,
   relatedMembers?: string[]
 ): FamilyMemberNode[] => {
@@ -68,6 +69,7 @@ export const buildTreeNodes = (
         onEdit,
         onViewProfile,
         onAddRelation,
+        onViewTimeline,
         isDragging: memberId === draggedNodeId,
         isBeingDragged: relatedMembers?.includes(memberId) || false,
       };

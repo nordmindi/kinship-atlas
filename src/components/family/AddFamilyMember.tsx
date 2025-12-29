@@ -97,9 +97,13 @@ const AddFamilyMember: React.FC<AddFamilyMemberProps> = ({ onClose, onSuccess })
     }
     
     console.log('📝 Calling addFamilyMember service...');
+    console.log('📍 Location data:', location);
     
     // Add overall timeout to prevent hanging
-    const submissionPromise = familyMemberService.createFamilyMember(memberData);
+    const submissionPromise = familyMemberService.createFamilyMember({
+      ...memberData,
+      location
+    });
     const overallTimeoutPromise = new Promise<null>((_, reject) => 
       setTimeout(() => reject(new Error('Form submission timeout - please try again')), 30000)
     );

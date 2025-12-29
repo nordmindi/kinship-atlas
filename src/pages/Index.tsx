@@ -3,7 +3,7 @@ import { Navigate, useNavigate } from "react-router-dom";
 import MobileLayout from "@/components/layout/MobileLayout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { PlusCircle, Search, Users, Map as MapIcon, BookOpen, UserPlus, BookPlus } from "lucide-react";
+import { PlusCircle, Search, Users, Map as MapIcon, BookOpen, UserPlus, BookPlus, Upload, History } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import FamilyTreeView from "@/components/family/FamilyTreeView";
@@ -14,12 +14,51 @@ import { useFamilyTree } from "@/contexts/FamilyTreeContext";
 import { getFamilyMembers, getFamilyStories } from "@/services/supabaseService";
 import { FamilyMember, FamilyStory } from "@/types";
 import { getYearRange } from "@/utils/dateUtils";
+import { useStorageUrl } from "@/hooks/useStorageUrl";
 import { 
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+
+// Component for displaying family member in overview
+const FamilyMemberOverviewCard = ({ member, onClick }: { member: FamilyMember; onClick: () => void }) => {
+  const accessibleAvatarUrl = useStorageUrl(member.avatar);
+  const [imageError, setImageError] = useState(false);
+  
+  return (
+    <div 
+      className="w-36 flex-shrink-0 cursor-pointer group"
+      onClick={onClick}
+    >
+      <div 
+        className="aspect-square rounded-xl overflow-hidden border-2 border-heritage-purple/20 group-hover:border-heritage-purple/40 transition-colors shadow-sm relative bg-heritage-purple-light"
+      >
+        {accessibleAvatarUrl && !imageError ? (
+          <img 
+            src={accessibleAvatarUrl} 
+            alt={`${member.firstName} ${member.lastName}`}
+            className="w-full h-full object-cover"
+            onError={() => setImageError(true)}
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center text-heritage-purple">
+            <Users className="h-10 w-10" />
+          </div>
+        )}
+      </div>
+      <div className="mt-2 text-center">
+        <p className="text-sm font-medium line-clamp-1 text-heritage-dark">
+          {member.firstName}
+        </p>
+        <p className="text-xs text-muted-foreground line-clamp-1">
+          {getYearRange(member.birthDate, member.deathDate)}
+        </p>
+      </div>
+    </div>
+  );
+};
 
 const Index = () => {
   const { user, isLoading: authLoading } = useAuth();
@@ -118,6 +157,19 @@ const Index = () => {
   const handleAddStory = () => {
     navigate('/add-story');
   };
+
+  const handleImportFamilyData = () => {
+    navigate('/import-family-data');
+  };
+
+  const handleLegacyStories = () => {
+    navigate('/legacy-stories');
+  };
+
+  // Handle story view
+  const handleViewStory = (storyId: string) => {
+    navigate(`/story/${storyId}`);
+  };
   
   return (
     <MobileLayout 
@@ -126,191 +178,203 @@ const Index = () => {
         email: user.email || ''
       } : undefined}
     >
-      <div className="px-4 py-3 bg-heritage-purple-light/50">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" size={18} />
-          <Input 
-            placeholder="Search family members, stories..." 
-            className="pl-10 bg-white"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
+      {/* Search Section with proper container */}
+      <div className="bg-gradient-to-r from-heritage-purple-light/30 to-heritage-purple-light/50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" size={18} />
+            <Input 
+              placeholder="Search family members, stories..." 
+              className="pl-10 bg-white shadow-sm border-0 focus:ring-2 focus:ring-heritage-purple/20"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
         </div>
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="w-full justify-between p-1 bg-white border-b">
-          <TabsTrigger value="home" className="flex-1">Home</TabsTrigger>
-          <TabsTrigger value="tree" className="flex-1" onClick={() => navigate('/family-tree')}>Family Tree</TabsTrigger>
-          <TabsTrigger value="map" className="flex-1">Map</TabsTrigger>
-          <TabsTrigger value="stories" className="flex-1">Stories</TabsTrigger>
-        </TabsList>
-        
-        <TabsContent value="home" className="pt-4 pb-16 space-y-6">
-          <section>
-            <div className="flex items-center justify-between px-4 mb-3">
-              <h2 className="text-lg font-medium text-heritage-dark">Recent Stories</h2>
-              <Button variant="ghost" size="sm" className="text-heritage-purple" onClick={() => setActiveTab("stories")}>
-                View All
-              </Button>
-            </div>
-            <div className="px-4 space-y-4">
-              {isLoading ? (
-                <div className="animate-pulse space-y-4">
-                  <div className="h-24 bg-gray-200 rounded"></div>
-                  <div className="h-24 bg-gray-200 rounded"></div>
-                </div>
-              ) : filteredStories.length > 0 ? (
-                filteredStories.slice(0, 3).map(story => (
-                  <StoryCard 
-                    key={story.id}
-                    story={story}
-                    authorName={getAuthorName(story.authorId)}
-                    onView={() => console.log("View story", story.id)}
-                  />
-                ))
-              ) : (
-                <p className="text-center py-4 text-muted-foreground">No stories found.</p>
-              )}
-            </div>
-          </section>
-          
-          <section>
-            <div className="flex items-center justify-between px-4 mb-3">
-              <h2 className="text-lg font-medium text-heritage-dark">Family</h2>
-              <Button variant="ghost" size="sm" className="text-heritage-purple" onClick={() => setActiveTab("tree")}>
-                View All
-              </Button>
-            </div>
-            <div className="flex overflow-x-auto pb-4 pl-4 space-x-3 scrollbar-hide">
-              {isLoading ? (
-                Array(3).fill(0).map((_, i) => (
-                  <div key={i} className="w-32 flex-shrink-0">
-                    <div className="aspect-square rounded-lg bg-gray-200 animate-pulse"></div>
-                    <div className="mt-1 h-4 bg-gray-200 rounded animate-pulse"></div>
+      {/* Navigation Tabs with proper container */}
+      <div className="bg-white border-b border-heritage-purple/10">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <TabsList className="w-full justify-between p-1 bg-heritage-purple-light/20 border-0">
+              <TabsTrigger value="home" className="flex-1 data-[state=active]:bg-white data-[state=active]:shadow-sm">Home</TabsTrigger>
+              <TabsTrigger value="tree" className="flex-1 data-[state=active]:bg-white data-[state=active]:shadow-sm" onClick={() => navigate('/family-tree')}>Family Tree</TabsTrigger>
+              <TabsTrigger value="map" className="flex-1 data-[state=active]:bg-white data-[state=active]:shadow-sm">Map</TabsTrigger>
+              <TabsTrigger value="stories" className="flex-1 data-[state=active]:bg-white data-[state=active]:shadow-sm">Stories</TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="home" className="pt-8 pb-20">
+              <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
+                {/* Recent Stories Section */}
+                <section className="bg-white rounded-xl shadow-sm border border-heritage-purple/10 p-6 sm:p-8">
+                  <div className="flex items-center justify-between mb-6">
+                    <h2 className="text-xl font-semibold text-heritage-dark">Recent Stories</h2>
+                    <Button variant="ghost" size="sm" className="text-heritage-purple hover:bg-heritage-purple-light" onClick={() => setActiveTab("stories")}>
+                      View All
+                    </Button>
                   </div>
-                ))
-              ) : filteredMembers.length > 0 ? (
-                filteredMembers.map(member => (
-                  <div 
-                    key={member.id} 
-                    className="w-32 flex-shrink-0 cursor-pointer"
-                    onClick={() => {
-                      setSelectedMemberId(member.id);
-                      setActiveTab("tree");
-                    }}
-                  >
-                    <div 
-                      className="aspect-square rounded-lg bg-cover bg-center overflow-hidden border border-heritage-purple/20"
-                      style={{ 
-                        backgroundImage: member.avatar ? `url(${member.avatar})` : 'none',
-                        backgroundColor: !member.avatar ? '#e9e2f5' : undefined
-                      }}
-                    >
-                      {!member.avatar && (
-                        <div className="w-full h-full flex items-center justify-center text-heritage-purple">
-                          <Users className="h-8 w-8" />
+                  <div className="space-y-4">
+                    {isLoading ? (
+                      <div className="animate-pulse space-y-4">
+                        <div className="h-24 bg-gray-200 rounded-lg"></div>
+                        <div className="h-24 bg-gray-200 rounded-lg"></div>
+                      </div>
+                    ) : filteredStories.length > 0 ? (
+                      filteredStories.slice(0, 3).map(story => (
+                        <StoryCard 
+                          key={story.id}
+                          story={story}
+                          authorName={getAuthorName(story.authorId)}
+                          onView={() => handleViewStory(story.id)}
+                        />
+                      ))
+                    ) : (
+                      <div className="text-center py-8">
+                        <BookOpen className="h-12 w-12 text-heritage-purple-light mx-auto mb-3" />
+                        <p className="text-muted-foreground">No stories found.</p>
+                        <p className="text-sm text-muted-foreground mt-1">Start sharing your family stories!</p>
+                      </div>
+                    )}
+                  </div>
+                </section>
+                
+                {/* Family Section */}
+                <section className="bg-white rounded-xl shadow-sm border border-heritage-purple/10 p-6 sm:p-8">
+                  <div className="flex items-center justify-between mb-6">
+                    <h2 className="text-xl font-semibold text-heritage-dark">Family</h2>
+                    <Button variant="ghost" size="sm" className="text-heritage-purple hover:bg-heritage-purple-light" onClick={() => setActiveTab("tree")}>
+                      View All
+                    </Button>
+                  </div>
+                  <div className="flex overflow-x-auto pb-2 space-x-4 scrollbar-hide">
+                    {isLoading ? (
+                      Array(3).fill(0).map((_, i) => (
+                        <div key={i} className="w-36 flex-shrink-0">
+                          <div className="aspect-square rounded-xl bg-gray-200 animate-pulse"></div>
+                          <div className="mt-2 h-4 bg-gray-200 rounded animate-pulse"></div>
+                          <div className="mt-1 h-3 bg-gray-200 rounded animate-pulse w-3/4"></div>
                         </div>
-                      )}
-                    </div>
-                    <div className="mt-1 text-center">
-                      <p className="text-sm font-medium line-clamp-1">
-                        {member.firstName}
-                      </p>
-                      <p className="text-xs text-muted-foreground line-clamp-1">
-                        {getYearRange(member.birthDate, member.deathDate)}
-                      </p>
-                    </div>
+                      ))
+                    ) : filteredMembers.length > 0 ? (
+                      filteredMembers.map(member => (
+                        <FamilyMemberOverviewCard
+                          key={member.id}
+                          member={member}
+                          onClick={() => {
+                            setSelectedMemberId(member.id);
+                            setActiveTab("tree");
+                          }}
+                        />
+                      ))
+                    ) : (
+                      <div className="w-full py-8 text-center">
+                        <Users className="h-12 w-12 text-heritage-purple-light mx-auto mb-3" />
+                        <p className="text-muted-foreground">No family members found.</p>
+                        <p className="text-sm text-muted-foreground mt-1">Start building your family tree!</p>
+                      </div>
+                    )}
                   </div>
-                ))
-              ) : (
-                <div className="w-full py-4 text-center text-muted-foreground">
-                  No family members found.
-                </div>
-              )}
-            </div>
-          </section>
-          
-          <section className="px-4">
-            <Card>
-              <CardContent className="p-4 text-center">
-                <div className="flex flex-col items-center space-y-2 py-4">
-                  <div className="rounded-full bg-heritage-purple-light p-3">
-                    <UserPlus className="h-6 w-6 text-heritage-purple" />
+                </section>
+                
+                {/* Call to Action Section */}
+                <section className="bg-gradient-to-br from-heritage-purple-light/30 to-heritage-purple-light/50 rounded-xl p-6 sm:p-8 border border-heritage-purple/10">
+                  <div className="text-center">
+                    <div className="rounded-full bg-white p-4 w-fit mx-auto mb-4 shadow-sm">
+                      <UserPlus className="h-8 w-8 text-heritage-purple" />
+                    </div>
+                    <h3 className="text-lg font-semibold text-heritage-dark mb-2">Add to Your Family Tree</h3>
+                    <p className="text-sm text-muted-foreground mb-6 max-w-md mx-auto">
+                      Invite family members or add ancestors to build your complete family history
+                    </p>
+                    <Button 
+                      className="bg-heritage-purple hover:bg-heritage-purple-medium shadow-sm"
+                      onClick={handleAddMember}
+                    >
+                      Add Family Member
+                    </Button>
                   </div>
-                  <h3 className="font-medium">Add to Your Family Tree</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Invite family members or add ancestors
-                  </p>
+                </section>
+              </div>
+            </TabsContent>
+            
+            <TabsContent value="tree">
+              <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                {isLoading ? (
+                  <div className="h-[60vh] flex items-center justify-center">
+                    <div className="animate-pulse text-heritage-purple">Loading family tree...</div>
+                  </div>
+                ) : (
+                  <div className="bg-white rounded-xl shadow-sm border border-heritage-purple/10 overflow-hidden">
+                    <FamilyTreeView 
+                      members={filteredMembers}
+                      currentMemberId={selectedMemberId || ""}
+                      onSelectMember={setSelectedMemberId}
+                    />
+                  </div>
+                )}
+              </div>
+            </TabsContent>
+            
+            <TabsContent value="map">
+              <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                {isLoading ? (
+                  <div className="h-[60vh] flex items-center justify-center">
+                    <div className="animate-pulse text-heritage-purple">Loading map...</div>
+                  </div>
+                ) : (
+                  <div className="bg-white rounded-xl shadow-sm border border-heritage-purple/10 overflow-hidden">
+                    <FamilyMap 
+                      members={filteredMembers.filter(member => member.currentLocation)}
+                      onSelectMember={setSelectedMemberId}
+                    />
+                  </div>
+                )}
+              </div>
+            </TabsContent>
+            
+            <TabsContent value="stories" className="pt-8 pb-20">
+              <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
+                {isLoading ? (
+                  <div className="animate-pulse space-y-4">
+                    <div className="h-32 bg-gray-200 rounded-xl"></div>
+                    <div className="h-32 bg-gray-200 rounded-xl"></div>
+                    <div className="h-32 bg-gray-200 rounded-xl"></div>
+                  </div>
+                ) : filteredStories.length > 0 ? (
+                  <div className="space-y-6">
+                    {filteredStories.map(story => (
+                      <div key={story.id} className="bg-white rounded-xl shadow-sm border border-heritage-purple/10 p-6 sm:p-8">
+                        <StoryCard 
+                          story={story}
+                          authorName={getAuthorName(story.authorId)}
+                          onView={() => handleViewStory(story.id)}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="bg-white rounded-xl shadow-sm border border-heritage-purple/10 p-8 text-center">
+                    <BookOpen className="h-16 w-16 text-heritage-purple-light mx-auto mb-4" />
+                    <h3 className="text-lg font-semibold text-heritage-dark mb-2">No stories found</h3>
+                    <p className="text-muted-foreground mb-6">Start documenting your family's stories and memories.</p>
+                  </div>
+                )}
+                
+                <div className="bg-white rounded-xl shadow-sm border border-heritage-purple/10 p-6 sm:p-8">
                   <Button 
-                    className="mt-2 bg-heritage-purple hover:bg-heritage-purple-medium"
-                    onClick={handleAddMember}
+                    className="w-full bg-heritage-purple hover:bg-heritage-purple-medium shadow-sm"
+                    onClick={handleAddStory}
                   >
-                    Add Family Member
+                    <BookPlus className="h-4 w-4 mr-2" />
+                    Add New Story
                   </Button>
                 </div>
-              </CardContent>
-            </Card>
-          </section>
-        </TabsContent>
-        
-        <TabsContent value="tree">
-          {isLoading ? (
-            <div className="h-[60vh] flex items-center justify-center">
-              <div className="animate-pulse text-heritage-purple">Loading family tree...</div>
-            </div>
-          ) : (
-            <FamilyTreeView 
-              members={filteredMembers}
-              currentMemberId={selectedMemberId || ""}
-              onSelectMember={setSelectedMemberId}
-            />
-          )}
-        </TabsContent>
-        
-        <TabsContent value="map">
-          {isLoading ? (
-            <div className="h-[60vh] flex items-center justify-center">
-              <div className="animate-pulse text-heritage-purple">Loading map...</div>
-            </div>
-          ) : (
-            <FamilyMap 
-              members={filteredMembers.filter(member => member.currentLocation)}
-              onSelectMember={setSelectedMemberId}
-            />
-          )}
-        </TabsContent>
-        
-        <TabsContent value="stories" className="pt-4 pb-16 space-y-6">
-          <div className="px-4 space-y-4">
-            {isLoading ? (
-              <div className="animate-pulse space-y-4">
-                <div className="h-24 bg-gray-200 rounded"></div>
-                <div className="h-24 bg-gray-200 rounded"></div>
-                <div className="h-24 bg-gray-200 rounded"></div>
               </div>
-            ) : filteredStories.length > 0 ? (
-              filteredStories.map(story => (
-                <StoryCard 
-                  key={story.id}
-                  story={story}
-                  authorName={getAuthorName(story.authorId)}
-                  onView={() => console.log("View story", story.id)}
-                />
-              ))
-            ) : (
-              <p className="text-center py-4 text-muted-foreground">No stories found.</p>
-            )}
-            
-            <Button 
-              className="w-full bg-heritage-purple hover:bg-heritage-purple-medium"
-              onClick={handleAddStory}
-            >
-              Add New Story
-            </Button>
-          </div>
-        </TabsContent>
-      </Tabs>
+            </TabsContent>
+          </Tabs>
+        </div>
+      </div>
       
       <div className="fixed right-6 bottom-20 z-40 md:bottom-6">
         <DropdownMenu>
@@ -328,6 +392,14 @@ const Index = () => {
             <DropdownMenuItem onClick={handleAddStory} className="cursor-pointer">
               <BookPlus className="mr-2 h-4 w-4" />
               <span>Add Story</span>
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={handleImportFamilyData} className="cursor-pointer">
+              <Upload className="mr-2 h-4 w-4" />
+              <span>Import Family Data</span>
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={handleLegacyStories} className="cursor-pointer">
+              <History className="mr-2 h-4 w-4" />
+              <span>Legacy Stories</span>
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

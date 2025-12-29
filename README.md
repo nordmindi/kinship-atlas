@@ -106,10 +106,27 @@ git clone <YOUR_GIT_URL>
    cp env.template .env.local
    ```
    
-   The `.env.local` file contains the default local development URLs:
+   The `.env.local` file supports both local and remote Supabase:
    ```env
-   VITE_SUPABASE_URL=http://localhost:54321
-   VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0
+   # Switch between 'local' (Docker) or 'remote' (Supabase Cloud)
+   VITE_SUPABASE_MODE=local
+   
+   # Local Supabase (Docker Compose)
+   VITE_SUPABASE_URL_LOCAL=http://localhost:60011
+   VITE_SUPABASE_ANON_KEY_LOCAL=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+   
+   # Remote Supabase (get from https://app.supabase.com)
+   VITE_SUPABASE_URL_REMOTE=https://your-project.supabase.co
+   VITE_SUPABASE_ANON_KEY_REMOTE=your-remote-anon-key
+   ```
+   
+   **Quick Switch Commands:**
+   ```bash
+   # Switch to local Supabase (Docker)
+   npm run supabase:local
+   
+   # Switch to remote Supabase (Cloud)
+   npm run supabase:remote
    ```
 
 4. **Start local development environment**
@@ -128,9 +145,32 @@ git clone <YOUR_GIT_URL>
    ```
 
 5. **Access the application**
-   - **Frontend**: http://localhost:5173
-   - **Supabase Studio**: http://localhost:54323
-   - **API**: http://localhost:54321
+   - **Frontend**: http://localhost:5173 (or http://localhost:8080)
+   - **Supabase Studio (Local)**: http://localhost:60002
+   - **API (Local)**: http://localhost:60011 (via proxy) or http://localhost:60001 (direct)
+
+### Switching Between Local and Remote Supabase
+
+You can easily switch between local Docker Supabase and remote Supabase Cloud:
+
+**Switch to Local (Docker):**
+```bash
+npm run supabase:local
+# Make sure Docker Compose is running: docker-compose -f docker-compose.dev.yml up -d
+```
+
+**Switch to Remote (Cloud):**
+```bash
+npm run supabase:remote
+# Make sure VITE_SUPABASE_URL_REMOTE and VITE_SUPABASE_ANON_KEY_REMOTE are set in .env.local
+```
+
+**Important:** After switching, restart your development server:
+```bash
+npm run dev
+```
+
+The app will automatically use the correct Supabase instance based on `VITE_SUPABASE_MODE` in your `.env.local` file.
 
 ### Alternative: Docker Compose
 

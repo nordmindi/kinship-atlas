@@ -1,0 +1,11 @@
+_format_version: "3.0"
+
+services:
+  - name: gotrue
+    url: http://api:9999
+    routes:
+      - name: auth
+        paths:
+          - /auth/v1
+        strip_path: false
+

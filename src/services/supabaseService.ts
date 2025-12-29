@@ -237,9 +237,11 @@ export const getFamilyMembers = async (): Promise<FamilyMember[]> => {
 };
 
 /**
- * Add a new family member
+ * Add a new family member with improved error handling and data persistence
  */
 export const addFamilyMember = async (member: Omit<FamilyMember, 'id' | 'relations'>, location?: GeoLocation): Promise<FamilyMember | null> => {
+  let createdMemberId: string | null = null;
+  
   try {
     console.log('🚀 Starting family member creation...');
     
@@ -251,113 +253,156 @@ export const addFamilyMember = async (member: Omit<FamilyMember, 'id' | 'relatio
     
     console.log('👤 Current user for family member creation:', user.id);
 
-    // Insert the family member with timeout
-    console.log('📝 Inserting family member into database...');
-    const insertPromise = supabase
-      .from('family_members')
-      .insert({
-        first_name: member.firstName,
-        last_name: member.lastName,
-        birth_date: member.birthDate,
-        death_date: member.deathDate,
-        birth_place: member.birthPlace,
-        bio: member.bio,
-        avatar_url: member.avatar,
-        gender: member.gender,
-        created_by: user?.id || null, // Allow null if user not authenticated
-        branch_root: null, // Will be set after creation
-        is_root_member: false
-      })
-      .select('id')
-      .single();
-
-    const insertTimeoutPromise = new Promise((_, reject) => 
-      setTimeout(() => reject(new Error('Database insert timeout')), 15000)
-    );
-    
-    const { data: memberData, error: memberError } = await Promise.race([insertPromise, insertTimeoutPromise]) as { data: { id: string } | null; error: Error | null };
-    
-    if (memberError) {
-      console.error('❌ Error inserting family member:', memberError);
-      throw memberError;
+    // Validate input data
+    if (!member.firstName || !member.lastName) {
+      throw new Error('First name and last name are required');
     }
-    
-    console.log('✅ Family member inserted successfully:', memberData.id);
 
-    // Set branch_root to the member's own ID if it's the first member, or find the appropriate branch root
-    let branchRoot = memberData.id; // Default to self
-    let isRootMember = true; // Default to true
+    // Check if this is the first family member for this user to determine branch root
+    let branchRoot: string | null = null;
+    let isRootMember = true;
 
-    // Check if this is the first family member for this user (if user is authenticated)
-    if (user?.id) {
+    if (user.id) {
       console.log('🔍 Checking for existing family members...');
-      const { data: existingMembers } = await supabase
+      const { data: existingMembers, error: checkError } = await supabase
         .from('family_members')
-        .select('id, branch_root')
+        .select('id, branch_root, is_root_member')
         .eq('created_by', user.id)
-        .neq('id', memberData.id);
+        .limit(1);
 
-      if (existingMembers && existingMembers.length > 0) {
+      if (checkError) {
+        console.warn('⚠️  Error checking existing members:', checkError);
+        // Continue anyway - will default to root member
+      } else if (existingMembers && existingMembers.length > 0) {
         // Find the root member of the existing branch
-        const rootMember = existingMembers.find(m => m.branch_root === m.id);
+        const rootMember = existingMembers.find(m => m.is_root_member && m.branch_root === m.id);
         if (rootMember) {
-          branchRoot = rootMember.id;
+          branchRoot = rootMember.branch_root;
+          isRootMember = false;
+        } else {
+          // Use the first member's branch_root if no explicit root found
+          branchRoot = existingMembers[0].branch_root || existingMembers[0].id;
           isRootMember = false;
         }
       }
     }
 
-    // Update the member with the correct branch_root and is_root_member
-    console.log('🔄 Updating branch info...');
-    const updatePromise = supabase
+    // Insert the family member
+    console.log('📝 Inserting family member into database...');
+    const { data: memberData, error: memberError } = await supabase
       .from('family_members')
-      .update({
-        branch_root: branchRoot,
+      .insert({
+        first_name: member.firstName,
+        last_name: member.lastName,
+        birth_date: member.birthDate || null,
+        death_date: member.deathDate || null,
+        birth_place: member.birthPlace || null,
+        bio: member.bio || null,
+        avatar_url: member.avatar || null,
+        gender: member.gender || null,
+        created_by: user.id,
+        branch_root: branchRoot, // Will be set to self if null by trigger
         is_root_member: isRootMember
       })
-      .eq('id', memberData.id);
+      .select('id, branch_root, is_root_member')
+      .single();
     
-    const updateTimeoutPromise = new Promise((_, reject) => 
-      setTimeout(() => reject(new Error('Branch update timeout')), 10000)
-    );
+    if (memberError) {
+      console.error('❌ Error inserting family member:', memberError);
+      throw new Error(`Failed to create family member: ${memberError.message}`);
+    }
     
-    const { error: updateError } = await Promise.race([updatePromise, updateTimeoutPromise]) as { error: Error | null };
-
-    if (updateError) {
-      console.error('❌ Error updating branch info:', updateError);
-      // Don't throw here, as the member was created successfully
-    } else {
-      console.log('✅ Branch info updated successfully');
+    if (!memberData || !memberData.id) {
+      throw new Error('Family member was created but no ID was returned');
     }
 
-    // Add location if provided
-    if (location && memberData) {
-      console.log('📍 Adding location...');
-      const locationPromise = supabase
-        .from('locations')
-        .insert({
-          family_member_id: memberData.id,
-          lat: Number(location.lat),
-          lng: Number(location.lng),
-          description: location.description,
-          current_residence: true
-        });
-      
-      const locationTimeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Location insert timeout')), 10000)
-      );
-      
-      const { error: locationError } = await Promise.race([locationPromise, locationTimeoutPromise]) as { error: Error | null };
-        
-      if (locationError) {
-        console.error('❌ Error adding location:', locationError);
-        // Don't throw here, as the member was created successfully
-      } else {
-        console.log('✅ Location added successfully');
+    createdMemberId = memberData.id;
+    console.log('✅ Family member inserted successfully:', createdMemberId);
+
+    // Update branch_root if it wasn't set (should be handled by trigger, but ensure it)
+    if (!memberData.branch_root) {
+      console.log('🔄 Setting branch_root to self...');
+      const { error: updateError } = await supabase
+        .from('family_members')
+        .update({
+          branch_root: createdMemberId,
+          is_root_member: true
+        })
+        .eq('id', createdMemberId);
+
+      if (updateError) {
+        console.warn('⚠️  Error updating branch_root:', updateError);
+        // Non-critical, continue
       }
     }
 
-    // Return the newly added member
+    // Add location if provided
+    if (location && createdMemberId) {
+      console.log('📍 Adding location...');
+      
+      // Validate location data
+      const lat = Number(location.lat);
+      const lng = Number(location.lng);
+      
+      if (isNaN(lat) || isNaN(lng)) {
+        console.warn('⚠️  Invalid location coordinates, skipping location');
+      } else {
+        // First, mark any existing current residence as false
+        await supabase
+          .from('locations')
+          .update({ current_residence: false })
+          .eq('family_member_id', createdMemberId)
+          .eq('current_residence', true);
+
+        // Insert new location
+        const { error: locationError } = await supabase
+          .from('locations')
+          .insert({
+            family_member_id: createdMemberId,
+            lat: lat,
+            lng: lng,
+            description: location.description || 'Current residence',
+            current_residence: true
+          });
+        
+        if (locationError) {
+          console.error('❌ Error adding location:', locationError);
+          // Non-critical error - member was created successfully
+          // Location can be added later
+        } else {
+          console.log('✅ Location added successfully');
+        }
+      }
+    }
+
+    // Fetch the complete member data to return
+    const { data: completeMember, error: fetchError } = await supabase
+      .from('family_members')
+      .select(`
+        id,
+        first_name,
+        last_name,
+        birth_date,
+        death_date,
+        birth_place,
+        bio,
+        avatar_url,
+        gender,
+        created_by,
+        branch_root,
+        is_root_member,
+        locations(id, lat, lng, description, current_residence)
+      `)
+      .eq('id', createdMemberId)
+      .single();
+
+    if (fetchError) {
+      console.warn('⚠️  Error fetching complete member data:', fetchError);
+      // Return what we have
+    }
+
+    const currentLocation = completeMember?.locations?.find((loc: any) => loc.current_residence);
+
     toast({
       title: "Success",
       description: `Added ${member.firstName} ${member.lastName} to your family tree.`
@@ -365,15 +410,26 @@ export const addFamilyMember = async (member: Omit<FamilyMember, 'id' | 'relatio
     
     return {
       ...member,
-      id: memberData.id,
+      id: createdMemberId,
       relations: [],
-      currentLocation: location
+      currentLocation: currentLocation ? {
+        lat: Number(currentLocation.lat) || 0,
+        lng: Number(currentLocation.lng) || 0,
+        description: currentLocation.description
+      } : location
     };
   } catch (error) {
-    console.error('Error adding family member:', error);
+    console.error('❌ Error adding family member:', error);
+    
+    // If member was created but something else failed, log it for manual cleanup
+    if (createdMemberId) {
+      console.error(`⚠️  Family member ${createdMemberId} was created but operation failed. Manual cleanup may be needed.`);
+    }
+    
+    const errorMessage = error instanceof Error ? error.message : 'Could not add family member.';
     toast({
       title: "Error",
-      description: "Could not add family member.",
+      description: errorMessage,
       variant: "destructive"
     });
     return null;
@@ -394,7 +450,9 @@ export const getFamilyStories = async (): Promise<FamilyStory[]> => {
         content,
         date,
         author_id,
-        story_members(family_member_id),
+        created_at,
+        updated_at,
+        story_members(id, family_member_id),
         story_media(media_id)
       `)
       .order('date', { ascending: false });
@@ -402,19 +460,21 @@ export const getFamilyStories = async (): Promise<FamilyStory[]> => {
     if (error) throw error;
 
     // Fetch media for stories
-    const mediaIds = data
-      .flatMap(story => story.story_media)
-      .map(media => media?.media_id)
+    const mediaIds = (data || [])
+      .flatMap(story => story.story_media || [])
+      .map((media: any) => media?.media_id)
       .filter(Boolean);
 
-    let mediaData: Record<string, string> = {};
+    let mediaData: Record<string, any> = {};
     if (mediaIds.length > 0) {
       const { data: media } = await supabase
         .from('media')
-        .select('id, url')
+        .select('id, url, media_type, caption, file_name, file_size, user_id, created_at')
         .in('id', mediaIds);
       
-      mediaData = Object.fromEntries((media || []).map(m => [m.id, m.url]));
+      if (media) {
+        mediaData = Object.fromEntries(media.map(m => [m.id, m]));
+      }
     }
 
     return (data || []).map(story => ({
@@ -422,10 +482,17 @@ export const getFamilyStories = async (): Promise<FamilyStory[]> => {
       title: story.title,
       content: story.content,
       authorId: story.author_id,
-      date: story.date,
-      relatedMembers: story.story_members.map(sm => sm.family_member_id),
-      images: story.story_media
-        .map(sm => sm.media_id ? mediaData[sm.media_id] : null)
+      date: story.date || undefined,
+      createdAt: story.created_at || new Date().toISOString(),
+      updatedAt: story.updated_at || new Date().toISOString(),
+      relatedMembers: (story.story_members || []).map((sm: any) => ({
+        id: sm.id || '',
+        storyId: story.id,
+        familyMemberId: sm.family_member_id,
+        role: 'participant' as const
+      })),
+      media: (story.story_media || [])
+        .map((sm: any) => sm.media_id ? mediaData[sm.media_id] : null)
         .filter(Boolean)
     }));
   } catch (error) {
@@ -466,58 +533,102 @@ export const addFamilyStory = async (
     if (error) throw error;
     
     // Link related members
-    if (story.relatedMembers.length > 0) {
-      const storyMembers = story.relatedMembers.map(memberId => ({
+    if (story.relatedMembers && story.relatedMembers.length > 0) {
+      const storyMembers = story.relatedMembers.map((member: any) => ({
         story_id: data.id,
-        family_member_id: memberId
+        family_member_id: typeof member === 'string' ? member : member.familyMemberId
       }));
       
-      await supabase
+      const { error: membersError } = await supabase
         .from('story_members')
         .insert(storyMembers);
+      
+      if (membersError) {
+        console.error('Error linking story members:', membersError);
+        // Non-critical, continue
+      }
     }
     
     // Handle image uploads
-    const images: string[] = [];
+    const mediaRecords: any[] = [];
     if (imageFiles && imageFiles.length > 0) {
       for (const file of imageFiles) {
-        // Upload to storage
-        const fileName = `${Date.now()}-${file.name}`;
-        const { data: uploadData, error: uploadError } = await supabase.storage
-          .from('family-media')
-          .upload(fileName, file);
+        try {
+          // Upload to storage
+          const fileName = `${Date.now()}-${file.name}`;
+          const { data: uploadData, error: uploadError } = await supabase.storage
+            .from('family-media')
+            .upload(fileName, file);
+            
+          if (uploadError) {
+            console.error('Error uploading file:', uploadError);
+            continue; // Skip this file but continue with others
+          }
           
-        if (uploadError) throw uploadError;
-        
-        // Get public URL
-        const { data: urlData } = supabase.storage
-          .from('family-media')
-          .getPublicUrl(uploadData.path);
+          // Get public URL
+          const { data: urlData } = supabase.storage
+            .from('family-media')
+            .getPublicUrl(uploadData.path);
           
-        // Add to media table
-        const { data: mediaData, error: mediaError } = await supabase
-          .from('media')
-          .insert({
-            url: urlData.publicUrl,
-            user_id: user.id,
-            media_type: 'image',
-            caption: story.title
-          })
-          .select('id')
-          .single();
+          // Add to media table
+          const { data: mediaData, error: mediaError } = await supabase
+            .from('media')
+            .insert({
+              url: urlData.publicUrl,
+              user_id: user.id,
+              media_type: 'image',
+              caption: story.title,
+              file_name: file.name,
+              file_size: file.size
+            })
+            .select('id, url, media_type, caption, file_name, file_size, user_id, created_at')
+            .single();
           
-        if (mediaError) throw mediaError;
-        
-        // Link media to story
-        await supabase
-          .from('story_media')
-          .insert({
-            story_id: data.id,
-            media_id: mediaData.id
-          });
+          if (mediaError) {
+            console.error('Error creating media record:', mediaError);
+            continue;
+          }
           
-        images.push(urlData.publicUrl);
+          // Link media to story
+          const { error: linkError } = await supabase
+            .from('story_media')
+            .insert({
+              story_id: data.id,
+              media_id: mediaData.id
+            });
+          
+          if (linkError) {
+            console.error('Error linking media to story:', linkError);
+            continue;
+          }
+          
+          if (mediaData) {
+            mediaRecords.push(mediaData);
+          }
+        } catch (fileError) {
+          console.error('Error processing file:', fileError);
+          // Continue with next file
+        }
       }
+    }
+    
+    // Fetch the complete story to return
+    const { data: completeStory, error: fetchError } = await supabase
+      .from('family_stories')
+      .select(`
+        id,
+        title,
+        content,
+        date,
+        author_id,
+        created_at,
+        updated_at
+      `)
+      .eq('id', data.id)
+      .single();
+    
+    if (fetchError) {
+      console.warn('Error fetching complete story:', fetchError);
     }
     
     toast({
@@ -526,10 +637,15 @@ export const addFamilyStory = async (
     });
     
     return {
-      ...story,
       id: data.id,
+      title: story.title,
+      content: story.content,
       authorId: user.id,
-      images
+      date: story.date,
+      createdAt: completeStory?.created_at || new Date().toISOString(),
+      updatedAt: completeStory?.updated_at || new Date().toISOString(),
+      relatedMembers: story.relatedMembers || [],
+      media: mediaRecords
     };
   } catch (error) {
     console.error('Error adding family story:', error);
@@ -540,6 +656,68 @@ export const addFamilyStory = async (
     });
     return null;
   }
+};
+
+/**
+ * Get the accessible URL for a storage file
+ * In local development, we use signed URLs. In production, we can use public URLs.
+ */
+const getStorageUrl = async (filePath: string, retries: number = 2): Promise<string | null> => {
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      if (attempt > 0) {
+        // Wait a bit before retrying (exponential backoff)
+        await new Promise(resolve => setTimeout(resolve, 200 * attempt));
+        console.log(`🔄 Retrying URL generation (attempt ${attempt + 1}/${retries + 1}) for:`, filePath);
+      }
+      
+      // Try signed URL first (works in both local and production)
+      const { data: signedUrlData, error: signedUrlError } = await supabase.storage
+        .from('family-media')
+        .createSignedUrl(filePath, 31536000); // Valid for 1 year
+      
+      if (!signedUrlError && signedUrlData?.signedUrl) {
+        console.log('✅ Signed URL generated for:', filePath);
+        return signedUrlData.signedUrl;
+      }
+      
+      // Log the error for debugging
+      if (signedUrlError) {
+        console.warn(`⚠️  Signed URL generation failed (attempt ${attempt + 1}):`, {
+          error: signedUrlError,
+          message: signedUrlError.message,
+          filePath
+        });
+      }
+      
+      // Fallback to public URL
+      console.log('🔄 Attempting public URL fallback for:', filePath);
+      const { data: urlData } = supabase.storage
+        .from('family-media')
+        .getPublicUrl(filePath);
+      
+      if (urlData?.publicUrl) {
+        console.log('✅ Public URL generated for:', filePath);
+        return urlData.publicUrl;
+      }
+      
+      // If we're on the last attempt, log the failure
+      if (attempt === retries) {
+        console.error('❌ Failed to generate any URL after all attempts:', {
+          filePath,
+          signedUrlError,
+          publicUrlData: urlData
+        });
+      }
+    } catch (error) {
+      console.error(`❌ Error getting storage URL (attempt ${attempt + 1}):`, error);
+      if (attempt === retries) {
+        return null;
+      }
+    }
+  }
+  
+  return null;
 };
 
 /**
@@ -568,28 +746,104 @@ export const uploadFile = async (file: File, folder: string = ''): Promise<strin
     
     const { data, error } = await supabase.storage
       .from('family-media')
-      .upload(filePath, file);
+      .upload(filePath, file, {
+        cacheControl: '3600',
+        upsert: false // Don't overwrite existing files
+      });
       
     if (error) {
-      console.error('Storage upload error:', error);
+      console.error('Storage upload error:', {
+        error,
+        message: error.message,
+        filePath,
+        fileName: file.name,
+        fileSize: file.size,
+        fileSizeMB: (file.size / (1024 * 1024)).toFixed(2)
+      });
+      
+      // Handle file too large error (413)
+      if (error.message?.includes('413') || 
+          error.message?.includes('Request Entity Too Large') ||
+          error.message?.includes('too large') ||
+          error.message?.includes('size limit')) {
+        const fileSizeMB = (file.size / (1024 * 1024)).toFixed(2);
+        throw new Error(`File is too large (${fileSizeMB}MB). Maximum file size is 5MB. Please compress or resize your image.`);
+      }
+      
+      // Handle specific error cases
+      if (error.message?.includes('already exists') || error.message?.includes('duplicate') || error.message?.includes('409')) {
+        // File already exists, try to get URL for existing file
+        console.log('⚠️  File already exists, attempting to get URL for existing file:', filePath);
+        const existingUrl = await getStorageUrl(filePath);
+        if (existingUrl) {
+          console.log('✅ Retrieved URL for existing file:', existingUrl);
+          return existingUrl;
+        }
+      }
+      
       throw error;
+    }
+    
+    if (!data || !data.path) {
+      console.error('❌ Upload succeeded but no data/path returned:', { data, error });
+      throw new Error('Upload completed but no file path was returned');
     }
     
     console.log('Upload successful:', data);
     
-    // Get public URL
-    const { data: urlData } = supabase.storage
-      .from('family-media')
-      .getPublicUrl(data.path);
-      
-    console.log('Public URL generated:', urlData.publicUrl);
+    // Small delay to ensure file is fully available (helps with race conditions)
+    await new Promise(resolve => setTimeout(resolve, 100));
     
-    return urlData.publicUrl;
+    // Get accessible URL (signed URL for local, public URL as fallback)
+    const url = await getStorageUrl(data.path);
+    
+    if (!url) {
+      // Provide more detailed error information
+      const errorDetails = {
+        filePath: data.path,
+        fileName: file.name,
+        fileSize: file.size,
+        userId: user.id
+      };
+      console.error('❌ Failed to generate file URL after upload:', errorDetails);
+      throw new Error(`Failed to generate accessible URL for uploaded file. The file was uploaded successfully but we couldn't retrieve its URL. Please try again.`);
+    }
+    
+    console.log('✅ File URL generated:', url);
+    return url;
   } catch (error) {
     console.error('Error uploading file:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Could not upload file.';
+    
+    // Handle different error types
+    let errorMessage = 'Could not upload file.';
+    let errorTitle = 'Upload Error';
+    
+    if (error instanceof Error) {
+      errorMessage = error.message;
+      
+      // Check for specific error patterns
+      if (error.message.includes('too large') || error.message.includes('size limit') || error.message.includes('413')) {
+        errorTitle = 'File Too Large';
+      } else if (error.message.includes('SyntaxError') || error.message.includes('Unexpected token')) {
+        // This usually means we got HTML instead of JSON (like a 413 error page)
+        errorTitle = 'Upload Failed';
+        errorMessage = 'The file is too large or the server rejected the upload. Please try a smaller file (under 5MB).';
+      } else if (error.message.includes('network') || error.message.includes('fetch')) {
+        errorTitle = 'Network Error';
+        errorMessage = 'Failed to connect to the server. Please check your internet connection and try again.';
+      }
+    } else if (typeof error === 'object' && error !== null) {
+      // Try to extract error message from error object
+      const errorObj = error as any;
+      if (errorObj.message) {
+        errorMessage = errorObj.message;
+      } else if (errorObj.error?.message) {
+        errorMessage = errorObj.error.message;
+      }
+    }
+    
     toast({
-      title: "Upload Error",
+      title: errorTitle,
       description: errorMessage,
       variant: "destructive"
     });
@@ -602,12 +856,35 @@ export const uploadFile = async (file: File, folder: string = ''): Promise<strin
  */
 export const updateFamilyMemberAvatar = async (memberId: string, avatarUrl: string): Promise<boolean> => {
   try {
-    const { error } = await supabase
+    console.log('🖼️  Updating avatar for member:', memberId, 'URL:', avatarUrl);
+    
+    // Validate input
+    if (!memberId) {
+      throw new Error('Member ID is required');
+    }
+    
+    // Update the avatar URL in the database
+    const { data, error } = await supabase
       .from('family_members')
-      .update({ avatar_url: avatarUrl })
-      .eq('id', memberId);
+      .update({ 
+        avatar_url: avatarUrl || null,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', memberId)
+      .select('id, avatar_url')
+      .single();
 
-    if (error) throw error;
+    if (error) {
+      console.error('❌ Database error updating avatar:', error);
+      throw error;
+    }
+
+    if (!data) {
+      console.error('❌ No data returned from update');
+      throw new Error('Update returned no data');
+    }
+
+    console.log('✅ Avatar updated successfully:', data.avatar_url);
 
     toast({
       title: "Success",
@@ -615,10 +892,11 @@ export const updateFamilyMemberAvatar = async (memberId: string, avatarUrl: stri
     });
     return true;
   } catch (error) {
-    console.error('Error updating avatar:', error);
+    console.error('❌ Error updating avatar:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Could not update profile image.';
     toast({
       title: "Error", 
-      description: "Could not update profile image.",
+      description: errorMessage,
       variant: "destructive"
     });
     return false;

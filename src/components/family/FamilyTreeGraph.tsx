@@ -16,6 +16,7 @@ interface EnhancedFamilyTreeGraphProps extends FamilyTreeGraphProps {
   onEditMember?: (memberId: string) => void;
   onViewMemberProfile?: (memberId: string) => void;
   onAddMemberRelation?: (memberId: string) => void;
+  onViewMemberTimeline?: (memberId: string) => void;
   onRelationshipUpdated?: () => void;
   onRelationshipCreated?: () => void;
   draggedNodeId?: string | null;
@@ -34,6 +35,7 @@ const FamilyTreeGraph: React.FC<EnhancedFamilyTreeGraphProps> = ({
   onEditMember,
   onViewMemberProfile,
   onAddMemberRelation,
+  onViewMemberTimeline,
   onRelationshipUpdated,
   onRelationshipCreated,
   draggedNodeId,
@@ -84,12 +86,13 @@ const FamilyTreeGraph: React.FC<EnhancedFamilyTreeGraphProps> = ({
         memberPositions, 
         minGeneration, 
         currentUserId,
-      onEditMember,
-      onViewMemberProfile,
-      onAddMemberRelation,
-      draggedNodeId,
-      relatedMembers
-    );
+        onEditMember,
+        onViewMemberProfile,
+        onAddMemberRelation,
+        onViewMemberTimeline,
+        draggedNodeId,
+        relatedMembers
+      );
       const edges = buildTreeEdges(members, memberGenerations, processed);
 
       console.log('Tree data built:', {
@@ -110,7 +113,7 @@ const FamilyTreeGraph: React.FC<EnhancedFamilyTreeGraphProps> = ({
       });
       return { nodes: [], edges: [] };
     }
-  }, [members, rootMemberId, currentUserId, onEditMember, onViewMemberProfile, onAddMemberRelation, draggedNodeId, relatedMembers]);
+  }, [members, rootMemberId, currentUserId, onEditMember, onViewMemberProfile, onAddMemberRelation, onViewMemberTimeline, draggedNodeId, relatedMembers]);
 
   // Handle node click
   const handleNodeClick = useCallback((node: Node) => {
@@ -163,12 +166,11 @@ const FamilyTreeGraph: React.FC<EnhancedFamilyTreeGraphProps> = ({
         minimap={showMinimap}
         className="family-tree-container"
         familyMembers={members}
-        onRelationshipUpdated={onRelationshipUpdated}
         onRelationshipCreated={onRelationshipCreated}
       />
       
       {showLegend && (
-        <div className="absolute top-4 right-4 bg-white/90 backdrop-blur-sm rounded-lg p-3 shadow-lg border">
+        <div className="absolute top-4 left-4 bg-white/90 backdrop-blur-sm rounded-lg p-3 shadow-lg border z-20">
           <h4 className="font-semibold text-sm mb-2">Legend</h4>
           <div className="space-y-1 text-xs">
             <div className="flex items-center gap-2">

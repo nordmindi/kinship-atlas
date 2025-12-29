@@ -210,6 +210,10 @@ const FamilyTreeViewPage = () => {
                     // Navigate to add relation page
                     window.location.href = `/add-relation/${memberId}/child`;
                   }}
+                  onViewMemberTimeline={(memberId) => {
+                    // Navigate to profile page with timeline tab
+                    window.location.href = `/family-member/${memberId}#timeline`;
+                  }}
                   onRelationshipUpdated={handleRelationshipUpdated}
                   onRelationshipCreated={handleRelationshipUpdated}
                 />

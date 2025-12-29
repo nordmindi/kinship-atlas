@@ -47,7 +47,8 @@ export interface GeoLocation {
   description: string;
 }
 
-export interface FamilyStory {
+// Legacy types - keeping for backward compatibility
+export interface LegacyFamilyStory {
   id: string;
   title: string;
   content: string;
@@ -57,7 +58,7 @@ export interface FamilyStory {
   relatedMembers: string[]; // IDs of family members related to the story
 }
 
-export interface FamilyEvent {
+export interface LegacyFamilyEvent {
   id: string;
   title: string;
   date: string;
@@ -66,3 +67,6 @@ export interface FamilyEvent {
   participants: string[]; // IDs of family members who participated
   images?: string[];
 }
+
+// Export all stories types
+export * from './stories';

@@ -36,13 +36,25 @@ export const uploadMedia = async (upload: MediaUpload): Promise<MediaItem | null
       return null;
     }
     
+    // Validate file size (5MB max for media library)
+    const maxSize = 5 * 1024 * 1024; // 5MB
+    if (upload.file.size > maxSize) {
+      const fileSizeMB = (upload.file.size / (1024 * 1024)).toFixed(2);
+      toast({
+        title: "File too large",
+        description: `File "${upload.file.name}" is ${fileSizeMB}MB. Maximum file size is 5MB. Please compress or resize the file.`,
+        variant: "destructive"
+      });
+      return null;
+    }
+    
     // Generate unique filename
     const timestamp = Date.now();
     const fileExtension = upload.file.name.split('.').pop();
     const fileName = `${timestamp}-${upload.file.name}`;
     const filePath = `${user.id}/${upload.mediaType}/${fileName}`;
     
-    console.log('Uploading file:', { filePath, bucket: 'family-media', userId: user.id });
+    console.log('Uploading file:', { filePath, bucket: 'family-media', userId: user.id, fileSize: upload.file.size });
     
     // Upload file to storage
     const { data: uploadData, error: uploadError } = await supabase.storage
@@ -50,7 +62,24 @@ export const uploadMedia = async (upload: MediaUpload): Promise<MediaItem | null
       .upload(filePath, upload.file);
       
     if (uploadError) {
-      console.error('Storage upload error:', uploadError);
+      console.error('Storage upload error:', {
+        error: uploadError,
+        message: uploadError.message,
+        filePath,
+        fileName: upload.file.name,
+        fileSize: upload.file.size,
+        fileSizeMB: (upload.file.size / (1024 * 1024)).toFixed(2)
+      });
+      
+      // Handle file too large error (413)
+      if (uploadError.message?.includes('413') || 
+          uploadError.message?.includes('Request Entity Too Large') ||
+          uploadError.message?.includes('too large') ||
+          uploadError.message?.includes('size limit')) {
+        const fileSizeMB = (upload.file.size / (1024 * 1024)).toFixed(2);
+        throw new Error(`File is too large (${fileSizeMB}MB). Maximum file size is 5MB. Please compress or resize your file.`);
+      }
+      
       throw uploadError;
     }
     
@@ -99,9 +128,37 @@ export const uploadMedia = async (upload: MediaUpload): Promise<MediaItem | null
     };
   } catch (error) {
     console.error('Error uploading media:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Could not upload file.';
+    
+    // Handle different error types
+    let errorMessage = 'Could not upload file.';
+    let errorTitle = 'Upload Error';
+    
+    if (error instanceof Error) {
+      errorMessage = error.message;
+      
+      // Check for specific error patterns
+      if (error.message.includes('too large') || error.message.includes('size limit') || error.message.includes('413')) {
+        errorTitle = 'File Too Large';
+      } else if (error.message.includes('SyntaxError') || error.message.includes('Unexpected token')) {
+        // This usually means we got HTML instead of JSON (like a 413 error page)
+        errorTitle = 'Upload Failed';
+        errorMessage = 'The file is too large or the server rejected the upload. Please try a smaller file (under 5MB).';
+      } else if (error.message.includes('network') || error.message.includes('fetch')) {
+        errorTitle = 'Network Error';
+        errorMessage = 'Failed to connect to the server. Please check your internet connection and try again.';
+      }
+    } else if (typeof error === 'object' && error !== null) {
+      // Try to extract error message from error object
+      const errorObj = error as any;
+      if (errorObj.message) {
+        errorMessage = errorObj.message;
+      } else if (errorObj.error?.message) {
+        errorMessage = errorObj.error.message;
+      }
+    }
+    
     toast({
-      title: "Upload Error",
+      title: errorTitle,
       description: errorMessage,
       variant: "destructive"
     });

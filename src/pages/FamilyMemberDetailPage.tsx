@@ -28,7 +28,8 @@ import {
   Users2,
   Trash2,
   Upload,
-  RefreshCw
+  RefreshCw,
+  Clock
 } from 'lucide-react';
 import { getYearRange } from "@/utils/dateUtils";
 import ImageUpload from '@/components/ui/image-upload';
@@ -38,6 +39,8 @@ import { toast } from '@/hooks/use-toast';
 import AddRelationshipDialog from '@/components/family/AddRelationshipDialog';
 import FamilyMemberActions from '@/components/family/FamilyMemberActions';
 import NewFamilyTab from '@/components/family/NewFamilyTab';
+import Timeline from '@/components/stories/Timeline';
+import { useMemberTimeline } from '@/hooks/useTimeline';
 
 const FamilyMemberDetailPage = () => {
   const { user, isLoading: authLoading } = useAuth();
@@ -66,19 +69,38 @@ const FamilyMemberDetailPage = () => {
   const [isAddRelationshipOpen, setIsAddRelationshipOpen] = useState(false);
   const [selectedRelationshipType, setSelectedRelationshipType] = useState<'parent' | 'child' | 'spouse' | 'sibling'>('parent');
 
+  // Timeline functionality
+  const { timeline, isLoading: timelineLoading, error: timelineError } = useMemberTimeline(id || '');
+  const [activeTab, setActiveTab] = useState('profile');
+
+  // Handle URL hash for timeline tab
+  useEffect(() => {
+    const hash = window.location.hash;
+    if (hash === '#timeline') {
+      setActiveTab('timeline');
+    }
+  }, []);
+
   useEffect(() => {
     const loadData = async () => {
       if (!id) return;
       
       try {
         setIsLoading(true);
+        console.log('🔄 Loading member data for ID:', id);
         const allMembers = await getFamilyMembers();
         const currentMember = allMembers.find(m => m.id === id);
         
         if (!currentMember) {
-          console.error('Member not found');
+          console.error('❌ Member not found');
           return;
         }
+        
+        console.log('✅ Member loaded:', {
+          id: currentMember.id,
+          name: `${currentMember.firstName} ${currentMember.lastName}`,
+          avatar: currentMember.avatar || 'no avatar'
+        });
         
         setMember(currentMember);
         
@@ -137,6 +159,34 @@ const FamilyMemberDetailPage = () => {
       loadData();
     }
   }, [id, user]);
+
+  // Refresh data when page comes back into focus (e.g., after navigating away and back)
+  useEffect(() => {
+    const handleFocus = () => {
+      if (id && user && member) {
+        console.log('🔄 Page focused, refreshing member data...');
+        const refreshData = async () => {
+          try {
+            const allMembers = await getFamilyMembers();
+            const currentMember = allMembers.find(m => m.id === id);
+            if (currentMember) {
+              console.log('✅ Refreshed member data:', {
+                id: currentMember.id,
+                avatar: currentMember.avatar || 'no avatar'
+              });
+              setMember(currentMember);
+            }
+          } catch (error) {
+            console.error('Error refreshing data on focus:', error);
+          }
+        };
+        refreshData();
+      }
+    };
+
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
+  }, [id, user, member]);
   
   if (authLoading) {
     return (
@@ -260,12 +310,45 @@ const FamilyMemberDetailPage = () => {
   };
 
   const handleImageUpload = async (imageUrl: string) => {
-    if (!member) return;
+    if (!member || !id) return;
+    
+    console.log('📸 Handling image upload for member:', member.id, 'URL:', imageUrl);
+    
+    if (!imageUrl) {
+      console.warn('⚠️  Empty image URL provided, clearing avatar');
+      const success = await updateFamilyMemberAvatar(member.id, '');
+      if (success) {
+        setMember(prev => prev ? { ...prev, avatar: '' } : null);
+      }
+      return;
+    }
     
     const success = await updateFamilyMemberAvatar(member.id, imageUrl);
     if (success) {
-      // Update local state to reflect the change
+      console.log('✅ Avatar update successful, updating local state with URL:', imageUrl);
+      // Update local state immediately for instant feedback
       setMember(prev => prev ? { ...prev, avatar: imageUrl } : null);
+      
+      // Also refresh data from database to ensure consistency
+      try {
+        console.log('🔄 Refreshing member data after avatar update...');
+        const allMembers = await getFamilyMembers();
+        const updatedMember = allMembers.find(m => m.id === id);
+        
+        if (updatedMember) {
+          console.log('✅ Updated member data - avatar URL:', updatedMember.avatar);
+          console.log('   Member ID:', updatedMember.id);
+          console.log('   Avatar matches:', updatedMember.avatar === imageUrl);
+          setMember(updatedMember);
+        } else {
+          console.warn('⚠️  Updated member not found in fresh data');
+        }
+      } catch (error) {
+        console.error('❌ Error refreshing member data:', error);
+        // Don't fail the upload if refresh fails - we already updated local state
+      }
+    } else {
+      console.error('❌ Avatar update failed');
     }
   };
 
@@ -374,19 +457,24 @@ const FamilyMemberDetailPage = () => {
         </div>
       ) : member ? (
         <div className="h-full flex flex-col">
-          <Tabs defaultValue="profile" className="flex-1 flex flex-col">
-            <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="profile">Profile</TabsTrigger>
-              <TabsTrigger value="family">Family</TabsTrigger>
-              <TabsTrigger value="media">Media</TabsTrigger>
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
+            <TabsList className="grid w-full grid-cols-4 mb-6 h-auto">
+              <TabsTrigger value="profile" className="text-sm py-2 px-4">Profile</TabsTrigger>
+              <TabsTrigger value="family" className="text-sm py-2 px-4">Family</TabsTrigger>
+              <TabsTrigger value="timeline" className="text-sm py-2 px-4 flex items-center gap-1">
+                <Clock className="h-4 w-4" />
+                Timeline
+              </TabsTrigger>
+              <TabsTrigger value="media" className="text-sm py-2 px-4">Media</TabsTrigger>
             </TabsList>
             
             <TabsContent value="profile" className="flex-1 overflow-auto">
-              <div className="p-4 pb-20 space-y-6">
+              <div className="p-6 pb-20 space-y-8">
                 {/* Header with Avatar and Basic Info */}
                 <div className="flex flex-col items-center">
                   <div className="relative">
                     <ImageUpload
+                      key={`${member.id}-${member.avatar || 'no-avatar'}`} // Force remount when member or avatar changes
                       currentImage={member.avatar}
                       onImageUploaded={handleImageUpload}
                       size="lg"
@@ -575,14 +663,46 @@ const FamilyMemberDetailPage = () => {
             </TabsContent>
             
             <TabsContent value="family" className="flex-1 overflow-auto">
-              <NewFamilyTab 
-                currentMember={member!}
-                onMemberChanged={handleRelationshipAdded}
-              />
+              <div className="p-6">
+                <NewFamilyTab 
+                  currentMember={member!}
+                  onMemberChanged={handleRelationshipAdded}
+                />
+              </div>
+            </TabsContent>
+            
+            <TabsContent value="timeline" className="flex-1 overflow-auto">
+              <div className="p-6">
+                <div className="mb-6">
+                  <h2 className="text-2xl font-bold text-heritage-dark mb-2">
+                    {member.firstName} {member.lastName}'s Timeline
+                  </h2>
+                  <p className="text-muted-foreground">
+                    Stories, events, and milestones in chronological order
+                  </p>
+                </div>
+                
+                {timelineError && (
+                  <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+                    <p className="text-red-800 text-sm">
+                      Error loading timeline: {timelineError}
+                    </p>
+                  </div>
+                )}
+                
+                <Timeline
+                  timeline={timeline || []}
+                  isLoading={timelineLoading}
+                  onItemClick={(item) => {
+                    console.log('Timeline item clicked:', item);
+                    // You can add navigation to story detail or other actions here
+                  }}
+                />
+              </div>
             </TabsContent>
             
             <TabsContent value="media" className="flex-1 flex flex-col">
-              <div className="p-4 flex-1">
+              <div className="p-6 flex-1">
                 <div className="mb-4">
                   <div className="flex items-center justify-between mb-3">
                     <h2 className="text-lg font-semibold flex items-center gap-2">

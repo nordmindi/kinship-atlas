@@ -23,7 +23,8 @@ import {
   ChevronUp,
   X,
   Cake,
-  Skull
+  Skull,
+  Clock
 } from 'lucide-react';
 
 interface FamilyMemberNodeProps {
@@ -53,9 +54,10 @@ interface FamilyMemberNodeProps {
   onEdit?: (memberId: string) => void;
   onViewProfile?: (memberId: string) => void;
   onAddRelation?: (memberId: string) => void;
+  onViewTimeline?: (memberId: string) => void;
 }
 
-const FamilyMemberNode = ({ data, selected, isDragging, isBeingDragged, onEdit, onViewProfile, onAddRelation }: FamilyMemberNodeProps) => {
+const FamilyMemberNode = ({ data, selected, isDragging, isBeingDragged, onEdit, onViewProfile, onAddRelation, onViewTimeline }: FamilyMemberNodeProps) => {
   const [isExpanded, setIsExpanded] = useState(false);
   
   
@@ -247,47 +249,49 @@ const FamilyMemberNode = ({ data, selected, isDragging, isBeingDragged, onEdit, 
 
       {/* Collapsed View */}
       {!isExpanded && (
-        <div className="flex items-center p-3 h-full gap-3">
+        <div className="p-3 h-full flex flex-col items-center text-center gap-2">
+          {/* Avatar on its own row */}
           <Avatar className={`h-12 w-12 transition-all duration-300 ${
-          data.isCurrentUser 
-              ? 'ring-2 ring-primary' 
-            : isDeceased
+            data.isCurrentUser
+              ? 'ring-2 ring-primary'
+              : isDeceased
                 ? 'opacity-50 grayscale'
                 : ''
-        }`}>
-          <AvatarImage 
-            src={data.avatar} 
-            alt={`${data.firstName} ${data.lastName}`} 
-            className="object-cover"
-          />
+          }`}>
+            <AvatarImage
+              src={data.avatar}
+              alt={`${data.firstName} ${data.lastName}`}
+              className="object-cover"
+            />
             <AvatarFallback className={`text-sm font-semibold ${
               isDeceased ? 'bg-gray-200 text-gray-500' :
-            gender === 'male' ? 'bg-blue-100 text-blue-700' :
-            gender === 'female' ? 'bg-pink-100 text-pink-700' :
+              gender === 'male' ? 'bg-blue-100 text-blue-700' :
+              gender === 'female' ? 'bg-pink-100 text-pink-700' :
               'bg-gray-100 text-gray-600'
-          }`}>
-            {data.firstName?.[0]}{data.lastName?.[0]}
-          </AvatarFallback>
-        </Avatar>
-        
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-1">
-              <h3 className={`font-semibold text-lg leading-tight truncate ${
-                data.isCurrentUser ? 'text-blue-600' : 
-                isDeceased ? 'text-gray-500' : 'text-gray-800'
-              }`}>
-                {data.firstName} {data.lastName}
-              </h3>
+            }`}>
+              {data.firstName?.[0]}{data.lastName?.[0]}
+            </AvatarFallback>
+          </Avatar>
+
+          {/* Full name on its own row (no truncation) */}
+          <div className="flex items-center gap-1">
+            <h3 className={`font-semibold text-base leading-tight ${
+              data.isCurrentUser ? 'text-blue-600' :
+              isDeceased ? 'text-gray-500' : 'text-gray-800'
+            }`}>
+              {data.firstName} {data.lastName}
+            </h3>
             {data.isCurrentUser && (
-                <Star className="h-3 w-3 text-blue-500" />
-              )}
-            </div>
-            
-            <div className="text-sm text-gray-500">
-              {birthYear && `b. ${birthYear}`}
-            </div>
+              <Star className="h-3 w-3 text-blue-500" />
+            )}
           </div>
-          
+
+          {/* Birth year below name */}
+          <div className="text-sm text-gray-500">
+            {birthYear && `b. ${birthYear}`}
+          </div>
+
+          {/* Expand indicator */}
           <ChevronDown className="h-4 w-4 text-gray-400" />
         </div>
       )}
@@ -364,7 +368,7 @@ const FamilyMemberNode = ({ data, selected, isDragging, isBeingDragged, onEdit, 
           )}
 
           {/* Action Buttons */}
-          <div className="flex gap-1">
+          <div className="grid grid-cols-2 gap-1">
             <Button
               variant="ghost"
               size="sm"
@@ -372,7 +376,7 @@ const FamilyMemberNode = ({ data, selected, isDragging, isBeingDragged, onEdit, 
                 e.stopPropagation();
                 onEdit?.(data.id);
               }}
-              className="flex-1 h-7 text-xs text-gray-600 hover:text-gray-800 hover:bg-gray-100"
+              className="h-7 text-xs text-gray-600 hover:text-gray-800 hover:bg-gray-100"
             >
               <Edit3 className="h-3 w-3 mr-1" />
               Edit
@@ -385,7 +389,7 @@ const FamilyMemberNode = ({ data, selected, isDragging, isBeingDragged, onEdit, 
                 e.stopPropagation();
                 onViewProfile?.(data.id);
               }}
-              className="flex-1 h-7 text-xs text-gray-600 hover:text-gray-800 hover:bg-gray-100"
+              className="h-7 text-xs text-gray-600 hover:text-gray-800 hover:bg-gray-100"
             >
               <Eye className="h-3 w-3 mr-1" />
               View
@@ -396,9 +400,22 @@ const FamilyMemberNode = ({ data, selected, isDragging, isBeingDragged, onEdit, 
               size="sm"
               onClick={(e) => {
                 e.stopPropagation();
+                onViewTimeline?.(data.id);
+              }}
+              className="h-7 text-xs text-gray-600 hover:text-gray-800 hover:bg-gray-100"
+            >
+              <Clock className="h-3 w-3 mr-1" />
+              Timeline
+            </Button>
+            
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={(e) => {
+                e.stopPropagation();
                 onAddRelation?.(data.id);
               }}
-              className="flex-1 h-7 text-xs text-gray-600 hover:text-gray-800 hover:bg-gray-100"
+              className="h-7 text-xs text-gray-600 hover:text-gray-800 hover:bg-gray-100"
             >
               <Plus className="h-3 w-3 mr-1" />
               Add

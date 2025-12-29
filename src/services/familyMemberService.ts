@@ -47,12 +47,31 @@ class FamilyMemberService {
    */
   async createFamilyMember(request: CreateFamilyMemberRequest): Promise<{ success: boolean; member?: FamilyMember; error?: string }> {
     try {
+      console.log('🔍 createFamilyMember called with:', {
+        firstName: request.firstName,
+        lastName: request.lastName,
+        birthDate: request.birthDate,
+        birthDateType: typeof request.birthDate
+      });
+
       // Validate the request
       const validation = this.validateCreateRequest(request);
+      console.log('🔍 Validation result:', validation);
+      
       if (!validation.isValid) {
+        console.log('❌ Validation failed:', validation.errors);
         return {
           success: false,
           error: validation.errors.join('; ')
+        };
+      }
+
+      // Check for duplicates
+      const duplicateCheck = await this.checkForDuplicate(request);
+      if (!duplicateCheck.isValid) {
+        return {
+          success: false,
+          error: duplicateCheck.error
         };
       }
 
@@ -340,8 +359,41 @@ class FamilyMemberService {
       const birthDate = new Date(request.birthDate);
       const now = new Date();
       
-      if (birthDate > now) {
-        errors.push('Birth date cannot be in the future');
+      console.log('🔍 Birth date validation:', {
+        rawBirthDate: request.birthDate,
+        parsedBirthDate: birthDate.toString(),
+        parsedBirthDateISO: birthDate.toISOString(),
+        now: now.toString(),
+        nowISO: now.toISOString(),
+        isValid: !isNaN(birthDate.getTime()),
+        isFuture: birthDate > now,
+        timeDifference: birthDate.getTime() - now.getTime(),
+        timeDifferenceDays: (birthDate.getTime() - now.getTime()) / (24 * 60 * 60 * 1000)
+      });
+      
+      // Check if the date is valid
+      if (isNaN(birthDate.getTime())) {
+        console.log('❌ Invalid birth date format');
+        errors.push('Invalid birth date format');
+      } else {
+        // Only check if birth date is in the future if it's more than 1 day ahead
+        // This accounts for timezone differences and date parsing issues
+        const oneDayInMs = 24 * 60 * 60 * 1000;
+        const isFutureWithBuffer = birthDate.getTime() > now.getTime() + oneDayInMs;
+        console.log('🔍 Future check:', {
+          isFutureWithBuffer,
+          oneDayInMs,
+          birthDateTime: birthDate.getTime(),
+          nowTime: now.getTime(),
+          nowTimePlusOneDay: now.getTime() + oneDayInMs
+        });
+        
+        if (isFutureWithBuffer) {
+          console.log('❌ Birth date is in the future');
+          errors.push('Birth date cannot be in the future');
+        } else {
+          console.log('✅ Birth date validation passed');
+        }
       }
     }
 
@@ -349,8 +401,16 @@ class FamilyMemberService {
       const deathDate = new Date(request.deathDate);
       const now = new Date();
       
-      if (deathDate > now) {
-        errors.push('Death date cannot be in the future');
+      // Check if the date is valid
+      if (isNaN(deathDate.getTime())) {
+        errors.push('Invalid death date format');
+      } else {
+        // Only check if death date is in the future if it's more than 1 day ahead
+        // This accounts for timezone differences and date parsing issues
+        const oneDayInMs = 24 * 60 * 60 * 1000;
+        if (deathDate.getTime() > now.getTime() + oneDayInMs) {
+          errors.push('Death date cannot be in the future');
+        }
       }
     }
 
@@ -384,6 +444,85 @@ class FamilyMemberService {
       isValid: errors.length === 0,
       errors
     };
+  }
+
+  /**
+   * Check for duplicate family members based on name, birth date, and location
+   */
+  private async checkForDuplicate(request: CreateFamilyMemberRequest): Promise<{ isValid: boolean; error?: string }> {
+    try {
+      // Get current user to check only their family members
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError || !user) {
+        return { isValid: true }; // Skip duplicate check if user not authenticated
+      }
+
+      // Build query to find potential duplicates
+      let query = supabase
+        .from('family_members')
+        .select('id, first_name, last_name, birth_date, birth_place')
+        .eq('created_by', user.id)
+        .ilike('first_name', request.firstName.trim())
+        .ilike('last_name', request.lastName.trim());
+
+      // Add birth date filter if provided
+      if (request.birthDate) {
+        query = query.eq('birth_date', request.birthDate);
+      }
+
+      const { data: existingMembers, error } = await query;
+
+      if (error) {
+        console.error('Error checking for duplicates:', error);
+        return { isValid: true }; // Skip duplicate check on error
+      }
+
+      if (!existingMembers || existingMembers.length === 0) {
+        return { isValid: true };
+      }
+
+      // Check for exact matches
+      for (const existing of existingMembers) {
+        const isExactMatch = 
+          existing.first_name.toLowerCase().trim() === request.firstName.toLowerCase().trim() &&
+          existing.last_name.toLowerCase().trim() === request.lastName.toLowerCase().trim() &&
+          (request.birthDate ? existing.birth_date === request.birthDate : true);
+
+        if (isExactMatch) {
+          // Check location if provided
+          if (request.location) {
+            const { data: locationData } = await supabase
+              .from('locations')
+              .select('lat, lng, description')
+              .eq('family_member_id', existing.id)
+              .eq('current_residence', true)
+              .single();
+
+            if (locationData) {
+              const latMatch = Math.abs(locationData.lat - request.location.lat) < 0.001;
+              const lngMatch = Math.abs(locationData.lng - request.location.lng) < 0.001;
+              
+              if (latMatch && lngMatch) {
+                return {
+                  isValid: false,
+                  error: `A family member with the same name (${request.firstName} ${request.lastName}), birth date, and location already exists`
+                };
+              }
+            }
+          }
+
+          return {
+            isValid: false,
+            error: `A family member with the same name (${request.firstName} ${request.lastName}) and birth date already exists`
+          };
+        }
+      }
+
+      return { isValid: true };
+    } catch (error) {
+      console.error('Error in duplicate check:', error);
+      return { isValid: true }; // Skip duplicate check on error
+    }
   }
 
   private async setBranchRoot(memberId: string, userId: string): Promise<void> {
@@ -475,7 +614,6 @@ class FamilyMemberService {
         person: rel.to_member
       })) || [],
       currentLocation: member.locations?.[0] ? {
-        id: member.locations[0].id,
         description: member.locations[0].description,
         lat: member.locations[0].lat,
         lng: member.locations[0].lng

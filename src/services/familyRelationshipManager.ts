@@ -332,31 +332,7 @@ class FamilyRelationshipManager {
         };
       }
 
-      // Create the reciprocal relationship
-      const reciprocalType = this.getReciprocalRelationshipType(request.relationshipType);
-      if (reciprocalType) {
-        const reciprocalPayload = (() => {
-          const reciprocalBase = {
-            from_member_id: request.toMemberId,
-            to_member_id: request.fromMemberId,
-            relation_type: reciprocalType
-          };
-
-          if (this.metadataColumnSupported && request.metadata) {
-            return { ...reciprocalBase, metadata: request.metadata };
-          }
-          return reciprocalBase;
-        })();
-
-        const { error: reciprocalError } = await supabase
-          .from('relations')
-          .insert(reciprocalPayload);
-
-        if (reciprocalError) {
-          console.error('Error creating reciprocal relationship:', reciprocalError);
-          // Don't fail the entire operation, but log the error
-        }
-      }
+      // Note: Reciprocal relationships are now automatically created by database triggers
 
       return {
         success: true,
@@ -453,16 +429,7 @@ class FamilyRelationshipManager {
         };
       }
 
-      // Delete the reciprocal relationship
-      const reciprocalType = this.getReciprocalRelationshipType(relationship.relation_type);
-      if (reciprocalType) {
-        await supabase
-          .from('relations')
-          .delete()
-          .eq('from_member_id', relationship.to_member_id)
-          .eq('to_member_id', relationship.from_member_id)
-          .eq('relation_type', reciprocalType);
-      }
+      // Note: Reciprocal relationships are now automatically deleted by database triggers
 
       return { success: true };
 

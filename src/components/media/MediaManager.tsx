@@ -68,6 +68,26 @@ const MediaManager: React.FC<MediaManagerProps> = ({
   const handleFileUpload = async (files: FileList | null) => {
     if (!files || files.length === 0) return;
 
+    // Validate file sizes before uploading
+    const maxSize = 5 * 1024 * 1024; // 5MB
+    const invalidFiles: string[] = [];
+    
+    Array.from(files).forEach(file => {
+      if (file.size > maxSize) {
+        const fileSizeMB = (file.size / (1024 * 1024)).toFixed(2);
+        invalidFiles.push(`${file.name} (${fileSizeMB}MB)`);
+      }
+    });
+
+    if (invalidFiles.length > 0) {
+      toast({
+        title: 'File too large',
+        description: `The following files exceed the 5MB limit: ${invalidFiles.join(', ')}. Please compress or resize them.`,
+        variant: 'destructive'
+      });
+      return;
+    }
+
     setUploading(true);
     const uploadPromises: Promise<MediaItem | null>[] = [];
 
@@ -248,7 +268,7 @@ const MediaManager: React.FC<MediaManagerProps> = ({
             Drag and drop files here, or click "Upload Media" to browse
           </p>
           <p className="text-xs text-muted-foreground mt-1">
-            Supports images, videos, audio, and documents
+            Supports images, videos, audio, and documents (max 5MB per file)
           </p>
         </div>
       )}

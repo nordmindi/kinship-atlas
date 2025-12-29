@@ -41,8 +41,8 @@ const UserProfilePage = () => {
     <MobileLayout>
       <div className="min-h-screen bg-gray-50">
         {/* Header */}
-        <div className="bg-white border-b">
-          <div className="max-w-4xl mx-auto px-4 py-4">
+        <div className="bg-white border-b border-heritage-purple/10">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
             <div className="flex items-center space-x-4">
               <Button
                 variant="ghost"
@@ -63,16 +63,16 @@ const UserProfilePage = () => {
         </div>
 
         {/* Profile Content */}
-        <div className="max-w-4xl mx-auto p-4">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <UserProfile 
             variant="page" 
             onProfileClick={handleAccountSettings}
           />
           
           {/* Additional Profile Sections */}
-          <div className="mt-6 space-y-6">
+          <div className="mt-8 space-y-8">
             {/* Account Information */}
-            <div className="bg-white rounded-lg border p-6">
+            <div className="bg-white rounded-xl shadow-sm border border-heritage-purple/10 p-6 sm:p-8">
               <div className="flex items-center space-x-3 mb-4">
                 <User className="h-5 w-5 text-primary" />
                 <h2 className="text-lg font-semibold">Account Information</h2>
@@ -102,7 +102,7 @@ const UserProfilePage = () => {
             </div>
 
             {/* Security Information */}
-            <div className="bg-white rounded-lg border p-6">
+            <div className="bg-white rounded-xl shadow-sm border border-heritage-purple/10 p-6 sm:p-8">
               <div className="flex items-center space-x-3 mb-4">
                 <Shield className="h-5 w-5 text-primary" />
                 <h2 className="text-lg font-semibold">Security</h2>
@@ -140,7 +140,7 @@ const UserProfilePage = () => {
             </div>
 
             {/* Data & Privacy */}
-            <div className="bg-white rounded-lg border p-6">
+            <div className="bg-white rounded-xl shadow-sm border border-heritage-purple/10 p-6 sm:p-8">
               <div className="flex items-center space-x-3 mb-4">
                 <Database className="h-5 w-5 text-primary" />
                 <h2 className="text-lg font-semibold">Data & Privacy</h2>

@@ -113,27 +113,28 @@ const NewFamilyTab: React.FC<NewFamilyTabProps> = ({
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8 p-6">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold text-heritage-dark">
+        <div className="space-y-2">
+          <h2 className="text-3xl font-bold text-heritage-dark">
             {currentMember.firstName} {currentMember.lastName}'s Family
           </h2>
-          <p className="text-muted-foreground">
+          <p className="text-lg text-muted-foreground">
             Manage family relationships and add new members
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-3">
           <Button 
             variant="outline" 
             onClick={loadFamilyMembers}
             disabled={isLoading}
+            className="px-4 py-2"
           >
             <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
-          <Button onClick={() => setShowAddMemberForm(true)}>
+          <Button onClick={() => setShowAddMemberForm(true)} className="px-4 py-2">
             <UserPlus className="h-4 w-4 mr-2" />
             Add Family Member
           </Button>
@@ -141,30 +142,30 @@ const NewFamilyTab: React.FC<NewFamilyTabProps> = ({
       </div>
 
       {/* Relationship Summary */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Users className="h-5 w-5" />
+      <Card className="shadow-sm">
+        <CardHeader className="pb-4">
+          <CardTitle className="flex items-center gap-3 text-xl">
+            <Users className="h-6 w-6" />
             Family Overview
           </CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="text-center p-4 border rounded-lg">
-              <div className="text-2xl font-bold text-green-600">{counts.parents}</div>
-              <div className="text-sm text-muted-foreground">Parents</div>
+        <CardContent className="pt-0">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+            <div className="text-center p-6 border rounded-xl bg-gradient-to-br from-green-50 to-green-100 border-green-200 hover:shadow-md transition-shadow">
+              <div className="text-3xl font-bold text-green-600 mb-2">{counts.parents}</div>
+              <div className="text-sm font-medium text-green-700">Parents</div>
             </div>
-            <div className="text-center p-4 border rounded-lg">
-              <div className="text-2xl font-bold text-blue-600">{counts.children}</div>
-              <div className="text-sm text-muted-foreground">Children</div>
+            <div className="text-center p-6 border rounded-xl bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200 hover:shadow-md transition-shadow">
+              <div className="text-3xl font-bold text-blue-600 mb-2">{counts.children}</div>
+              <div className="text-sm font-medium text-blue-700">Children</div>
             </div>
-            <div className="text-center p-4 border rounded-lg">
-              <div className="text-2xl font-bold text-pink-600">{counts.spouses}</div>
-              <div className="text-sm text-muted-foreground">Spouses</div>
+            <div className="text-center p-6 border rounded-xl bg-gradient-to-br from-pink-50 to-pink-100 border-pink-200 hover:shadow-md transition-shadow">
+              <div className="text-3xl font-bold text-pink-600 mb-2">{counts.spouses}</div>
+              <div className="text-sm font-medium text-pink-700">Spouses</div>
             </div>
-            <div className="text-center p-4 border rounded-lg">
-              <div className="text-2xl font-bold text-purple-600">{counts.siblings}</div>
-              <div className="text-sm text-muted-foreground">Siblings</div>
+            <div className="text-center p-6 border rounded-xl bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200 hover:shadow-md transition-shadow">
+              <div className="text-3xl font-bold text-purple-600 mb-2">{counts.siblings}</div>
+              <div className="text-sm font-medium text-purple-700">Siblings</div>
             </div>
           </div>
         </CardContent>
@@ -172,12 +173,12 @@ const NewFamilyTab: React.FC<NewFamilyTabProps> = ({
 
       {/* Main Content */}
       <Tabs defaultValue="relationships" className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="relationships">Manage Relationships</TabsTrigger>
-          <TabsTrigger value="members">All Family Members</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-2 mb-6 h-auto">
+          <TabsTrigger value="relationships" className="text-sm py-2 px-4">Manage Relationships</TabsTrigger>
+          <TabsTrigger value="members" className="text-sm py-2 px-4">All Family Members</TabsTrigger>
         </TabsList>
         
-        <TabsContent value="relationships" className="space-y-4">
+        <TabsContent value="relationships" className="space-y-6">
           <RelationshipManager
             currentMember={currentMember}
             allMembers={allMembers}
@@ -185,22 +186,22 @@ const NewFamilyTab: React.FC<NewFamilyTabProps> = ({
           />
         </TabsContent>
         
-        <TabsContent value="members" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>All Family Members ({allMembers.length})</CardTitle>
+        <TabsContent value="members" className="space-y-6">
+          <Card className="shadow-sm">
+            <CardHeader className="pb-4">
+              <CardTitle className="text-xl">All Family Members ({allMembers.length})</CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="pt-0">
               {allMembers.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {allMembers.map((member) => (
-                    <Card key={member.id} className="p-4">
-                      <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 rounded-full bg-heritage-purple-light flex items-center justify-center text-heritage-purple font-medium">
+                    <Card key={member.id} className="p-6 hover:shadow-md transition-shadow border-l-4 border-l-heritage-purple">
+                      <div className="flex items-center gap-4">
+                        <div className="w-14 h-14 rounded-full bg-heritage-purple-light flex items-center justify-center text-heritage-purple font-semibold text-lg">
                           {member.firstName[0]}{member.lastName[0]}
                         </div>
-                        <div className="flex-1">
-                          <h3 className="font-medium">
+                        <div className="flex-1 space-y-2">
+                          <h3 className="font-semibold text-lg">
                             {member.firstName} {member.lastName}
                           </h3>
                           {member.birthDate && (
@@ -208,9 +209,9 @@ const NewFamilyTab: React.FC<NewFamilyTabProps> = ({
                               Born {new Date(member.birthDate).getFullYear()}
                             </p>
                           )}
-                          <div className="flex gap-1 mt-1">
+                          <div className="flex gap-2 flex-wrap">
                             {member.relations?.map((rel, index) => (
-                              <Badge key={index} variant="outline" className="text-xs">
+                              <Badge key={index} variant="outline" className="text-xs px-2 py-1">
                                 {rel.type}
                               </Badge>
                             ))}
@@ -221,9 +222,9 @@ const NewFamilyTab: React.FC<NewFamilyTabProps> = ({
                   ))}
                 </div>
               ) : (
-                <div className="text-center py-8 text-muted-foreground">
-                  <Users className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p>No family members found</p>
+                <div className="text-center py-12 text-muted-foreground">
+                  <Users className="h-16 w-16 mx-auto mb-6 opacity-50" />
+                  <p className="text-lg font-medium mb-2">No family members found</p>
                   <p className="text-sm">Add your first family member to get started</p>
                 </div>
               )}
@@ -245,15 +246,27 @@ const NewFamilyTab: React.FC<NewFamilyTabProps> = ({
       )}
 
       {/* Helpful Tips */}
-      <Alert>
-        <Info className="h-4 w-4" />
-        <AlertDescription>
-          <strong>Tips for managing family relationships:</strong>
-          <ul className="mt-2 space-y-1 text-sm">
-            <li>• Add family members first, then create relationships between them</li>
-            <li>• Birth dates help validate parent-child relationships</li>
-            <li>• The system will suggest likely relationships based on ages</li>
-            <li>• You can always edit or remove relationships later</li>
+      <Alert className="border-l-4 border-l-blue-500 bg-blue-50">
+        <Info className="h-5 w-5 text-blue-600" />
+        <AlertDescription className="text-blue-800">
+          <strong className="text-lg">Tips for managing family relationships:</strong>
+          <ul className="mt-4 space-y-2 text-sm">
+            <li className="flex items-start gap-2">
+              <span className="text-blue-600 font-bold">•</span>
+              <span>Add family members first, then create relationships between them</span>
+            </li>
+            <li className="flex items-start gap-2">
+              <span className="text-blue-600 font-bold">•</span>
+              <span>Birth dates help validate parent-child relationships</span>
+            </li>
+            <li className="flex items-start gap-2">
+              <span className="text-blue-600 font-bold">•</span>
+              <span>The system will suggest likely relationships based on ages</span>
+            </li>
+            <li className="flex items-start gap-2">
+              <span className="text-blue-600 font-bold">•</span>
+              <span>You can always edit or remove relationships later</span>
+            </li>
           </ul>
         </AlertDescription>
       </Alert>

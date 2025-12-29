@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { X, Menu, Home, Users, Image, Map, Clock, BookOpen, Crown, User, LogOut } from 'lucide-react';
+import { X, Menu, Home, Users, Image, Map, Clock, BookOpen, Crown, User, LogOut, History, Upload } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useAuth } from '@/contexts/AuthContext';
@@ -30,6 +30,7 @@ const navItems: NavItem[] = [
   { icon: Users, label: "Family Tree", href: "/family-tree" },
   { icon: Map, label: "Map", href: "/map" },
   { icon: BookOpen, label: "Stories", href: "/stories" },
+  { icon: History, label: "Legacy Stories", href: "/legacy-stories" },
   { icon: Image, label: "Albums", href: "/albums" },
   { icon: Clock, label: "Timeline", href: "/timeline" },
 ];
@@ -54,7 +55,7 @@ const MobileLayout: React.FC<MobileLayoutProps> = ({
     <div className="min-h-screen flex flex-col bg-heritage-light">
       {/* Header */}
       <header className="sticky top-0 z-50 bg-white border-b border-heritage-purple/20 shadow-sm">
-        <div className="flex items-center justify-between p-4">
+        <div className="max-w-7xl mx-auto flex items-center justify-between px-4 sm:px-6 lg:px-8 py-4">
           {showBackButton ? (
             <Button
               variant="ghost"
@@ -170,6 +171,16 @@ const MobileLayout: React.FC<MobileLayoutProps> = ({
               <span>{item.label}</span>
             </a>
           ))}
+
+          {/* Excel/Family data import link (sidebar only) */}
+          <a
+            href="/import-family-data"
+            className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-heritage-purple-light text-heritage-dark hover:text-heritage-purple transition-colors"
+            onClick={() => setIsDrawerOpen(false)}
+          >
+            <Upload size={18} />
+            <span>Import Family Data</span>
+          </a>
           
           {isAdmin && (
             <a
@@ -185,13 +196,13 @@ const MobileLayout: React.FC<MobileLayoutProps> = ({
       </div>
       
       {/* Main Content */}
-      <main className="flex-1">
+      <main className="flex-1 pb-20 md:pb-6">
         {children}
       </main>
       
       {/* Bottom Nav Bar */}
       <nav className="sticky bottom-0 z-30 bg-white border-t border-heritage-purple/20 shadow-lg md:hidden">
-        <div className="grid grid-cols-5 gap-1 p-1">
+        <div className="max-w-7xl mx-auto grid grid-cols-5 gap-1 px-2 py-2">
           {navItems.slice(0, 5).map((item) => (
             <a
               key={item.label}

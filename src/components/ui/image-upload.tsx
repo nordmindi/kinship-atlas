@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Upload, X, Camera, Loader2 } from 'lucide-react';
@@ -20,7 +20,42 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
 }) => {
   const [isUploading, setIsUploading] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(currentImage || null);
+  const [blobUrl, setBlobUrl] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Update previewUrl when currentImage prop changes (e.g., when navigating back to page)
+  // Only update if we're not currently uploading (to avoid interrupting upload preview)
+  useEffect(() => {
+    if (!isUploading) {
+      if (currentImage) {
+        console.log('🖼️  ImageUpload: currentImage prop changed, updating preview:', currentImage);
+        // Only update if the URL actually changed to avoid unnecessary re-renders
+        setPreviewUrl(prev => {
+          if (prev !== currentImage) {
+            // Clear any blob URL when setting a new image URL
+            if (blobUrl) {
+              URL.revokeObjectURL(blobUrl);
+            }
+            return currentImage;
+          }
+          return prev;
+        });
+      } else if (!blobUrl) {
+        // Only clear if there's no blob URL (upload preview) active
+        console.log('🖼️  ImageUpload: currentImage cleared, clearing preview');
+        setPreviewUrl(null);
+      }
+    }
+  }, [currentImage, isUploading, blobUrl]);
+
+  // Cleanup blob URL when component unmounts or blobUrl changes
+  useEffect(() => {
+    return () => {
+      if (blobUrl) {
+        URL.revokeObjectURL(blobUrl);
+      }
+    };
+  }, [blobUrl]);
 
   const sizeClasses = {
     sm: 'h-16 w-16',
@@ -42,11 +77,13 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
       return;
     }
 
-    // Validate file size (5MB max)
-    if (file.size > 5 * 1024 * 1024) {
+    // Validate file size (3MB max for avatars - more reasonable for profile images)
+    const maxSize = 3 * 1024 * 1024; // 3MB
+    if (file.size > maxSize) {
+      const fileSizeMB = (file.size / (1024 * 1024)).toFixed(2);
       toast({
         title: 'File too large',
-        description: 'Please select an image under 5MB',
+        description: `Image is ${fileSizeMB}MB. Please select an image under 3MB. You can compress it using an online tool.`,
         variant: 'destructive'
       });
       return;
@@ -55,8 +92,9 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
     try {
       setIsUploading(true);
 
-      // Create preview
+      // Create preview with blob URL
       const objectUrl = URL.createObjectURL(file);
+      setBlobUrl(objectUrl);
       setPreviewUrl(objectUrl);
 
       console.log('Starting image upload...', { fileName: file.name, fileSize: file.size });
@@ -67,6 +105,12 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
       console.log('Upload result:', uploadedUrl);
       
       if (uploadedUrl) {
+        // Clean up blob URL and use the uploaded URL
+        if (blobUrl) {
+          URL.revokeObjectURL(blobUrl);
+          setBlobUrl(null);
+        }
+        setPreviewUrl(uploadedUrl);
         onImageUploaded(uploadedUrl);
         toast({
           title: 'Image uploaded',
@@ -77,12 +121,18 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
       }
     } catch (error) {
       console.error('Upload error:', error);
+      // Clean up blob URL on error
+      if (blobUrl) {
+        URL.revokeObjectURL(blobUrl);
+        setBlobUrl(null);
+      }
+      // Revert to current image or clear
+      setPreviewUrl(currentImage || null);
       toast({
         title: 'Upload failed',
         description: error instanceof Error ? error.message : 'Could not upload image. Please try again.',
         variant: 'destructive'
       });
-      setPreviewUrl(currentImage || null);
     } finally {
       setIsUploading(false);
       // Reset file input
@@ -116,6 +166,50 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
               src={previewUrl} 
               alt="Preview" 
               className="w-full h-full object-cover rounded-full"
+              onError={async (e) => {
+                console.error('❌ Image failed to load:', previewUrl);
+                console.error('   Error event:', e);
+                
+                // If it's a public URL that failed, try to get a signed URL as fallback
+                // Extract the path from the URL
+                try {
+                  if (!previewUrl) return;
+                  
+                  const url = new URL(previewUrl);
+                  // Match both public and signed URL formats
+                  const pathMatch = url.pathname.match(/\/storage\/v1\/object\/(?:public|sign\/family-media)\/family-media\/(.+)/) ||
+                                   url.pathname.match(/\/storage\/v1\/object\/public\/family-media\/(.+)/);
+                  
+                  if (pathMatch) {
+                    const filePath = decodeURIComponent(pathMatch[1]);
+                    console.log('🔄 Attempting to get signed URL for path:', filePath);
+                    
+                    // Import supabase client
+                    const { supabase } = await import('@/integrations/supabase/client');
+                    const { data: signedData, error: signedError } = await supabase.storage
+                      .from('family-media')
+                      .createSignedUrl(filePath, 31536000); // 1 year validity
+                    
+                    if (!signedError && signedData?.signedUrl) {
+                      console.log('✅ Got signed URL, updating image source');
+                      setPreviewUrl(signedData.signedUrl);
+                      return; // Don't clear, try the signed URL instead
+                    } else {
+                      console.error('❌ Failed to get signed URL:', signedError);
+                    }
+                  } else {
+                    console.warn('⚠️  Could not extract file path from URL:', previewUrl);
+                  }
+                } catch (urlError) {
+                  console.error('❌ Error parsing URL:', urlError);
+                }
+                
+                // Fallback to placeholder if all attempts fail
+                setPreviewUrl(null);
+              }}
+              onLoad={() => {
+                console.log('✅ Image loaded successfully:', previewUrl);
+              }}
             />
           ) : (
             <div className="flex flex-col items-center justify-center text-gray-400">

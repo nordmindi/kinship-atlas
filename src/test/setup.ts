@@ -1,0 +1,133 @@
+import '@testing-library/jest-dom'
+import { vi } from 'vitest'
+
+// Mock environment variables
+vi.mock('import.meta.env', () => ({
+  VITE_SUPABASE_URL: 'http://localhost:60001',
+  VITE_SUPABASE_ANON_KEY: 'test-anon-key',
+  VITE_MAPBOX_TOKEN: 'test-mapbox-token'
+}))
+
+// Mock Supabase client
+vi.mock('@/integrations/supabase/client', () => ({
+  supabase: {
+    auth: {
+      getUser: vi.fn().mockResolvedValue({
+        data: { user: null },
+        error: null
+      }),
+      getSession: vi.fn().mockResolvedValue({
+        data: { session: null },
+        error: null
+      }),
+      signInWithPassword: vi.fn().mockResolvedValue({
+        data: { user: null, session: null },
+        error: null
+      }),
+      signUp: vi.fn().mockResolvedValue({
+        data: { user: null, session: null },
+        error: null
+      }),
+      signOut: vi.fn().mockResolvedValue({
+        error: null
+      }),
+    },
+    from: vi.fn(() => ({
+      select: vi.fn().mockReturnThis(),
+      insert: vi.fn().mockReturnThis(),
+      update: vi.fn().mockReturnThis(),
+      delete: vi.fn().mockReturnThis(),
+      eq: vi.fn().mockReturnThis(),
+      order: vi.fn().mockReturnThis(),
+      single: vi.fn().mockResolvedValue({
+        data: null,
+        error: null
+      }),
+    })),
+    rpc: vi.fn().mockResolvedValue({
+      data: null,
+      error: null
+    }),
+  }
+}))
+
+// Mock React Router
+vi.mock('react-router-dom', () => ({
+  useNavigate: () => vi.fn(),
+  useLocation: () => ({ pathname: '/' }),
+  Navigate: ({ to }: { to: string }) => {
+    const div = document.createElement('div');
+    div.setAttribute('data-testid', 'navigate');
+    div.setAttribute('data-to', to);
+    return div;
+  },
+}))
+
+// Mock toast
+vi.mock('@/hooks/use-toast', () => ({
+  toast: vi.fn(),
+}))
+
+// Mock Mapbox
+vi.mock('mapbox-gl', () => ({
+  default: {
+    Map: vi.fn(() => ({
+      addControl: vi.fn(),
+      on: vi.fn(),
+      setFog: vi.fn(),
+      flyTo: vi.fn(),
+      fitBounds: vi.fn(),
+      remove: vi.fn(),
+    })),
+    Marker: vi.fn(() => ({
+      setLngLat: vi.fn().mockReturnThis(),
+      addTo: vi.fn().mockReturnThis(),
+      remove: vi.fn(),
+    })),
+    LngLatBounds: vi.fn(() => ({
+      extend: vi.fn(),
+    })),
+    NavigationControl: vi.fn(),
+    FullscreenControl: vi.fn(),
+    GeolocateControl: vi.fn(),
+  }
+}))
+
+// Mock XLSX
+vi.mock('xlsx', () => ({
+  read: vi.fn(),
+  utils: {
+    sheet_to_json: vi.fn(),
+    aoa_to_sheet: vi.fn(),
+    book_new: vi.fn(),
+    book_append_sheet: vi.fn(),
+  },
+  writeFile: vi.fn(),
+}))
+
+// Mock react-dropzone
+vi.mock('react-dropzone', () => ({
+  useDropzone: () => ({
+    getRootProps: () => ({}),
+    getInputProps: () => ({}),
+    isDragActive: false,
+  }),
+}))
+
+// Global test utilities
+global.ResizeObserver = vi.fn().mockImplementation(() => ({
+  observe: vi.fn(),
+  unobserve: vi.fn(),
+  disconnect: vi.fn(),
+}))
+
+global.matchMedia = vi.fn().mockImplementation((query) => ({
+  matches: false,
+  media: query,
+  onchange: null,
+  addListener: vi.fn(),
+  removeListener: vi.fn(),
+  addEventListener: vi.fn(),
+  removeEventListener: vi.fn(),
+  dispatchEvent: vi.fn(),
+}))

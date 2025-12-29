@@ -44,6 +44,7 @@ export interface FamilyMemberNode extends ReactFlowNode {
   onEdit?: (memberId: string) => void;
   onViewProfile?: (memberId: string) => void;
   onAddRelation?: (memberId: string) => void;
+  onViewTimeline?: (memberId: string) => void;
   isDragging?: boolean;
   isBeingDragged?: boolean;
 }

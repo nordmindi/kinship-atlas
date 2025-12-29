@@ -8,10 +8,17 @@ RETURNS TRIGGER AS $$
 DECLARE
     existing_count INTEGER;
     reverse_relation_type TEXT;
+    is_auto_created BOOLEAN := FALSE;
 BEGIN
     -- Prevent self-relationships
     IF NEW.from_member_id = NEW.to_member_id THEN
         RAISE EXCEPTION 'A person cannot have a relationship with themselves';
+    END IF;
+
+    -- Check if this is an auto-created reciprocal relationship (prevent infinite recursion)
+    -- We use a session variable to track auto-created relationships
+    IF current_setting('relationship_manager.auto_creating', true) = 'true' THEN
+        RETURN NEW;
     END IF;
 
     -- Check for duplicate relationships
@@ -43,8 +50,14 @@ BEGIN
 
         -- If this is an INSERT and no reverse relationship exists, create it
         IF TG_OP = 'INSERT' AND existing_count = 0 THEN
+            -- Set session variable to prevent infinite recursion
+            PERFORM set_config('relationship_manager.auto_creating', 'true', true);
+            
             INSERT INTO relations (from_member_id, to_member_id, relation_type, created_at)
             VALUES (NEW.to_member_id, NEW.from_member_id, reverse_relation_type, NOW());
+            
+            -- Reset session variable
+            PERFORM set_config('relationship_manager.auto_creating', 'false', true);
         END IF;
     END IF;
 
@@ -59,8 +72,14 @@ BEGIN
 
         -- If this is an INSERT and no reverse relationship exists, create it
         IF TG_OP = 'INSERT' AND existing_count = 0 THEN
+            -- Set session variable to prevent infinite recursion
+            PERFORM set_config('relationship_manager.auto_creating', 'true', true);
+            
             INSERT INTO relations (from_member_id, to_member_id, relation_type, created_at)
             VALUES (NEW.to_member_id, NEW.from_member_id, NEW.relation_type, NOW());
+            
+            -- Reset session variable
+            PERFORM set_config('relationship_manager.auto_creating', 'false', true);
         END IF;
     END IF;
 
