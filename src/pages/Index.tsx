@@ -3,7 +3,7 @@ import { Navigate, useNavigate } from "react-router-dom";
 import MobileLayout from "@/components/layout/MobileLayout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { PlusCircle, Search, Users, Map as MapIcon, BookOpen, UserPlus, BookPlus, Upload, History } from "lucide-react";
+import { PlusCircle, Search, Users, Map as MapIcon, BookOpen, UserPlus, BookPlus, Upload, Download, History } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import FamilyTreeView from "@/components/family/FamilyTreeView";
@@ -160,6 +160,10 @@ const Index = () => {
 
   const handleImportFamilyData = () => {
     navigate('/import-family-data');
+  };
+
+  const handleExportFamilyData = () => {
+    navigate('/export-family-data');
   };
 
   const handleLegacyStories = () => {
@@ -396,6 +400,10 @@ const Index = () => {
             <DropdownMenuItem onClick={handleImportFamilyData} className="cursor-pointer">
               <Upload className="mr-2 h-4 w-4" />
               <span>Import Family Data</span>
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={handleExportFamilyData} className="cursor-pointer">
+              <Download className="mr-2 h-4 w-4" />
+              <span>Export Family Data</span>
             </DropdownMenuItem>
             <DropdownMenuItem onClick={handleLegacyStories} className="cursor-pointer">
               <History className="mr-2 h-4 w-4" />

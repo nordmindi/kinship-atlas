@@ -26,7 +26,8 @@ export interface MigrationResult {
  */
 async function isMigrationApplied(version: string): Promise<boolean> {
   try {
-    const { data, error } = await supabase.rpc('migration_applied', { version });
+    // Type assertion needed because migration_applied is not in generated types yet
+    const { data, error } = await (supabase.rpc as any)('migration_applied', { version });
     
     if (error) {
       // If the function doesn't exist, assume migration tracking isn't set up yet
@@ -54,7 +55,8 @@ async function recordMigration(
   checksum?: string
 ): Promise<boolean> {
   try {
-    const { error } = await supabase.rpc('record_migration', {
+    // Type assertion needed because record_migration is not in generated types yet
+    const { error } = await (supabase.rpc as any)('record_migration', {
       version,
       name,
       checksum: checksum || null,
@@ -104,7 +106,8 @@ async function executeMigration(migration: MigrationFile): Promise<MigrationResu
     
     // Use the REST API to execute SQL (requires service role key in production)
     // For now, we'll use a workaround with the client
-    const { error } = await supabase.rpc('exec_sql', { sql: migration.sql });
+    // Type assertion needed because exec_sql is not in generated types yet
+    const { error } = await (supabase.rpc as any)('exec_sql', { sql: migration.sql });
     
     if (error) {
       // Fallback: Try executing via direct query if RPC doesn't exist
@@ -162,8 +165,8 @@ export async function checkDatabaseHealth(): Promise<{
 }> {
   try {
     // Check if migrations table exists
-    const { data: tableCheck, error: tableError } = await supabase
-      .from('schema_migrations')
+    // Type assertion needed because schema_migrations is not in generated types yet
+    const { data: tableCheck, error: tableError } = await (supabase.from as any)('schema_migrations')
       .select('version')
       .limit(1);
     
@@ -179,8 +182,8 @@ export async function checkDatabaseHealth(): Promise<{
     }
     
     // Get count of applied migrations
-    const { count, error: countError } = await supabase
-      .from('schema_migrations')
+    // Type assertion needed because schema_migrations is not in generated types yet
+    const { count, error: countError } = await (supabase.from as any)('schema_migrations')
       .select('*', { count: 'exact', head: true });
     
     if (countError) {
@@ -212,8 +215,8 @@ export async function checkDatabaseHealth(): Promise<{
  */
 export async function getAppliedMigrations(): Promise<string[]> {
   try {
-    const { data, error } = await supabase
-      .from('schema_migrations')
+    // Type assertion needed because schema_migrations is not in generated types yet
+    const { data, error } = await (supabase.from as any)('schema_migrations')
       .select('version')
       .order('applied_at', { ascending: true });
     
@@ -222,7 +225,8 @@ export async function getAppliedMigrations(): Promise<string[]> {
       return [];
     }
     
-    return (data || []).map(m => m.version);
+    // Type assertion for data shape
+    return ((data || []) as Array<{ version: string }>).map(m => m.version);
   } catch (error) {
     console.error('Error fetching applied migrations:', error);
     return [];

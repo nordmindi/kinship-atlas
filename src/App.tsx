@@ -23,6 +23,7 @@ import LogoutTestPage from "./pages/LogoutTestPage";
 import AdminPage from "./pages/AdminPage";
 import RoleSystemTestPage from "./pages/RoleSystemTestPage";
 import ImportFamilyDataPage from "./pages/ImportFamilyDataPage";
+import ExportFamilyDataPage from "./pages/ExportFamilyDataPage";
 import LegacyStoriesPage from "./pages/LegacyStoriesPage";
 import StoryDetailPage from "./pages/StoryDetailPage";
 
@@ -55,6 +56,7 @@ const App = () => (
               <Route path="/admin" element={<AdminPage />} />
               <Route path="/role-test" element={<RoleSystemTestPage />} />
             <Route path="/import-family-data" element={<ImportFamilyDataPage />} />
+            <Route path="/export-family-data" element={<ExportFamilyDataPage />} />
             <Route path="/legacy-stories" element={<LegacyStoriesPage />} />
             <Route path="/story/:id" element={<StoryDetailPage />} />
             <Route path="*" element={<NotFound />} />
