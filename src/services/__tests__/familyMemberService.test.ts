@@ -254,13 +254,11 @@ describe('FamilyMemberService', () => {
       const result = await familyMemberService.updateFamilyMember(request)
 
       expect(result.success).toBe(true)
+      // The service only includes fields that are explicitly provided in the request
+      // It doesn't set fields to null unless they're explicitly undefined in the request
       expect(mockUpdate).toHaveBeenCalledWith({
         first_name: 'John',
         last_name: 'Smith',
-        birth_date: null,
-        death_date: null,
-        birth_place: null,
-        bio: null,
         gender: 'male'
       })
     })

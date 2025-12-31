@@ -41,7 +41,8 @@ describe('Auth', () => {
   it('should render sign in form by default', () => {
     renderWithRouter(<Auth />)
 
-    expect(screen.getByText('Sign In')).toBeInTheDocument()
+    // There are multiple "Sign In" elements (tab and form), so use more specific queries
+    expect(screen.getByRole('tab', { name: /sign in/i })).toBeInTheDocument()
     expect(screen.getByPlaceholderText('Email')).toBeInTheDocument()
     expect(screen.getByPlaceholderText('Password')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /sign in/i })).toBeInTheDocument()

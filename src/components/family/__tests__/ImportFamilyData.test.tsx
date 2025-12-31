@@ -120,6 +120,24 @@ describe('ImportFamilyData', () => {
   })
 
   describe('Template Download', () => {
+    beforeEach(() => {
+      // Mock document.createElement for anchor element downloads
+      const mockAnchor = {
+        href: '',
+        download: '',
+        click: vi.fn(),
+      }
+      vi.spyOn(document, 'createElement').mockImplementation((tagName: string) => {
+        if (tagName === 'a') {
+          return mockAnchor as unknown as HTMLElement
+        }
+        return document.createElement(tagName)
+      })
+      // Mock URL.createObjectURL and revokeObjectURL
+      global.URL.createObjectURL = vi.fn(() => 'blob:mock-url')
+      global.URL.revokeObjectURL = vi.fn()
+    })
+
     it('should download JSON template', async () => {
       const user = userEvent.setup()
       
@@ -131,7 +149,13 @@ describe('ImportFamilyData', () => {
       )
 
       // Switch to templates tab
-      fireEvent.click(screen.getByText('Templates'))
+      const templatesTab = screen.getByText('Templates')
+      await user.click(templatesTab)
+      
+      // Wait for the templates tab content to be visible
+      await waitFor(() => {
+        expect(screen.getByText('Download Templates')).toBeInTheDocument()
+      }, { timeout: 3000 })
       
       // Click download JSON template
       const downloadButton = screen.getByText('Download JSON Template')
@@ -226,10 +250,13 @@ describe('ImportFamilyData', () => {
 
       // Wait for the Alert to appear with the success message
       // The AlertDescription text is: "File parsed successfully! Found X family members, Y relationships, and Z stories."
+      // The text may be split across elements, so we check for the key parts separately
       await waitFor(() => {
         expect(screen.getByText(/File parsed successfully!/i)).toBeInTheDocument()
-        // Note: The component says "family members" not just "members"
-        expect(screen.getByText(/Found 1 family members, 0 relationships, and 0 stories/i)).toBeInTheDocument()
+        // Check for parts of the message separately since text may be split across elements
+        expect(screen.getByText(/Found 1 family members/i)).toBeInTheDocument()
+        expect(screen.getByText(/0 relationships/i)).toBeInTheDocument()
+        expect(screen.getByText(/0 stories/i)).toBeInTheDocument()
       }, { timeout: 5000 })
     })
 
