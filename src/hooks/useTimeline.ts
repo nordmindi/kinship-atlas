@@ -44,11 +44,18 @@ export const useFamilyTimeline = (familyMemberIds: string[]) => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Use ref to store latest member IDs to avoid stale closures
+  const memberIdsRef = useRef(familyMemberIds);
+  useEffect(() => {
+    memberIdsRef.current = familyMemberIds;
+  }, [familyMemberIds]);
+
   // Create a stable string key from the array for comparison to avoid unnecessary re-renders
   const memberIdsKey = useMemo(() => familyMemberIds.join(','), [familyMemberIds]);
 
   const fetchTimeline = useCallback(async () => {
-    if (familyMemberIds.length === 0) {
+    const currentIds = memberIdsRef.current;
+    if (currentIds.length === 0) {
       setTimeline([]);
       setIsLoading(false);
       return;
@@ -57,7 +64,7 @@ export const useFamilyTimeline = (familyMemberIds: string[]) => {
     try {
       setIsLoading(true);
       setError(null);
-      const fetchedTimeline = await timelineService.getFamilyTimeline(familyMemberIds);
+      const fetchedTimeline = await timelineService.getFamilyTimeline(currentIds);
       setTimeline(fetchedTimeline);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch family timeline');
