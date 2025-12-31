@@ -402,41 +402,61 @@ describe('ImportFamilyData', () => {
         }
       })
 
+      // Wait for Preview tab to be enabled (this indicates file was parsed)
       await waitFor(() => {
-        expect(screen.getByText('Preview')).toBeInTheDocument()
-      })
+        const previewTab = screen.getByText('Preview')
+        expect(previewTab).toBeInTheDocument()
+        const previewButton = previewTab.closest('button')
+        expect(previewButton).not.toBeNull()
+        expect(previewButton).not.toHaveAttribute('disabled')
+      }, { timeout: 3000 })
 
       // Click preview tab
-      fireEvent.click(screen.getByText('Preview'))
+      const previewButton = screen.getByText('Preview').closest('button')
+      expect(previewButton).not.toBeNull()
+      fireEvent.click(previewButton!)
 
-      // Check that preview content is shown
-      expect(screen.getByText('Members (1)')).toBeInTheDocument()
-      expect(screen.getByText('Relationships (1)')).toBeInTheDocument()
-      expect(screen.getByText('Stories (1)')).toBeInTheDocument()
+      // Wait for preview content to appear
+      await waitFor(() => {
+        expect(screen.getByText('Members (1)')).toBeInTheDocument()
+        expect(screen.getByText('Relationships (1)')).toBeInTheDocument()
+        expect(screen.getByText('Stories (1)')).toBeInTheDocument()
+      }, { timeout: 3000 })
     })
   })
 
   describe('Error Handling', () => {
     it('should handle unsupported file types', async () => {
+      // react-dropzone with accept config will reject files that don't match
+      // So we need to use the input directly to bypass the dropzone filter
       const mockFile = new File(
         ['test content'],
         'test.txt',
         { type: 'text/plain' }
       )
 
-      render(
+      const { container } = render(
         <ImportFamilyData 
           onImportComplete={mockOnImportComplete}
           onClose={mockOnClose}
         />
       )
 
-      const dropzone = screen.getByText('Drag and drop your file here, or click to select').closest('div')
-      fireEvent.drop(dropzone!, {
-        dataTransfer: {
-          files: [mockFile]
-        }
+      // Find the hidden input in the container
+      const input = container.querySelector('input[type="file"]') as HTMLInputElement
+      expect(input).not.toBeNull()
+      expect(input).toBeInTheDocument()
+      
+      // Create a FileList with the mock file
+      const dataTransfer = new DataTransfer()
+      dataTransfer.items.add(mockFile)
+      Object.defineProperty(input, 'files', {
+        value: dataTransfer.files,
+        writable: false
       })
+
+      // Trigger change event
+      fireEvent.change(input)
 
       await waitFor(() => {
         expect(toast).toHaveBeenCalledWith(

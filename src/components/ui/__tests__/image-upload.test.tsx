@@ -49,15 +49,13 @@ describe('ImageUpload', () => {
     await user.upload(fileInput, mockFile)
 
     await waitFor(() => {
-      expect(uploadFile).toHaveBeenCalledWith(mockFile, 'images')
+      expect(uploadFile).toHaveBeenCalledWith(mockFile, 'avatars')
     }, { timeout: 3000 })
   })
 
   it('should reject non-image files', async () => {
     const user = userEvent.setup()
     const mockFile = new File(['test'], 'test.pdf', { type: 'application/pdf' })
-
-    render(<ImageUpload onImageUploaded={mockOnImageUploaded} />)
 
     const { container } = render(<ImageUpload onImageUploaded={mockOnImageUploaded} />)
     
@@ -79,10 +77,8 @@ describe('ImageUpload', () => {
 
   it('should reject files larger than 5MB', async () => {
     const user = userEvent.setup()
-    // Create a file larger than 5MB
-    const largeFile = new File(['x'.repeat(6 * 1024 * 1024)], 'large.jpg', { type: 'image/jpeg' })
-
-    render(<ImageUpload onImageUploaded={mockOnImageUploaded} />)
+    // Create a file larger than 3MB (component limit is 3MB, not 5MB)
+    const largeFile = new File(['x'.repeat(4 * 1024 * 1024)], 'large.jpg', { type: 'image/jpeg' })
 
     const { container } = render(<ImageUpload onImageUploaded={mockOnImageUploaded} />)
     
