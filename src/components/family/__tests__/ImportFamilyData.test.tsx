@@ -152,13 +152,19 @@ describe('ImportFamilyData', () => {
       )
 
       // Switch to templates tab
-      fireEvent.click(screen.getByText('Templates'))
+      const templatesTab = screen.getByText('Templates')
+      await user.click(templatesTab)
+      
+      // Wait for the templates tab content to be visible
+      await waitFor(() => {
+        expect(screen.getByText('Download Templates')).toBeInTheDocument()
+      }, { timeout: 3000 })
       
       // Click download CSV template
       const downloadButton = screen.getByText('Download CSV Template')
       await user.click(downloadButton)
 
-      // Verify the download was triggered
+      // Verify the download was triggered (button exists and was clicked)
       expect(downloadButton).toBeInTheDocument()
     })
   })
@@ -219,9 +225,11 @@ describe('ImportFamilyData', () => {
       })
 
       // Wait for the Alert to appear with the success message
+      // The AlertDescription text is: "File parsed successfully! Found X family members, Y relationships, and Z stories."
       await waitFor(() => {
         expect(screen.getByText(/File parsed successfully!/i)).toBeInTheDocument()
-        expect(screen.getByText(/Found 1 members, 0 relationships, and 0 stories/i)).toBeInTheDocument()
+        // Note: The component says "family members" not just "members"
+        expect(screen.getByText(/Found 1 family members, 0 relationships, and 0 stories/i)).toBeInTheDocument()
       }, { timeout: 5000 })
     })
 
