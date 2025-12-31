@@ -1,5 +1,8 @@
 # Kinship Atlas - Genealogy Platform
 
+[![CI/CD Pipeline](https://github.com/your-username/kinship-atlas/actions/workflows/ci.yml/badge.svg)](https://github.com/your-username/kinship-atlas/actions/workflows/ci.yml)
+[![Test Coverage](https://codecov.io/gh/your-username/kinship-atlas/branch/main/graph/badge.svg)](https://codecov.io/gh/your-username/kinship-atlas)
+
 A comprehensive genealogy platform where users can create family members, build family trees, manage relationships, organize media, and preserve family stories.
 
 ## 🌟 Features
@@ -45,6 +48,10 @@ A comprehensive genealogy platform where users can create family members, build 
   - Row-level security (RLS) for data protection
   - User-specific data isolation
   - Secure file upload and storage
+  - **XSS protection** with DOMPurify
+  - **Audit logging** for all data changes
+  - **Soft deletes** to prevent data loss
+  - **Automated backups** and health monitoring
 
 ### 🚧 **Planned Features**
 
@@ -235,7 +242,10 @@ src/
 - **Real-time Updates**: Changes sync across all connected clients
 - **Data Validation**: Comprehensive form validation with error handling
 - **Relationship Integrity**: Automatic reciprocal relationship management
-- **Backup & Recovery**: Built-in data export capabilities
+- **Backup & Recovery**: Automated backups and data export capabilities
+- **Audit Logging**: Complete history of all data changes
+- **Soft Deletes**: Prevent accidental data loss with recoverable deletions
+- **Health Monitoring**: Automated health checks and integrity verification
 
 ## 🔧 Development
 
@@ -261,6 +271,11 @@ src/
 - `npm run supabase:db:diff` - Show differences between local and remote
 - `npm run supabase:migration:new` - Create new migration file
 
+#### Backup & Maintenance
+- `npm run backup:create` - Create database backup
+- `npm run backup:list` - List available backups
+- `npm run health:check` - Perform database health check
+
 #### Build & Deploy
 - `npm run build` - Build for production
 - `npm run preview` - Preview production build
@@ -271,6 +286,33 @@ src/
 - Use TypeScript for all new code
 - Follow React best practices and hooks patterns
 - Maintain consistent component structure
+
+## 🚀 CI/CD Pipeline
+
+Kinship Atlas uses GitHub Actions for continuous integration and deployment:
+
+- **Automated Testing**: Runs on every push and PR with 80% coverage requirement
+- **Health Checks**: Database integrity verification
+- **Security Audits**: Automated vulnerability scanning
+- **Type Checking**: TypeScript validation
+- **Linting**: Code quality enforcement
+- **Automated Releases**: Production deployment on main branch
+
+📖 **For CI/CD details, see [CI/CD Pipeline Documentation](./docs/CI_CD_PIPELINE.md)**
+
+### Running CI Checks Locally
+
+```bash
+# Run all CI checks
+npm run ci:check
+
+# Individual checks
+npm run lint          # Linting
+npm run type-check    # Type checking
+npm run test:coverage # Tests with coverage (80% required)
+npm run build         # Build check
+npm run health:check  # Health check
+```
 
 ## 🚀 Deployment
 

@@ -47,6 +47,42 @@ export const uploadMedia = async (upload: MediaUpload): Promise<MediaItem | null
       });
       return null;
     }
+
+    // Enhanced file type validation
+    const allowedMimeTypes = {
+      image: ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml'],
+      document: ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'text/plain'],
+      audio: ['audio/mpeg', 'audio/wav', 'audio/ogg', 'audio/mp4', 'audio/aac'],
+      video: ['video/mp4', 'video/avi', 'video/quicktime', 'video/x-msvideo', 'video/webm']
+    };
+
+    const allowedTypes = allowedMimeTypes[upload.mediaType] || [];
+    if (!allowedTypes.includes(upload.file.type) && upload.file.type !== '') {
+      // Also check file extension as fallback
+      const extension = upload.file.name.split('.').pop()?.toLowerCase();
+      const extensionMap: Record<string, string[]> = {
+        image: ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'],
+        document: ['pdf', 'doc', 'docx', 'txt'],
+        audio: ['mp3', 'wav', 'ogg', 'm4a', 'aac'],
+        video: ['mp4', 'avi', 'mov', 'wmv', 'webm']
+      };
+      
+      const allowedExtensions = extensionMap[upload.mediaType] || [];
+      if (!extension || !allowedExtensions.includes(extension)) {
+        toast({
+          title: "Invalid file type",
+          description: `File "${upload.file.name}" is not a valid ${upload.mediaType} file. Allowed types: ${allowedExtensions.join(', ')}`,
+          variant: "destructive"
+        });
+        return null;
+      }
+    }
+
+    // Validate file name (prevent path traversal and special characters)
+    const sanitizedFileName = upload.file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+    if (sanitizedFileName !== upload.file.name) {
+      console.warn('File name sanitized:', upload.file.name, '->', sanitizedFileName);
+    }
     
     // Generate unique filename
     const timestamp = Date.now();

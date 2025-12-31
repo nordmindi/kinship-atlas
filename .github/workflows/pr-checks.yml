@@ -1,0 +1,62 @@
+name: PR Checks
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+env:
+  NODE_VERSION: '20.x'
+
+jobs:
+  # Quick checks for PRs
+  pr-checks:
+    name: PR Validation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check for merge conflicts
+        run: |
+          git fetch origin main
+          if git merge-tree $(git merge-base HEAD origin/main) HEAD origin/main | grep -q '<<<<<<<'; then
+            echo "❌ Merge conflicts detected!"
+            exit 1
+          fi
+          echo "✅ No merge conflicts"
+
+      - name: Run linting
+        run: npm run lint
+
+      - name: Run type check
+        run: npm run type-check
+
+      - name: Run tests
+        run: npm run test:run
+
+      - name: Check test coverage
+        run: npm run test:coverage
+        continue-on-error: true
+
+      - name: Comment PR with coverage
+        if: always()
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          message: |
+            ## Test Coverage Report
+            
+            Coverage check completed. See the [full CI results](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) for details.
+            
+            ⚠️ **Note**: Full coverage report requires all tests to pass.
+

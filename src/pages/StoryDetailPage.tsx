@@ -11,6 +11,7 @@ import { getFamilyStories } from "@/services/supabaseService";
 import { getFamilyMembers } from "@/services/supabaseService";
 import { FamilyStory, FamilyMember } from "@/types";
 import { getYearRange } from "@/utils/dateUtils";
+import { sanitizeHtml } from "@/utils/sanitize";
 
 const StoryDetailPage = () => {
   const { id } = useParams<{ id: string }>();
@@ -154,9 +155,10 @@ const StoryDetailPage = () => {
             </CardHeader>
             <CardContent>
               <div className="prose max-w-none">
-                <p className="whitespace-pre-wrap text-gray-700 leading-relaxed">
-                  {story.content}
-                </p>
+                <div 
+                  className="whitespace-pre-wrap text-gray-700 leading-relaxed"
+                  dangerouslySetInnerHTML={{ __html: sanitizeHtml(story.content) }}
+                />
               </div>
             </CardContent>
           </Card>
