@@ -3,13 +3,31 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import FamilyTreeView from '../FamilyTreeView'
 import { useFamilyTree } from '@/contexts/FamilyTreeContext'
+import { FamilyMember } from '@/types'
 
 // Mock the family tree context
 vi.mock('@/contexts/FamilyTreeContext')
 
 // Mock React Flow
+interface ReactFlowProps {
+  children?: React.ReactNode;
+  onNodesChange?: (changes: unknown[]) => void;
+  onEdgesChange?: (changes: unknown[]) => void;
+  onConnect?: (params: { source: string; target: string; sourceHandle?: string; targetHandle?: string }) => void;
+}
+
+interface HandleProps {
+  type?: string;
+  position?: string;
+  id?: string;
+}
+
+interface EdgeLabelRendererProps {
+  children?: React.ReactNode;
+}
+
 vi.mock('reactflow', () => ({
-  ReactFlow: ({ children, onNodesChange, onEdgesChange, onConnect }: any) => (
+  ReactFlow: ({ children, onNodesChange, onEdgesChange, onConnect }: ReactFlowProps) => (
     <div data-testid="react-flow">
       {children}
       <button data-testid="move-node-button" onClick={() => onNodesChange && onNodesChange([{ type: 'position', id: 'node-1', position: { x: 100, y: 100 } }])}>
@@ -26,12 +44,12 @@ vi.mock('reactflow', () => ({
   Background: () => <div data-testid="background" />,
   Controls: () => <div data-testid="controls" />,
   MiniMap: () => <div data-testid="minimap" />,
-  useNodesState: (initialNodes: any) => [initialNodes, vi.fn()],
-  useEdgesState: (initialEdges: any) => [initialEdges, vi.fn()],
-  addEdge: (params: any) => ({ id: 'edge-1', ...params }),
+  useNodesState: (initialNodes: unknown[]) => [initialNodes, vi.fn()],
+  useEdgesState: (initialEdges: unknown[]) => [initialEdges, vi.fn()],
+  addEdge: (params: { source: string; target: string }) => ({ id: 'edge-1', ...params }),
   getBezierPath: () => 'M0,0 L100,100',
   getSmoothStepPath: () => 'M0,0 L100,100',
-  Handle: ({ type, position, id }: any) => (
+  Handle: ({ type, position, id }: HandleProps) => (
     <div data-testid={`handle-${type}-${id}`} data-position={position} />
   ),
   Position: {
@@ -40,21 +58,27 @@ vi.mock('reactflow', () => ({
     Left: 'left',
     Right: 'right',
   },
-  EdgeLabelRenderer: ({ children }: any) => <div data-testid="edge-label-renderer">{children}</div>,
+  EdgeLabelRenderer: ({ children }: EdgeLabelRendererProps) => <div data-testid="edge-label-renderer">{children}</div>,
 }))
 
 // Mock the family member service
 vi.mock('@/services/familyMemberService')
 
 // Mock SimpleFamilyTree
+interface SimpleFamilyTreeProps {
+  members?: Array<{ id: string; firstName: string; lastName: string }>;
+  onSelectMember?: (member: { id: string }) => void;
+  currentUserId?: string;
+}
+
 vi.mock('../SimpleFamilyTree', () => ({
-  default: ({ members, onSelectMember, currentUserId }: any) => (
+  default: ({ members, onSelectMember, currentUserId }: SimpleFamilyTreeProps) => (
     <div data-testid="simple-family-tree">
       <div data-testid="react-flow">
         <div data-testid="background" />
         <div data-testid="controls" />
         <div data-testid="minimap" />
-        {members?.map((member: any) => (
+        {members?.map((member) => (
           <div key={member.id} data-testid={`member-${member.id}`}>
             {member.firstName} {member.lastName}
           </div>
@@ -290,7 +314,7 @@ describe('FamilyTreeView', () => {
           id: 'member-1',
           firstName: 'John',
           // Missing required fields
-        } as any
+        } as Partial<FamilyMember> & { id: string; firstName: string }
       ]
 
       render(

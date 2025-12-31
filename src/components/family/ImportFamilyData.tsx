@@ -429,7 +429,7 @@ const ImportFamilyData: React.FC<ImportFamilyDataProps> = ({
         variant: "destructive"
       });
     }
-  }, [importData, onImportComplete]);
+  }, [importData, onImportComplete, checkImportDuplicates]);
 
   // Download template
   const downloadTemplate = useCallback((type: 'excel' | 'json') => {

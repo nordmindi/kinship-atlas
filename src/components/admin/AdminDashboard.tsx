@@ -6,14 +6,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Crown, Users, UserCheck, UserX, Shield, Database } from 'lucide-react';
-import { UserProfile } from '@/types';
+import { UserProfile, FamilyMember } from '@/types';
 import { getAllUsers, updateUserRole } from '@/services/userService';
 import { getFamilyMembers } from '@/services/supabaseService';
 import { toast } from '@/hooks/use-toast';
 
 const AdminDashboard: React.FC = () => {
   const [users, setUsers] = useState<UserProfile[]>([]);
-  const [familyMembers, setFamilyMembers] = useState<any[]>([]);
+  const [familyMembers, setFamilyMembers] = useState<FamilyMember[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [updatingRole, setUpdatingRole] = useState<string | null>(null);
 

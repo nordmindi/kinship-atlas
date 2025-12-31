@@ -5,7 +5,7 @@
  * with clear validation and helpful suggestions.
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { FamilyMember } from '@/types';
 import { familyRelationshipManager, RelationshipType, resolveRelationshipDirection } from '@/services/familyRelationshipManager';
 import { Button } from '@/components/ui/button';
@@ -94,12 +94,7 @@ const RelationshipManager: React.FC<RelationshipManagerProps> = ({
   const [selectedSuggestions, setSelectedSuggestions] = useState<Set<number>>(new Set());
   const [isBulkAdding, setIsBulkAdding] = useState(false);
 
-  // Load relationship suggestions
-  useEffect(() => {
-    loadSuggestions();
-  }, [currentMember.id]);
-
-  const loadSuggestions = async () => {
+  const loadSuggestions = useCallback(async () => {
     setIsLoadingSuggestions(true);
     try {
       const relationshipSuggestions = await familyRelationshipManager.getRelationshipSuggestions(currentMember.id);
@@ -109,7 +104,12 @@ const RelationshipManager: React.FC<RelationshipManagerProps> = ({
     } finally {
       setIsLoadingSuggestions(false);
     }
-  };
+  }, [currentMember.id]);
+
+  // Load relationship suggestions
+  useEffect(() => {
+    loadSuggestions();
+  }, [loadSuggestions]);
 
   const handleCreateRelationship = async () => {
     if (!selectedMember) return;

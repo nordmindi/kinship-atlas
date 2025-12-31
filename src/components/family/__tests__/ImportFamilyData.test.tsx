@@ -177,8 +177,8 @@ describe('ImportFamilyData', () => {
         ['John', 'Smith', 'male']
       ]
 
-      vi.mocked(XLSX.read).mockReturnValue(mockWorkbook as any)
-      vi.mocked(XLSX.utils.sheet_to_json).mockReturnValue(mockJsonData as any)
+      vi.mocked(XLSX.read).mockReturnValue(mockWorkbook as unknown as XLSX.WorkBook)
+      vi.mocked(XLSX.utils.sheet_to_json).mockReturnValue(mockJsonData as unknown as XLSX.WorkSheet)
 
       const mockFile = new File(
         ['mock excel content'],

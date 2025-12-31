@@ -34,7 +34,7 @@ describe('AuthContext', () => {
       })
       vi.mocked(supabase.auth.onAuthStateChange).mockReturnValue({
         data: { subscription: { unsubscribe: vi.fn() } }
-      } as any)
+      } as { data: { subscription: { unsubscribe: () => void } } })
 
       render(
         <AuthProvider>
@@ -66,7 +66,7 @@ describe('AuthContext', () => {
       })
       vi.mocked(supabase.auth.onAuthStateChange).mockReturnValue({
         data: { subscription: { unsubscribe: vi.fn() } }
-      } as any)
+      } as { data: { subscription: { unsubscribe: () => void } } })
 
       render(
         <AuthProvider>
@@ -87,7 +87,7 @@ describe('AuthContext', () => {
       })
       vi.mocked(supabase.auth.onAuthStateChange).mockReturnValue({
         data: { subscription: { unsubscribe: vi.fn() } }
-      } as any)
+      } as { data: { subscription: { unsubscribe: () => void } } })
 
       render(
         <AuthProvider>
@@ -116,7 +116,7 @@ describe('AuthContext', () => {
       })
       vi.mocked(supabase.auth.onAuthStateChange).mockReturnValue({
         data: { subscription: { unsubscribe: vi.fn() } }
-      } as any)
+      } as { data: { subscription: { unsubscribe: () => void } } })
 
       vi.mocked(supabase.auth.signInWithPassword).mockResolvedValue({
         data: { user: mockUser, session: null },
@@ -151,7 +151,7 @@ describe('AuthContext', () => {
       })
       vi.mocked(supabase.auth.onAuthStateChange).mockReturnValue({
         data: { subscription: { unsubscribe: vi.fn() } }
-      } as any)
+      } as { data: { subscription: { unsubscribe: () => void } } })
 
       vi.mocked(supabase.auth.signInWithPassword).mockResolvedValue({
         data: { user: null, session: null },
@@ -194,7 +194,7 @@ describe('AuthContext', () => {
       })
       vi.mocked(supabase.auth.onAuthStateChange).mockReturnValue({
         data: { subscription: { unsubscribe: vi.fn() } }
-      } as any)
+      } as { data: { subscription: { unsubscribe: () => void } } })
 
       vi.mocked(supabase.auth.signUp).mockResolvedValue({
         data: { user: mockUser, session: null },
@@ -229,7 +229,7 @@ describe('AuthContext', () => {
       })
       vi.mocked(supabase.auth.onAuthStateChange).mockReturnValue({
         data: { subscription: { unsubscribe: vi.fn() } }
-      } as any)
+      } as { data: { subscription: { unsubscribe: () => void } } })
 
       vi.mocked(supabase.auth.signUp).mockResolvedValue({
         data: { user: null, session: null },
@@ -280,7 +280,7 @@ describe('AuthContext', () => {
       })
       vi.mocked(supabase.auth.onAuthStateChange).mockReturnValue({
         data: { subscription: { unsubscribe: vi.fn() } }
-      } as any)
+      } as { data: { subscription: { unsubscribe: () => void } } })
 
       vi.mocked(supabase.auth.signOut).mockResolvedValue({
         error: null
@@ -325,7 +325,7 @@ describe('AuthContext', () => {
       })
       vi.mocked(supabase.auth.onAuthStateChange).mockReturnValue({
         data: { subscription: { unsubscribe: vi.fn() } }
-      } as any)
+      } as { data: { subscription: { unsubscribe: () => void } } })
 
       vi.mocked(supabase.auth.signOut).mockResolvedValue({
         error: new Error('Sign out failed')

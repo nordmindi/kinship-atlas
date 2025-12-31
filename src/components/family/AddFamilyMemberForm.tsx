@@ -10,6 +10,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { familyMemberService, CreateFamilyMemberRequest } from '@/services/familyMemberService';
+import { FamilyMember } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -46,7 +47,7 @@ const formSchema = z.object({
 type FormValues = z.infer<typeof formSchema>;
 
 interface AddFamilyMemberFormProps {
-  onSuccess?: (member: any) => void;
+  onSuccess?: (member: FamilyMember) => void;
   onCancel?: () => void;
 }
 

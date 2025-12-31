@@ -86,7 +86,15 @@ const ExportFamilyData: React.FC<ExportFamilyDataProps> = ({ onClose }) => {
       const stories = await storyService.getAllStories();
 
       // Format relationships with member names
-      const formattedRelations = (relations || []).map((rel: any) => ({
+      interface RelationWithMembers {
+        id: string;
+        from_member_id: string;
+        to_member_id: string;
+        relation_type: string;
+        from_member: { first_name: string; last_name: string } | null;
+        to_member: { first_name: string; last_name: string } | null;
+      }
+      const formattedRelations = (relations || []).map((rel: RelationWithMembers) => ({
         fromMemberId: rel.from_member_id,
         fromMemberName: rel.from_member 
           ? `${rel.from_member.first_name} ${rel.from_member.last_name}`

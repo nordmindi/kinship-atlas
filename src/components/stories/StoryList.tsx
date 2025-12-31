@@ -15,6 +15,7 @@ import {
   X
 } from 'lucide-react';
 import { FamilyStory } from '@/types/stories';
+import { FamilyMember } from '@/types';
 import { getYearRange } from '@/utils/dateUtils';
 import StoryEditor from './StoryEditor';
 
@@ -23,7 +24,7 @@ interface StoryListProps {
   isLoading: boolean;
   onStoryUpdate: (story: FamilyStory) => void;
   onStoryDelete: (storyId: string) => void;
-  familyMembers: any[];
+  familyMembers: FamilyMember[];
   showCreateCTA?: boolean; // controls whether to display internal create story buttons
 }
 
