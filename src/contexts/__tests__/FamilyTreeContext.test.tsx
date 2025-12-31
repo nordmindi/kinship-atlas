@@ -1,10 +1,15 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import { FamilyTreeProvider, useFamilyTree } from '../FamilyTreeContext'
+import { AuthProvider } from '../AuthContext'
 import { familyMemberService } from '@/services/familyMemberService'
+import { supabase } from '@/integrations/supabase/client'
 
 // Mock the family member service
 vi.mock('@/services/familyMemberService')
+
+// Mock the supabase client
+vi.mock('@/integrations/supabase/client')
 
 // Test component to access family tree context
 const TestComponent = () => {
@@ -30,6 +35,14 @@ const TestComponent = () => {
 describe('FamilyTreeContext', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    // Mock supabase auth for AuthProvider
+    vi.mocked(supabase.auth.getSession).mockResolvedValue({
+      data: { session: null },
+      error: null
+    })
+    vi.mocked(supabase.auth.onAuthStateChange).mockReturnValue({
+      data: { subscription: { unsubscribe: vi.fn() } }
+    } as { data: { subscription: { unsubscribe: () => void } } } })
   })
 
   describe('Initial State', () => {
@@ -37,9 +50,11 @@ describe('FamilyTreeContext', () => {
       vi.mocked(familyMemberService.getAllFamilyMembers).mockResolvedValue([])
 
       render(
-        <FamilyTreeProvider>
-          <TestComponent />
-        </FamilyTreeProvider>
+        <AuthProvider>
+          <FamilyTreeProvider>
+            <TestComponent />
+          </FamilyTreeProvider>
+        </AuthProvider>
       )
 
       expect(screen.getByTestId('loading')).toHaveTextContent('Loading')
@@ -66,9 +81,11 @@ describe('FamilyTreeContext', () => {
       vi.mocked(familyMemberService.getAllFamilyMembers).mockResolvedValue(mockMembers)
 
       render(
-        <FamilyTreeProvider>
-          <TestComponent />
-        </FamilyTreeProvider>
+        <AuthProvider>
+          <FamilyTreeProvider>
+            <TestComponent />
+          </FamilyTreeProvider>
+        </AuthProvider>
       )
 
       await waitFor(() => {
@@ -83,9 +100,11 @@ describe('FamilyTreeContext', () => {
       vi.mocked(familyMemberService.getAllFamilyMembers).mockResolvedValue([])
 
       render(
-        <FamilyTreeProvider>
-          <TestComponent />
-        </FamilyTreeProvider>
+        <AuthProvider>
+          <FamilyTreeProvider>
+            <TestComponent />
+          </FamilyTreeProvider>
+        </AuthProvider>
       )
 
       await waitFor(() => {
@@ -98,9 +117,11 @@ describe('FamilyTreeContext', () => {
       vi.mocked(familyMemberService.getAllFamilyMembers).mockRejectedValue(new Error('Database error'))
 
       render(
-        <FamilyTreeProvider>
-          <TestComponent />
-        </FamilyTreeProvider>
+        <AuthProvider>
+          <FamilyTreeProvider>
+            <TestComponent />
+          </FamilyTreeProvider>
+        </AuthProvider>
       )
 
       await waitFor(() => {
@@ -125,9 +146,11 @@ describe('FamilyTreeContext', () => {
       vi.mocked(familyMemberService.getAllFamilyMembers).mockResolvedValue(mockMembers)
 
       render(
-        <FamilyTreeProvider>
-          <TestComponent />
-        </FamilyTreeProvider>
+        <AuthProvider>
+          <FamilyTreeProvider>
+            <TestComponent />
+          </FamilyTreeProvider>
+        </AuthProvider>
       )
 
       await waitFor(() => {
@@ -154,9 +177,11 @@ describe('FamilyTreeContext', () => {
       vi.mocked(familyMemberService.getAllFamilyMembers).mockResolvedValue(mockMembers)
 
       render(
-        <FamilyTreeProvider>
-          <TestComponent />
-        </FamilyTreeProvider>
+        <AuthProvider>
+          <FamilyTreeProvider>
+            <TestComponent />
+          </FamilyTreeProvider>
+        </AuthProvider>
       )
 
       await waitFor(() => {
@@ -208,9 +233,11 @@ describe('FamilyTreeContext', () => {
         .mockResolvedValueOnce(updatedMembers)
 
       render(
-        <FamilyTreeProvider>
-          <TestComponent />
-        </FamilyTreeProvider>
+        <AuthProvider>
+          <FamilyTreeProvider>
+            <TestComponent />
+          </FamilyTreeProvider>
+        </AuthProvider>
       )
 
       await waitFor(() => {
@@ -243,9 +270,11 @@ describe('FamilyTreeContext', () => {
         .mockRejectedValueOnce(new Error('Database error'))
 
       render(
-        <FamilyTreeProvider>
-          <TestComponent />
-        </FamilyTreeProvider>
+        <AuthProvider>
+          <FamilyTreeProvider>
+            <TestComponent />
+          </FamilyTreeProvider>
+        </AuthProvider>
       )
 
       await waitFor(() => {
@@ -269,9 +298,18 @@ describe('FamilyTreeContext', () => {
       // Suppress console.error for this test
       const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
 
+      // Suppress the useAuth error to test the FamilyTreeProvider error
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+      
       expect(() => {
-        render(<TestComponent />)
+        render(
+          <AuthProvider>
+            <TestComponent />
+          </AuthProvider>
+        )
       }).toThrow('useFamilyTree must be used within a FamilyTreeProvider')
+      
+      consoleSpy.mockRestore()
 
       consoleSpy.mockRestore()
     })
