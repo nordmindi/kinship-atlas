@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { timelineService } from '@/services/timelineService';
 import { TimelineItem } from '@/types/stories';
 
@@ -44,6 +44,9 @@ export const useFamilyTimeline = (familyMemberIds: string[]) => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Create a stable string key from the array for comparison to avoid unnecessary re-renders
+  const memberIdsKey = useMemo(() => familyMemberIds.join(','), [familyMemberIds]);
+
   const fetchTimeline = useCallback(async () => {
     if (familyMemberIds.length === 0) {
       setTimeline([]);
@@ -61,7 +64,7 @@ export const useFamilyTimeline = (familyMemberIds: string[]) => {
     } finally {
       setIsLoading(false);
     }
-  }, [familyMemberIds]);
+  }, [memberIdsKey]); // Use the stable key instead of the array
 
   useEffect(() => {
     fetchTimeline();

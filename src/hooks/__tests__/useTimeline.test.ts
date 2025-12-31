@@ -84,15 +84,22 @@ describe('useFamilyTimeline', () => {
       }
     ]
 
+    // Use a stable array reference to avoid dependency issues
+    const memberIds = ['member-1', 'member-2']
     vi.mocked(timelineService.getFamilyTimeline).mockResolvedValue(mockTimeline)
 
-    const { result } = renderHook(() => useFamilyTimeline(['member-1', 'member-2']))
+    const { result } = renderHook(() => useFamilyTimeline(memberIds))
 
     expect(result.current.isLoading).toBe(true)
 
+    // Wait for the mock to be called and loading to complete
+    await waitFor(() => {
+      expect(timelineService.getFamilyTimeline).toHaveBeenCalledWith(memberIds)
+    }, { timeout: 1000 })
+
     await waitFor(() => {
       expect(result.current.isLoading).toBe(false)
-    }, { timeout: 3000 })
+    }, { timeout: 1000 })
 
     expect(result.current.timeline).toEqual(mockTimeline)
     expect(result.current.error).toBeNull()
