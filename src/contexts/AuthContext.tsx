@@ -48,45 +48,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const initializeAuth = async () => {
       setIsLoading(true);
       
-      // Auto-login for development if no user is found
+      // Auto-login for development only (disabled in production)
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        console.log('🔐 No session found, attempting auto-login for development');
+      if (!session && import.meta.env.DEV) {
+        // Only attempt auto-login in development mode
         try {
           const { data, error } = await supabase.auth.signInWithPassword({
             email: 'test@kinship-atlas.com',
             password: 'testpassword123'
           });
           if (error) {
-            console.log('⚠️ Auto-login failed:', error.message);
-            // Try to create the test user if it doesn't exist
+            // Silently fail in development - user can manually log in
             if (error.message.includes('Invalid login credentials')) {
-              console.log('🔄 Creating test user...');
-              const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+              // Try to create the test user if it doesn't exist
+              await supabase.auth.signUp({
                 email: 'test@kinship-atlas.com',
                 password: 'testpassword123'
               });
-              if (signUpError) {
-                console.log('⚠️ Test user creation failed:', signUpError.message);
-              } else {
-                console.log('✅ Test user created, retrying auto-login...');
-                // Retry login after user creation
-                const { data: retryData, error: retryError } = await supabase.auth.signInWithPassword({
-                  email: 'test@kinship-atlas.com',
-                  password: 'testpassword123'
-                });
-                if (retryError) {
-                  console.log('⚠️ Retry auto-login failed:', retryError.message);
-                } else {
-                  console.log('✅ Auto-login successful after user creation');
-                }
-              }
+              // Retry login after user creation
+              await supabase.auth.signInWithPassword({
+                email: 'test@kinship-atlas.com',
+                password: 'testpassword123'
+              });
             }
-          } else {
-            console.log('✅ Auto-login successful for development');
           }
         } catch (err) {
-          console.log('⚠️ Auto-login error:', err);
+          // Silently handle errors in development
         }
       }
       
@@ -99,17 +86,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         await loadUserProfile(data.session.user.id);
       }
       
-      // Set up auth state listener
+          // Set up auth state listener
       const { data: { subscription } } = supabase.auth.onAuthStateChange(
         async (event, newSession) => {
-          console.log('🔐 Auth state change:', event, newSession?.user?.id);
-          
           setSession(newSession);
           setUser(newSession?.user || null);
           
           // Handle session expiration
           if (event === 'SIGNED_OUT' || event === 'TOKEN_REFRESHED') {
-            console.log('🔐 Session event:', event);
             if (event === 'SIGNED_OUT') {
               setUserProfile(null);
             }
@@ -136,7 +120,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const signIn = async (email: string, password: string) => {
-    console.log('🔐 SignIn called with:', { email, password: '***' });
     try {
       // Add timeout to prevent hanging
       const timeoutPromise = new Promise((_, reject) => 
@@ -149,10 +132,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
       
       const { data, error } = await Promise.race([signInPromise, timeoutPromise]) as { data: { user: { id: string } } | null; error: Error | null };
-      console.log('🔐 SignIn result:', { data: data?.user?.id, error });
       return { error };
     } catch (err) {
-      console.error('🔐 SignIn error:', err);
       return { error: err };
     }
   };

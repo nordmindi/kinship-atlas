@@ -2,8 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import {
   performCompleteLogout,
   hasValidSession,
-  getCurrentUser,
-  debugAuthState
+  getCurrentUser
 } from '../authUtils'
 import { supabase } from '@/integrations/supabase/client'
 
@@ -157,20 +156,5 @@ describe('authUtils', () => {
     })
   })
 
-  describe('debugAuthState', () => {
-    it('should log authentication state', () => {
-      const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
-
-      localStorage.setItem('sb-test-token', 'token123')
-      sessionStorage.setItem('supabase-session', 'session123')
-
-      debugAuthState()
-
-      expect(consoleSpy).toHaveBeenCalled()
-      expect(consoleSpy).toHaveBeenCalledWith('🔍 Authentication State Debug:')
-
-      consoleSpy.mockRestore()
-    })
-  })
 })
 

@@ -15,7 +15,7 @@ import {
   Plus,
   ArrowLeft
 } from "lucide-react";
-import { useStories } from "@/hooks/useStories";
+import { useStories, useCreateStory, useUpdateStory, useDeleteStory } from "@/hooks/useStories";
 import { useMemberTimeline } from "@/hooks/useTimeline";
 import { useFamilyTree } from "@/contexts/FamilyTreeContext";
 import StoryList from "@/components/stories/StoryList";
@@ -35,12 +35,29 @@ const LegacyStoriesPage = () => {
   const [isEditorOpen, setIsEditorOpen] = useState(false);
 
   const {
-    stories,
+    data: stories = [],
     isLoading: storiesLoading,
-    createStory,
-    updateStory,
-    deleteStory
   } = useStories();
+  
+  const createStoryMutation = useCreateStory();
+  const updateStoryMutation = useUpdateStory();
+  const deleteStoryMutation = useDeleteStory();
+  
+  // Wrapper functions to match old API
+  const createStory = async (request: any) => {
+    const result = await createStoryMutation.mutateAsync(request);
+    return result;
+  };
+  
+  const updateStory = async (request: any) => {
+    const result = await updateStoryMutation.mutateAsync(request);
+    return result;
+  };
+  
+  const deleteStory = async (storyId: string) => {
+    const result = await deleteStoryMutation.mutateAsync(storyId);
+    return result;
+  };
 
   const {
     timeline,

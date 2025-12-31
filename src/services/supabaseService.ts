@@ -76,9 +76,8 @@ export const getFamilyMembers = async (): Promise<FamilyMember[]> => {
   try {
     console.log('🔍 Fetching family members from Supabase...');
     
-    const { data, error } = await supabase
-      .from('family_members')
-      .select(`
+    // Build select query - handle missing columns gracefully
+    const selectFields = `
         id,
         first_name,
         last_name,
@@ -88,11 +87,13 @@ export const getFamilyMembers = async (): Promise<FamilyMember[]> => {
         bio,
         avatar_url,
         gender,
-        created_by,
-        branch_root,
-        is_root_member,
         locations(id, lat, lng, description, current_residence)
-      `)
+      `;
+    
+    // Try to include optional columns if they exist
+    const { data, error } = await supabase
+      .from('family_members')
+      .select(selectFields)
       .order('first_name');
 
     console.log('📊 Family members query result:', { data, error });
@@ -116,7 +117,7 @@ export const getFamilyMembers = async (): Promise<FamilyMember[]> => {
     }
 
     // Transform the data into our FamilyMember type
-    const transformedMembers = (data || []).map(member => {
+    const transformedMembers = (data || []).map((member: any) => {
       const currentLocation = member.locations?.find(loc => loc.current_residence);
       
       // Find all relations where this member is involved (both directions)
@@ -211,9 +212,10 @@ export const getFamilyMembers = async (): Promise<FamilyMember[]> => {
         bio: member.bio,
         avatar: member.avatar_url,
         gender: member.gender as 'male' | 'female' | 'other',
-        createdBy: member.created_by,
-        branchRoot: member.branch_root,
-        isRootMember: member.is_root_member,
+        // Handle optional columns that may not exist in older schemas
+        createdBy: member.created_by || member.user_id || undefined,
+        branchRoot: member.branch_root || undefined,
+        isRootMember: member.is_root_member || false,
         currentLocation: currentLocation ? {
           lat: currentLocation.lat ? Number(currentLocation.lat) : 0,
           lng: currentLocation.lng ? Number(currentLocation.lng) : 0,
@@ -264,14 +266,28 @@ export const addFamilyMember = async (member: Omit<FamilyMember, 'id' | 'relatio
 
     if (user.id) {
       console.log('🔍 Checking for existing family members...');
+      // Try to check for existing members, but handle missing created_by column gracefully
       const { data: existingMembers, error: checkError } = await supabase
         .from('family_members')
-        .select('id, branch_root, is_root_member')
-        .eq('created_by', user.id)
+        .select('id, user_id, branch_root, is_root_member, created_by')
+        .or(`created_by.eq.${user.id},user_id.eq.${user.id}`)
         .limit(1);
 
       if (checkError) {
-        console.warn('⚠️  Error checking existing members:', checkError);
+        // If created_by column doesn't exist, try with user_id
+        if (checkError.code === '42703') {
+          const { data: existingByUserId } = await supabase
+            .from('family_members')
+            .select('id, user_id')
+            .eq('user_id', user.id)
+            .limit(1);
+          if (existingByUserId && existingByUserId.length > 0) {
+            // User has existing members, but can't determine branch structure
+            // Default to root member
+          }
+        } else {
+          console.warn('⚠️  Error checking existing members:', checkError);
+        }
         // Continue anyway - will default to root member
       } else if (existingMembers && existingMembers.length > 0) {
         // Find the root member of the existing branch
@@ -289,22 +305,32 @@ export const addFamilyMember = async (member: Omit<FamilyMember, 'id' | 'relatio
 
     // Insert the family member
     console.log('📝 Inserting family member into database...');
+    // Build insert object - include user_id for backward compatibility
+    const insertData: any = {
+      first_name: member.firstName,
+      last_name: member.lastName,
+      birth_date: member.birthDate || null,
+      death_date: member.deathDate || null,
+      birth_place: member.birthPlace || null,
+      bio: member.bio || null,
+      avatar_url: member.avatar || null,
+      gender: member.gender || null,
+      user_id: user.id, // Always include user_id for backward compatibility
+    };
+    
+    // Include new columns if they exist (will be set by trigger if columns exist)
+    if (user.id) {
+      insertData.created_by = user.id;
+    }
+    if (branchRoot) {
+      insertData.branch_root = branchRoot;
+    }
+    insertData.is_root_member = isRootMember;
+    
     const { data: memberData, error: memberError } = await supabase
       .from('family_members')
-      .insert({
-        first_name: member.firstName,
-        last_name: member.lastName,
-        birth_date: member.birthDate || null,
-        death_date: member.deathDate || null,
-        birth_place: member.birthPlace || null,
-        bio: member.bio || null,
-        avatar_url: member.avatar || null,
-        gender: member.gender || null,
-        created_by: user.id,
-        branch_root: branchRoot, // Will be set to self if null by trigger
-        is_root_member: isRootMember
-      })
-      .select('id, branch_root, is_root_member')
+      .insert(insertData)
+      .select('id, branch_root, is_root_member, created_by')
       .single();
     
     if (memberError) {

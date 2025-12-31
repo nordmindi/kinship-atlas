@@ -85,18 +85,30 @@ export const uploadMedia = async (upload: MediaUpload): Promise<MediaItem | null
     
     console.log('Upload successful:', uploadData);
     
-    // Get public URL
-    const { data: urlData } = supabase.storage
+    // Try to get signed URL first (more reliable, works even if bucket isn't public)
+    let finalUrl: string;
+    const { data: signedUrlData, error: signedUrlError } = await supabase.storage
       .from('family-media')
-      .getPublicUrl(uploadData.path);
-      
-    console.log('Public URL generated:', urlData.publicUrl);
+      .createSignedUrl(uploadData.path, 31536000); // Valid for 1 year
+    
+    if (!signedUrlError && signedUrlData?.signedUrl) {
+      console.log('Signed URL generated:', signedUrlData.signedUrl);
+      finalUrl = signedUrlData.signedUrl;
+    } else {
+      // Fallback to public URL if signed URL fails
+      console.warn('Signed URL generation failed, falling back to public URL:', signedUrlError);
+      const { data: urlData } = supabase.storage
+        .from('family-media')
+        .getPublicUrl(uploadData.path);
+      finalUrl = urlData.publicUrl;
+      console.log('Public URL generated:', finalUrl);
+    }
     
     // Save media record to database
     const { data: mediaData, error: mediaError } = await supabase
       .from('media')
       .insert({
-        url: urlData.publicUrl,
+        url: finalUrl,
         user_id: user.id,
         media_type: upload.mediaType,
         caption: upload.caption,

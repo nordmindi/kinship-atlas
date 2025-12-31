@@ -28,7 +28,9 @@ import {
   Heart,
   Baby,
   UserCheck,
-  Users2
+  Users2,
+  CheckSquare,
+  Square
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -89,6 +91,8 @@ const RelationshipManager: React.FC<RelationshipManagerProps> = ({
   const [isCreating, setIsCreating] = useState(false);
   const [suggestions, setSuggestions] = useState<RelationshipSuggestion[]>([]);
   const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
+  const [selectedSuggestions, setSelectedSuggestions] = useState<Set<number>>(new Set());
+  const [isBulkAdding, setIsBulkAdding] = useState(false);
 
   // Load relationship suggestions
   useEffect(() => {
@@ -184,6 +188,78 @@ const RelationshipManager: React.FC<RelationshipManagerProps> = ({
       toast.error('An unexpected error occurred');
     }
   };
+
+  const handleBulkAddRelationships = async () => {
+    if (selectedSuggestions.size === 0) return;
+
+    setIsBulkAdding(true);
+    const selectedIndices = Array.from(selectedSuggestions);
+    const selectedSuggestionObjects = selectedIndices.map(index => suggestions[index]);
+    
+    let successCount = 0;
+    let failCount = 0;
+    const errors: string[] = [];
+
+    for (const suggestion of selectedSuggestionObjects) {
+      try {
+        const direction = resolveRelationshipDirection(
+          currentMember.id,
+          suggestion.member.id,
+          suggestion.suggestedRelationship
+        );
+
+        const result = await familyRelationshipManager.createRelationshipSmart(
+          direction.fromMemberId,
+          direction.toMemberId,
+          direction.relationshipType
+        );
+
+        if (result.success) {
+          successCount++;
+        } else {
+          failCount++;
+          errors.push(`${suggestion.member.firstName} ${suggestion.member.lastName}: ${result.error}`);
+        }
+      } catch (error) {
+        failCount++;
+        errors.push(`${suggestion.member.firstName} ${suggestion.member.lastName}: An unexpected error occurred`);
+        console.error('Error creating relationship:', error);
+      }
+    }
+
+    // Show summary toast
+    if (successCount > 0 && failCount === 0) {
+      toast.success(`Successfully added ${successCount} relationship${successCount > 1 ? 's' : ''}`);
+    } else if (successCount > 0 && failCount > 0) {
+      toast.warning(`Added ${successCount} relationship${successCount > 1 ? 's' : ''}, ${failCount} failed`, {
+        description: errors.slice(0, 3).join('; ') + (errors.length > 3 ? '...' : '')
+      });
+    } else {
+      toast.error(`Failed to add ${failCount} relationship${failCount > 1 ? 's' : ''}`, {
+        description: errors.slice(0, 3).join('; ') + (errors.length > 3 ? '...' : '')
+      });
+    }
+
+    setSelectedSuggestions(new Set());
+    onRelationshipChanged();
+    loadSuggestions(); // Refresh suggestions
+    setIsBulkAdding(false);
+  };
+
+  const toggleSuggestionSelection = (index: number) => {
+    setSelectedSuggestions(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(index)) {
+        newSet.delete(index);
+      } else {
+        newSet.add(index);
+      }
+      return newSet;
+    });
+  };
+
+  const highConfidenceSuggestions = suggestions.filter(s => s.confidence >= 0.8);
+  const hasHighConfidenceSuggestions = highConfidenceSuggestions.length > 0;
 
   const getRelationshipIcon = (type: RelationshipType) => {
     switch (type) {
@@ -289,10 +365,13 @@ const RelationshipManager: React.FC<RelationshipManagerProps> = ({
           <div className="space-y-4">
             <div>
               <Label htmlFor="member-select">Family Member</Label>
-              <Select onValueChange={(value) => {
-                const member = availableMembers.find(m => m.id === value);
-                setSelectedMember(member || null);
-              }}>
+              <Select 
+                value={selectedMember?.id || ''} 
+                onValueChange={(value) => {
+                  const member = availableMembers.find(m => m.id === value);
+                  setSelectedMember(member || null);
+                }}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Select a family member" />
                 </SelectTrigger>
@@ -361,51 +440,113 @@ const RelationshipManager: React.FC<RelationshipManagerProps> = ({
       {suggestions.length > 0 && (
         <Card className="shadow-sm">
           <CardHeader className="pb-4">
-            <CardTitle className="flex items-center gap-3 text-xl">
-              <Info className="h-6 w-6" />
-              Suggested Relationships
-            </CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center gap-3 text-xl">
+                <Info className="h-6 w-6" />
+                Suggested Relationships
+              </CardTitle>
+              {hasHighConfidenceSuggestions && selectedSuggestions.size > 0 && (
+                <Button
+                  onClick={handleBulkAddRelationships}
+                  disabled={isBulkAdding}
+                  className="ml-auto"
+                  variant="default"
+                >
+                  {isBulkAdding ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      Adding {selectedSuggestions.size}...
+                    </>
+                  ) : (
+                    <>
+                      <CheckSquare className="h-4 w-4 mr-2" />
+                      Bulk Add ({selectedSuggestions.size})
+                    </>
+                  )}
+                </Button>
+              )}
+            </div>
           </CardHeader>
           <CardContent className="pt-0">
             <div className="space-y-4">
-              {suggestions.slice(0, 5).map((suggestion, index) => (
-                <div key={index} className="flex items-center justify-between p-4 border rounded-xl bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200 hover:shadow-md transition-shadow">
-                  <div className="flex items-center gap-4">
-                    <div className="p-2 rounded-lg bg-blue-100">
-                      {getRelationshipIcon(suggestion.suggestedRelationship)}
-                    </div>
-                    <div className="space-y-2">
-                      <p className="font-semibold text-lg">
-                        {suggestion.member.firstName} {suggestion.member.lastName}
-                      </p>
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <Badge className={`${getRelationshipColor(suggestion.suggestedRelationship)} px-3 py-1`}>
-                          {suggestion.suggestedRelationship}
-                        </Badge>
-                        <Badge variant="outline" className="text-xs px-2 py-1 bg-white">
-                          {Math.round(suggestion.confidence * 100)}% confidence
-                        </Badge>
-                      </div>
-                      <p className="text-sm text-muted-foreground">
-                        {suggestion.reason}
-                      </p>
-                    </div>
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      setSelectedMember(suggestion.member);
-                      setSelectedRelationshipType(suggestion.suggestedRelationship);
-                      setIsAddDialogOpen(true);
-                    }}
-                    className="px-4 py-2"
+              {suggestions.slice(0, 5).map((suggestion, index) => {
+                const isHighConfidence = suggestion.confidence >= 0.8;
+                const isSelected = selectedSuggestions.has(index);
+                
+                return (
+                  <div 
+                    key={index} 
+                    className={`flex items-center justify-between p-4 border rounded-xl bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200 hover:shadow-md transition-shadow ${
+                      isSelected ? 'ring-2 ring-blue-500' : ''
+                    }`}
                   >
-                    Add
-                  </Button>
-                </div>
-              ))}
+                    <div className="flex items-center gap-4 flex-1">
+                      {isHighConfidence && (
+                        <button
+                          onClick={() => toggleSuggestionSelection(index)}
+                          className="flex-shrink-0 p-1 hover:bg-blue-100 rounded transition-colors"
+                          disabled={isBulkAdding}
+                        >
+                          {isSelected ? (
+                            <CheckSquare className="h-5 w-5 text-blue-600" />
+                          ) : (
+                            <Square className="h-5 w-5 text-gray-400" />
+                          )}
+                        </button>
+                      )}
+                      <div className="p-2 rounded-lg bg-blue-100">
+                        {getRelationshipIcon(suggestion.suggestedRelationship)}
+                      </div>
+                      <div className="space-y-2 flex-1">
+                        <p className="font-semibold text-lg">
+                          {suggestion.member.firstName} {suggestion.member.lastName}
+                        </p>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <Badge className={`${getRelationshipColor(suggestion.suggestedRelationship)} px-3 py-1`}>
+                            {suggestion.suggestedRelationship}
+                          </Badge>
+                          <Badge 
+                            variant="outline" 
+                            className={`text-xs px-2 py-1 ${
+                              isHighConfidence 
+                                ? 'bg-green-50 text-green-700 border-green-300' 
+                                : 'bg-white'
+                            }`}
+                          >
+                            {Math.round(suggestion.confidence * 100)}% confidence
+                            {isHighConfidence && ' ✓'}
+                          </Badge>
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                          {suggestion.reason}
+                        </p>
+                      </div>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setSelectedMember(suggestion.member);
+                        setSelectedRelationshipType(suggestion.suggestedRelationship);
+                        setIsAddDialogOpen(true);
+                      }}
+                      className="px-4 py-2"
+                      disabled={isBulkAdding}
+                    >
+                      Add
+                    </Button>
+                  </div>
+                );
+              })}
             </div>
+            {hasHighConfidenceSuggestions && (
+              <div className="mt-4 pt-4 border-t">
+                <p className="text-sm text-muted-foreground flex items-center gap-2">
+                  <Info className="h-4 w-4" />
+                  High-confidence suggestions (≥80%) can be selected for bulk add
+                </p>
+              </div>
+            )}
           </CardContent>
         </Card>
       )}

@@ -23,6 +23,7 @@ import {
 import { MediaItem, MediaUpload, uploadMedia, getUserMedia, deleteMedia, updateMediaCaption } from '@/services/mediaService';
 import { toast } from '@/hooks/use-toast';
 import { formatDistanceToNow } from 'date-fns';
+import { getAccessibleStorageUrl } from '@/utils/storageUrl';
 
 interface MediaManagerProps {
   onSelectMedia?: (media: MediaItem) => void;
@@ -44,6 +45,7 @@ const MediaManager: React.FC<MediaManagerProps> = ({
   const [selectedType, setSelectedType] = useState<string>('all');
   const [editingMedia, setEditingMedia] = useState<MediaItem | null>(null);
   const [editCaption, setEditCaption] = useState('');
+  const [imageUrls, setImageUrls] = useState<Record<string, string>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Load media items
@@ -300,11 +302,61 @@ const MediaManager: React.FC<MediaManagerProps> = ({
                 <CardContent className="p-3">
                   <div className="aspect-square mb-2 bg-muted rounded-md overflow-hidden relative">
                     {item.mediaType === 'image' ? (
-                      <img
-                        src={item.url}
-                        alt={item.caption || item.fileName || 'Media'}
-                        className="w-full h-full object-cover"
-                      />
+                      <>
+                        <img
+                          src={imageUrls[item.id] || item.url}
+                          alt={item.caption || item.fileName || 'Media'}
+                          className="w-full h-full object-cover"
+                          onError={async (e) => {
+                            console.error('❌ Image failed to load:', item.url);
+                            const target = e.currentTarget as HTMLImageElement;
+                            
+                            // If we already tried a signed URL, don't retry
+                            if (imageUrls[item.id] && imageUrls[item.id] !== item.url) {
+                              console.warn('⚠️  Signed URL also failed, showing placeholder');
+                              target.style.display = 'none';
+                              // Show placeholder icon
+                              const placeholder = target.nextElementSibling as HTMLElement;
+                              if (placeholder) placeholder.style.display = 'flex';
+                              return;
+                            }
+                            
+                            // Try to get a signed URL
+                            try {
+                              const signedUrl = await getAccessibleStorageUrl(item.url);
+                              if (signedUrl && signedUrl !== item.url) {
+                                console.log('✅ Got signed URL, updating image source');
+                                setImageUrls(prev => ({ ...prev, [item.id]: signedUrl }));
+                                target.src = signedUrl;
+                              } else {
+                                console.warn('⚠️  Could not get signed URL, showing placeholder');
+                                target.style.display = 'none';
+                                // Show placeholder icon
+                                const placeholder = target.nextElementSibling as HTMLElement;
+                                if (placeholder) placeholder.style.display = 'flex';
+                              }
+                            } catch (error) {
+                              console.error('❌ Error getting signed URL:', error);
+                              target.style.display = 'none';
+                              // Show placeholder icon
+                              const placeholder = target.nextElementSibling as HTMLElement;
+                              if (placeholder) placeholder.style.display = 'flex';
+                            }
+                          }}
+                          onLoad={(e) => {
+                            console.log('✅ Image loaded successfully:', imageUrls[item.id] || item.url);
+                            // Hide placeholder if image loads successfully
+                            const placeholder = (e.currentTarget as HTMLImageElement).nextElementSibling as HTMLElement;
+                            if (placeholder) placeholder.style.display = 'none';
+                          }}
+                        />
+                        <div 
+                          className="w-full h-full flex items-center justify-center bg-muted"
+                          style={{ display: 'none' }}
+                        >
+                          <ImageIcon className="h-8 w-8 text-muted-foreground" />
+                        </div>
+                      </>
                     ) : (
                       <div className="w-full h-full flex items-center justify-center">
                         {getMediaTypeIcon(item.mediaType)}

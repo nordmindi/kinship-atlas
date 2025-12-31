@@ -9,14 +9,17 @@ DROP POLICY IF EXISTS "Admins can manage all profiles" ON public.user_profiles;
 
 -- Create simpler, non-recursive policies
 -- Allow users to view all profiles (needed for role checking)
+DROP POLICY IF EXISTS "Allow all users to view profiles" ON public.user_profiles;
 CREATE POLICY "Allow all users to view profiles" ON public.user_profiles
     FOR SELECT USING (true);
 
 -- Allow users to update their own profile
+DROP POLICY IF EXISTS "Users can update own profile" ON public.user_profiles;
 CREATE POLICY "Users can update own profile" ON public.user_profiles
     FOR UPDATE USING (auth.uid() = id);
 
 -- Allow users to insert their own profile (for new signups)
+DROP POLICY IF EXISTS "Users can insert own profile" ON public.user_profiles;
 CREATE POLICY "Users can insert own profile" ON public.user_profiles
     FOR INSERT WITH CHECK (auth.uid() = id);
 

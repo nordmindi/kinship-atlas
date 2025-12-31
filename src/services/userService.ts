@@ -13,6 +13,16 @@ export const getUserProfile = async (userId: string): Promise<UserProfile | null
       .single();
 
     if (error) {
+      // If table doesn't exist, return a default profile
+      if (error.code === 'PGRST205' || error.message?.includes('Could not find the table')) {
+        console.warn('user_profiles table not found, returning default profile');
+        return {
+          id: userId,
+          role: 'family_member',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        };
+      }
       console.error('Error fetching user profile:', error);
       return null;
     }
@@ -119,27 +129,32 @@ export const canUserEditFamilyMember = async (memberId: string): Promise<boolean
     const isAdmin = await isCurrentUserAdmin();
     if (isAdmin) return true;
 
-    // Get the family member
+    // Get the family member - handle missing created_by column gracefully
     const { data: member, error } = await supabase
       .from('family_members')
-      .select('created_by, branch_root')
+      .select('user_id, created_by, branch_root')
       .eq('id', memberId)
       .single();
 
     if (error || !member) return false;
 
-    // Check if user created this member
-    if ((member as any).created_by === user.id) return true;
+    const memberData = member as any;
+    
+    // Check if user created this member (use created_by if available, fallback to user_id)
+    const createdBy = memberData.created_by || memberData.user_id;
+    if (createdBy === user.id) return true;
 
-    // Check if member is in user's branch
-    const { data: userMembers } = await supabase
-      .from('family_members')
-      .select('id')
-      .or(`created_by.eq.${user.id},branch_root.eq.${user.id}`);
+    // Check if member is in user's branch (only if created_by column exists)
+    if (memberData.created_by !== undefined) {
+      const { data: userMembers } = await supabase
+        .from('family_members')
+        .select('id')
+        .or(`created_by.eq.${user.id},branch_root.eq.${user.id}`);
 
-    if (userMembers && userMembers.length > 0) {
-      const userMemberIds = userMembers.map(m => m.id);
-      return userMemberIds.includes((member as any).branch_root || '');
+      if (userMembers && userMembers.length > 0) {
+        const userMemberIds = userMembers.map(m => m.id);
+        return userMemberIds.includes((member as any).branch_root || '');
+      }
     }
 
     return false;
@@ -157,14 +172,31 @@ export const getUserBranchMembers = async (): Promise<string[]> => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return [];
 
-    const { data: members, error } = await supabase
+    // Try to get members by created_by, fallback to user_id if column doesn't exist
+    let members;
+    const { data: membersByCreatedBy, error: error1 } = await supabase
       .from('family_members')
       .select('id')
       .or(`created_by.eq.${user.id},branch_root.eq.${user.id}`);
-
-    if (error) {
-      console.error('Error fetching user branch members:', error);
-      return [];
+    
+    if (error1 && error1.code === '42703') {
+      // Column doesn't exist, use user_id instead
+      const { data: membersByUserId, error: error2 } = await supabase
+        .from('family_members')
+        .select('id')
+        .eq('user_id', user.id);
+      
+      if (error2) {
+        console.error('Error fetching user branch members:', error2);
+        return [];
+      }
+      members = membersByUserId;
+    } else {
+      if (error1) {
+        console.error('Error fetching user branch members:', error1);
+        return [];
+      }
+      members = membersByCreatedBy;
     }
 
     return members?.map(m => m.id) || [];

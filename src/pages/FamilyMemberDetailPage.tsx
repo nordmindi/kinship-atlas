@@ -12,6 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { 
   Users, 
   MapPin, 
@@ -29,13 +30,15 @@ import {
   Trash2,
   Upload,
   RefreshCw,
-  Clock
+  Clock,
+  Download
 } from 'lucide-react';
 import { getYearRange } from "@/utils/dateUtils";
 import ImageUpload from '@/components/ui/image-upload';
 import MediaManager from '@/components/media/MediaManager';
 import { MediaItem } from '@/services/mediaService';
 import { toast } from '@/hooks/use-toast';
+import { getAccessibleStorageUrl } from '@/utils/storageUrl';
 import AddRelationshipDialog from '@/components/family/AddRelationshipDialog';
 import FamilyMemberActions from '@/components/family/FamilyMemberActions';
 import NewFamilyTab from '@/components/family/NewFamilyTab';
@@ -354,10 +357,14 @@ const FamilyMemberDetailPage = () => {
 
   const handleMediaSelect = (media: MediaItem) => {
     setSelectedMedia(media);
-    // Set as avatar if it's an image
-    if (media.mediaType === 'image') {
-      handleImageUpload(media.url);
-    }
+    // Just select the media - don't automatically set as avatar
+    // User can explicitly choose to set it as avatar via the viewer dialog
+  };
+
+  const handleSetAsAvatar = async () => {
+    if (!selectedMedia || selectedMedia.mediaType !== 'image') return;
+    await handleImageUpload(selectedMedia.url);
+    setSelectedMedia(null); // Close the dialog after setting avatar
   };
 
   const handleEditToggle = () => {
@@ -754,6 +761,75 @@ const FamilyMemberDetailPage = () => {
           onRelationshipAdded={handleRelationshipAdded}
         />
       )}
+
+      {/* Image Viewer Dialog */}
+      <Dialog open={!!selectedMedia} onOpenChange={(open) => !open && setSelectedMedia(null)}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-auto">
+          <DialogHeader>
+            <DialogTitle>
+              {selectedMedia?.caption || selectedMedia?.fileName || 'Media'}
+            </DialogTitle>
+            {selectedMedia?.caption && (
+              <DialogDescription>
+                {selectedMedia.fileName}
+              </DialogDescription>
+            )}
+          </DialogHeader>
+          {selectedMedia && (
+            <div className="space-y-4">
+              {selectedMedia.mediaType === 'image' ? (
+                <div className="flex flex-col items-center space-y-4">
+                  <img
+                    src={selectedMedia.url}
+                    alt={selectedMedia.caption || selectedMedia.fileName || 'Media'}
+                    className="max-w-full max-h-[70vh] object-contain rounded-lg"
+                    onError={async (e) => {
+                      // Try to get signed URL if public URL fails
+                      const signedUrl = await getAccessibleStorageUrl(selectedMedia.url);
+                      if (signedUrl && signedUrl !== selectedMedia.url) {
+                        (e.currentTarget as HTMLImageElement).src = signedUrl;
+                      }
+                    }}
+                  />
+                  <div className="flex gap-2 w-full justify-center">
+                    <Button
+                      onClick={handleSetAsAvatar}
+                      className="bg-heritage-purple hover:bg-heritage-purple-medium"
+                    >
+                      <User className="h-4 w-4 mr-2" />
+                      Set as Profile Image
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => window.open(selectedMedia.url, '_blank')}
+                    >
+                      <Download className="h-4 w-4 mr-2" />
+                      Download
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <p className="text-muted-foreground">Preview not available for this media type</p>
+                  <Button
+                    variant="outline"
+                    className="mt-4"
+                    onClick={() => window.open(selectedMedia.url, '_blank')}
+                  >
+                    <Download className="h-4 w-4 mr-2" />
+                    Download
+                  </Button>
+                </div>
+              )}
+              {selectedMedia.fileSize && (
+                <p className="text-sm text-muted-foreground text-center">
+                  Size: {(selectedMedia.fileSize / (1024 * 1024)).toFixed(2)} MB
+                </p>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </MobileLayout>
   );
 };

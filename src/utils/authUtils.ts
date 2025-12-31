@@ -94,38 +94,3 @@ export const getCurrentUser = async () => {
   }
 };
 
-/**
- * Debug authentication state
- */
-export const debugAuthState = () => {
-  console.log('🔍 Authentication State Debug:');
-  console.log('================================');
-  
-  // Check localStorage
-  console.log('📦 LocalStorage items:');
-  for (let i = 0; i < localStorage.length; i++) {
-    const key = localStorage.key(i);
-    if (key && (key.includes('supabase') || key.includes('auth'))) {
-      console.log(`  ${key}:`, localStorage.getItem(key));
-    }
-  }
-  
-  // Check sessionStorage
-  console.log('📦 SessionStorage items:');
-  for (let i = 0; i < sessionStorage.length; i++) {
-    const key = sessionStorage.key(i);
-    if (key && (key.includes('supabase') || key.includes('auth'))) {
-      console.log(`  ${key}:`, sessionStorage.getItem(key));
-    }
-  }
-  
-  // Check cookies
-  console.log('🍪 Cookies:');
-  document.cookie.split(";").forEach((c) => {
-    if (c.includes('supabase') || c.includes('auth')) {
-      console.log(`  ${c.trim()}`);
-    }
-  });
-  
-  console.log('================================');
-};

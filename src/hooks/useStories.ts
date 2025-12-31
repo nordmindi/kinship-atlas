@@ -1,158 +1,129 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { storyService } from '@/services/storyService';
 import { FamilyStory, CreateStoryRequest, UpdateStoryRequest } from '@/types/stories';
+import { queryKeys } from '@/lib/queryKeys';
 
+/**
+ * Hook to fetch all stories
+ */
 export const useStories = () => {
-  const [stories, setStories] = useState<FamilyStory[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  return useQuery({
+    queryKey: queryKeys.stories.list(),
+    queryFn: () => storyService.getAllStories(),
+    staleTime: 1000 * 60 * 5, // 5 minutes
+  });
+};
 
-  const fetchStories = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      setError(null);
-      const fetchedStories = await storyService.getAllStories();
-      setStories(fetchedStories);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch stories');
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
+/**
+ * Hook to fetch a single story by ID
+ */
+export const useStory = (storyId: string | null) => {
+  return useQuery({
+    queryKey: queryKeys.stories.detail(storyId || ''),
+    queryFn: () => {
+      if (!storyId) throw new Error('Story ID is required');
+      return storyService.getStory(storyId);
+    },
+    enabled: !!storyId,
+    staleTime: 1000 * 60 * 5,
+  });
+};
 
-  const createStory = useCallback(async (request: CreateStoryRequest) => {
-    try {
-      setError(null);
-      const result = await storyService.createStory(request);
+/**
+ * Hook to fetch stories for a specific family member
+ */
+export const useMemberStories = (memberId: string | null) => {
+  return useQuery({
+    queryKey: queryKeys.stories.member(memberId || ''),
+    queryFn: () => {
+      if (!memberId) throw new Error('Member ID is required');
+      return storyService.getStoriesForMember(memberId);
+    },
+    enabled: !!memberId,
+    staleTime: 1000 * 60 * 5,
+  });
+};
+
+/**
+ * Hook to create a new story
+ */
+export const useCreateStory = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (request: CreateStoryRequest) => storyService.createStory(request),
+    onSuccess: (result) => {
       if (result.success && result.story) {
-        setStories(prev => [result.story!, ...prev]);
-        return result;
-      } else {
-        setError(result.error || 'Failed to create story');
-        return result;
+        // Invalidate stories list to refetch
+        queryClient.invalidateQueries({ queryKey: queryKeys.stories.lists() });
+        
+        // If story has related members, invalidate their stories too
+        if (result.story.relatedMembers && result.story.relatedMembers.length > 0) {
+          result.story.relatedMembers.forEach(member => {
+            queryClient.invalidateQueries({ 
+              queryKey: queryKeys.stories.member(member.familyMemberId) 
+            });
+          });
+        }
       }
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to create story';
-      setError(errorMessage);
-      return { success: false, error: errorMessage };
-    }
-  }, []);
+    },
+  });
+};
 
-  const updateStory = useCallback(async (request: UpdateStoryRequest) => {
-    try {
-      setError(null);
-      const result = await storyService.updateStory(request);
+/**
+ * Hook to update an existing story
+ */
+export const useUpdateStory = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (request: UpdateStoryRequest) => storyService.updateStory(request),
+    onSuccess: (result, variables) => {
       if (result.success && result.story) {
-        setStories(prev => 
-          prev.map(story => 
-            story.id === request.id ? result.story! : story
-          )
-        );
-        return result;
-      } else {
-        setError(result.error || 'Failed to update story');
-        return result;
+        // Invalidate the specific story
+        queryClient.invalidateQueries({ 
+          queryKey: queryKeys.stories.detail(variables.id) 
+        });
+        
+        // Invalidate stories list
+        queryClient.invalidateQueries({ queryKey: queryKeys.stories.lists() });
+        
+        // Invalidate member stories if members changed
+        if (result.story.relatedMembers && result.story.relatedMembers.length > 0) {
+          result.story.relatedMembers.forEach(member => {
+            queryClient.invalidateQueries({ 
+              queryKey: queryKeys.stories.member(member.familyMemberId) 
+            });
+          });
+        }
       }
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to update story';
-      setError(errorMessage);
-      return { success: false, error: errorMessage };
-    }
-  }, []);
+    },
+  });
+};
 
-  const deleteStory = useCallback(async (storyId: string) => {
-    try {
-      setError(null);
-      const result = await storyService.deleteStory(storyId);
+/**
+ * Hook to delete a story
+ */
+export const useDeleteStory = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (storyId: string) => storyService.deleteStory(storyId),
+    onSuccess: (result, storyId) => {
       if (result.success) {
-        setStories(prev => prev.filter(story => story.id !== storyId));
-        return result;
-      } else {
-        setError(result.error || 'Failed to delete story');
-        return result;
+        // Remove from cache
+        queryClient.removeQueries({ 
+          queryKey: queryKeys.stories.detail(storyId) 
+        });
+        
+        // Invalidate stories list
+        queryClient.invalidateQueries({ queryKey: queryKeys.stories.lists() });
+        
+        // Invalidate all member stories (since we don't know which members were affected)
+        queryClient.invalidateQueries({ 
+          queryKey: queryKeys.stories.all 
+        });
       }
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to delete story';
-      setError(errorMessage);
-      return { success: false, error: errorMessage };
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchStories();
-  }, []); // Only run once on mount
-
-  return {
-    stories,
-    isLoading,
-    error,
-    fetchStories,
-    createStory,
-    updateStory,
-    deleteStory
-  };
-};
-
-export const useStory = (storyId: string) => {
-  const [story, setStory] = useState<FamilyStory | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const fetchStory = useCallback(async () => {
-    if (!storyId) return;
-    
-    try {
-      setIsLoading(true);
-      setError(null);
-      const fetchedStory = await storyService.getStory(storyId);
-      setStory(fetchedStory);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch story');
-    } finally {
-      setIsLoading(false);
-    }
-  }, [storyId]);
-
-  useEffect(() => {
-    fetchStory();
-  }, [fetchStory]);
-
-  return {
-    story,
-    isLoading,
-    error,
-    fetchStory
-  };
-};
-
-export const useMemberStories = (memberId: string) => {
-  const [stories, setStories] = useState<FamilyStory[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const fetchMemberStories = useCallback(async () => {
-    if (!memberId) return;
-    
-    try {
-      setIsLoading(true);
-      setError(null);
-      const fetchedStories = await storyService.getStoriesForMember(memberId);
-      setStories(fetchedStories);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch member stories');
-    } finally {
-      setIsLoading(false);
-    }
-  }, [memberId]);
-
-  useEffect(() => {
-    fetchMemberStories();
-  }, [fetchMemberStories]);
-
-  return {
-    stories,
-    isLoading,
-    error,
-    fetchMemberStories
-  };
+    },
+  });
 };

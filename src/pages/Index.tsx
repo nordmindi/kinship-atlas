@@ -11,7 +11,8 @@ import FamilyMap from "@/components/family/FamilyMap";
 import StoryCard from "@/components/stories/StoryCard";
 import { useAuth } from "@/contexts/AuthContext";
 import { useFamilyTree } from "@/contexts/FamilyTreeContext";
-import { getFamilyMembers, getFamilyStories } from "@/services/supabaseService";
+import { useFamilyMembers } from "@/hooks/useFamilyMembers";
+import { useStories } from "@/hooks/useStories";
 import { FamilyMember, FamilyStory } from "@/types";
 import { getYearRange } from "@/utils/dateUtils";
 import { useStorageUrl } from "@/hooks/useStorageUrl";
@@ -64,36 +65,14 @@ const Index = () => {
   const { user, isLoading: authLoading } = useAuth();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("home");
-  const [familyMembers, setFamilyMembers] = useState<FamilyMember[]>([]);
-  const [stories, setStories] = useState<FamilyStory[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const { selectedMemberId, setSelectedMemberId } = useFamilyTree();
   
-  // Load data when user is authenticated
-  useEffect(() => {
-    const loadData = async () => {
-      if (!user) return;
-      
-      setIsLoading(true);
-      
-      try {
-        // Load family members
-        const members = await getFamilyMembers();
-        setFamilyMembers(members);
-        
-        // Load stories
-        const stories = await getFamilyStories();
-        setStories(stories);
-      } catch (error) {
-        console.error('Error loading data:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    
-    loadData();
-  }, [user]);
+  // Use TanStack Query hooks for data fetching
+  const { data: familyMembers = [], isLoading: membersLoading, error: membersError } = useFamilyMembers();
+  const { data: stories = [], isLoading: storiesLoading, error: storiesError } = useStories();
+  
+  const isLoading = authLoading || membersLoading || storiesLoading;
 
   useEffect(() => {
     if (!familyMembers.length) {
