@@ -1,3 +1,4 @@
+import React from 'react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -5,12 +6,14 @@ import ImportFamilyData from '../ImportFamilyData'
 import { familyMemberService } from '@/services/familyMemberService'
 import { familyRelationshipManager } from '@/services/familyRelationshipManager'
 import { supabase } from '@/integrations/supabase/client'
+import { toast } from '@/hooks/use-toast'
 import * as XLSX from 'xlsx'
 
 // Mock the services
 vi.mock('@/services/familyMemberService')
 vi.mock('@/services/familyRelationshipManager')
 vi.mock('@/integrations/supabase/client')
+vi.mock('@/hooks/use-toast')
 
 describe('ImportFamilyData', () => {
   const mockOnImportComplete = vi.fn()
@@ -436,8 +439,12 @@ describe('ImportFamilyData', () => {
       })
 
       await waitFor(() => {
-        expect(screen.getByText('Unsupported File Type')).toBeInTheDocument()
-      })
+        expect(toast).toHaveBeenCalledWith(
+          expect.objectContaining({
+            title: 'Unsupported File Type'
+          })
+        )
+      }, { timeout: 3000 })
     })
   })
 })

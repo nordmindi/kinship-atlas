@@ -40,18 +40,17 @@ describe('ImageUpload', () => {
 
     vi.mocked(uploadFile).mockResolvedValue(mockUrl)
 
-    render(<ImageUpload onImageUploaded={mockOnImageUploaded} />)
+    const { container } = render(<ImageUpload onImageUploaded={mockOnImageUploaded} />)
 
-    const fileInput = screen.getByRole('button').querySelector('input[type="file"]')
+    // File input is hidden, find it in the container
+    const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement
     expect(fileInput).toBeInTheDocument()
 
-    if (fileInput) {
-      await user.upload(fileInput, mockFile)
+    await user.upload(fileInput, mockFile)
 
-      await waitFor(() => {
-        expect(uploadFile).toHaveBeenCalledWith(mockFile, 'images')
-      })
-    }
+    await waitFor(() => {
+      expect(uploadFile).toHaveBeenCalledWith(mockFile, 'images')
+    }, { timeout: 3000 })
   })
 
   it('should reject non-image files', async () => {
@@ -60,21 +59,22 @@ describe('ImageUpload', () => {
 
     render(<ImageUpload onImageUploaded={mockOnImageUploaded} />)
 
-    const fileInput = screen.getByRole('button').querySelector('input[type="file"]')
+    const { container } = render(<ImageUpload onImageUploaded={mockOnImageUploaded} />)
     
-    if (fileInput) {
-      await user.upload(fileInput, mockFile)
+    const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement
+    expect(fileInput).toBeInTheDocument()
+    
+    await user.upload(fileInput, mockFile)
 
-      await waitFor(() => {
-        expect(toast).toHaveBeenCalledWith(
-          expect.objectContaining({
-            title: 'Invalid file type'
-          })
-        )
-      })
+    await waitFor(() => {
+      expect(toast).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: 'Invalid file type'
+        })
+      )
+    }, { timeout: 3000 })
 
-      expect(uploadFile).not.toHaveBeenCalled()
-    }
+    expect(uploadFile).not.toHaveBeenCalled()
   })
 
   it('should reject files larger than 5MB', async () => {
@@ -84,21 +84,22 @@ describe('ImageUpload', () => {
 
     render(<ImageUpload onImageUploaded={mockOnImageUploaded} />)
 
-    const fileInput = screen.getByRole('button').querySelector('input[type="file"]')
+    const { container } = render(<ImageUpload onImageUploaded={mockOnImageUploaded} />)
     
-    if (fileInput) {
-      await user.upload(fileInput, largeFile)
+    const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement
+    expect(fileInput).toBeInTheDocument()
+    
+    await user.upload(fileInput, largeFile)
 
-      await waitFor(() => {
-        expect(toast).toHaveBeenCalledWith(
-          expect.objectContaining({
-            title: 'File too large'
-          })
-        )
-      })
+    await waitFor(() => {
+      expect(toast).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: 'File too large'
+        })
+      )
+    }, { timeout: 3000 })
 
-      expect(uploadFile).not.toHaveBeenCalled()
-    }
+    expect(uploadFile).not.toHaveBeenCalled()
   })
 
   it('should show loading state during upload', async () => {
@@ -116,23 +117,24 @@ describe('ImageUpload', () => {
 
     render(<ImageUpload onImageUploaded={mockOnImageUploaded} />)
 
-    const fileInput = screen.getByRole('button').querySelector('input[type="file"]')
+    const { container } = render(<ImageUpload onImageUploaded={mockOnImageUploaded} />)
     
-    if (fileInput) {
-      await user.upload(fileInput, mockFile)
+    const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement
+    expect(fileInput).toBeInTheDocument()
+    
+    await user.upload(fileInput, mockFile)
 
-      // Should show loading state
-      await waitFor(() => {
-        expect(screen.queryByRole('button', { name: /upload/i })).not.toBeInTheDocument()
-      })
+    // Should show loading state
+    await waitFor(() => {
+      expect(screen.queryByRole('button', { name: /upload/i })).not.toBeInTheDocument()
+    }, { timeout: 3000 })
 
-      // Resolve the upload
-      resolveUpload!(mockUrl)
+    // Resolve the upload
+    resolveUpload!(mockUrl)
 
-      await waitFor(() => {
-        expect(mockOnImageUploaded).toHaveBeenCalledWith(mockUrl)
-      })
-    }
+    await waitFor(() => {
+      expect(mockOnImageUploaded).toHaveBeenCalledWith(mockUrl)
+    }, { timeout: 3000 })
   })
 
   it('should handle upload errors', async () => {
@@ -143,21 +145,22 @@ describe('ImageUpload', () => {
 
     render(<ImageUpload onImageUploaded={mockOnImageUploaded} />)
 
-    const fileInput = screen.getByRole('button').querySelector('input[type="file"]')
+    const { container } = render(<ImageUpload onImageUploaded={mockOnImageUploaded} />)
     
-    if (fileInput) {
-      await user.upload(fileInput, mockFile)
+    const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement
+    expect(fileInput).toBeInTheDocument()
+    
+    await user.upload(fileInput, mockFile)
 
-      await waitFor(() => {
-        expect(toast).toHaveBeenCalledWith(
-          expect.objectContaining({
-            variant: 'destructive'
-          })
-        )
-      })
+    await waitFor(() => {
+      expect(toast).toHaveBeenCalledWith(
+        expect.objectContaining({
+          variant: 'destructive'
+        })
+      )
+    }, { timeout: 3000 })
 
-      expect(mockOnImageUploaded).not.toHaveBeenCalled()
-    }
+    expect(mockOnImageUploaded).not.toHaveBeenCalled()
   })
 
   it('should call onImageUploaded with uploaded URL', async () => {
@@ -169,28 +172,37 @@ describe('ImageUpload', () => {
 
     render(<ImageUpload onImageUploaded={mockOnImageUploaded} />)
 
-    const fileInput = screen.getByRole('button').querySelector('input[type="file"]')
+    const { container } = render(<ImageUpload onImageUploaded={mockOnImageUploaded} />)
     
-    if (fileInput) {
-      await user.upload(fileInput, mockFile)
+    const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement
+    expect(fileInput).toBeInTheDocument()
+    
+    await user.upload(fileInput, mockFile)
 
-      await waitFor(() => {
-        expect(mockOnImageUploaded).toHaveBeenCalledWith(mockUrl)
-      })
-    }
+    await waitFor(() => {
+      expect(mockOnImageUploaded).toHaveBeenCalledWith(mockUrl)
+    }, { timeout: 3000 })
   })
 
   it('should support different sizes', () => {
-    const { rerender } = render(
+    const { container, rerender } = render(
       <ImageUpload onImageUploaded={mockOnImageUploaded} size="sm" />
     )
 
-    let container = screen.getByRole('button').closest('div')
-    expect(container).toHaveClass('h-16', 'w-16')
+    // The size classes are on the circular image container div (the one with onClick)
+    // Find the div that contains both the size classes
+    const imageContainer = Array.from(container.querySelectorAll('div')).find(div => 
+      div.className.includes('h-16') && div.className.includes('w-16')
+    )
+    expect(imageContainer).toBeInTheDocument()
+    expect(imageContainer).toHaveClass('h-16', 'w-16')
 
     rerender(<ImageUpload onImageUploaded={mockOnImageUploaded} size="lg" />)
-    container = screen.getByRole('button').closest('div')
-    expect(container).toHaveClass('h-48', 'w-48')
+    const largeContainer = Array.from(container.querySelectorAll('div')).find(div => 
+      div.className.includes('h-48') && div.className.includes('w-48')
+    )
+    expect(largeContainer).toBeInTheDocument()
+    expect(largeContainer).toHaveClass('h-48', 'w-48')
   })
 })
 

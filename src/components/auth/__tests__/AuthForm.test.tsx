@@ -1,6 +1,6 @@
 import React from 'react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import AuthForm from '../AuthForm'
 
@@ -14,7 +14,8 @@ describe('AuthForm', () => {
   it('should render login form by default', () => {
     render(<AuthForm onAuth={mockOnAuth} />)
 
-    expect(screen.getByText('Login')).toBeInTheDocument()
+    // Check for tab trigger
+    expect(screen.getByRole('tab', { name: /login/i })).toBeInTheDocument()
     expect(screen.getByLabelText(/email/i)).toBeInTheDocument()
     expect(screen.getByLabelText(/password/i)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /login/i })).toBeInTheDocument()
@@ -53,9 +54,11 @@ describe('AuthForm', () => {
     const passwordInput = screen.getByLabelText(/password/i)
     const submitButton = screen.getByRole('button', { name: /login/i })
 
-    await user.type(emailInput, 'test@example.com')
-    await user.type(passwordInput, 'password123')
-    await user.click(submitButton)
+    await act(async () => {
+      await user.type(emailInput, 'test@example.com')
+      await user.type(passwordInput, 'password123')
+      await user.click(submitButton)
+    })
 
     await waitFor(() => {
       expect(mockOnAuth).toHaveBeenCalledWith({
@@ -71,17 +74,21 @@ describe('AuthForm', () => {
 
     // Switch to register tab
     const registerTab = screen.getByText('Register')
-    await user.click(registerTab)
+    await act(async () => {
+      await user.click(registerTab)
+    })
 
     const nameInput = screen.getByLabelText(/full name/i)
     const emailInput = screen.getByLabelText(/email/i)
     const passwordInput = screen.getByLabelText(/password/i)
     const submitButton = screen.getByRole('button', { name: /create account/i })
 
-    await user.type(nameInput, 'John Doe')
-    await user.type(emailInput, 'john@example.com')
-    await user.type(passwordInput, 'password123')
-    await user.click(submitButton)
+    await act(async () => {
+      await user.type(nameInput, 'John Doe')
+      await user.type(emailInput, 'john@example.com')
+      await user.type(passwordInput, 'password123')
+      await user.click(submitButton)
+    })
 
     await waitFor(() => {
       expect(mockOnAuth).toHaveBeenCalledWith({

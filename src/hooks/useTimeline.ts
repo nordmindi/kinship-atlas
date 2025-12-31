@@ -8,7 +8,12 @@ export const useMemberTimeline = (memberId: string) => {
   const [error, setError] = useState<string | null>(null);
 
   const fetchTimeline = useCallback(async () => {
-    if (!memberId) return;
+    if (!memberId) {
+      setTimeline([]);
+      setIsLoading(false);
+      setError(null);
+      return;
+    }
     
     try {
       setIsLoading(true);
@@ -123,7 +128,17 @@ export const useTimelineStats = (memberId: string) => {
   const [error, setError] = useState<string | null>(null);
 
   const fetchStats = useCallback(async () => {
-    if (!memberId) return;
+    if (!memberId) {
+      setStats({
+        totalStories: 0,
+        totalEvents: 0,
+        dateRange: { earliest: null, latest: null },
+        locations: []
+      });
+      setIsLoading(false);
+      setError(null);
+      return;
+    }
     
     try {
       setIsLoading(true);

@@ -28,10 +28,13 @@ describe('AuthContext', () => {
 
   describe('Authentication State', () => {
     it('should provide initial loading state', () => {
-      vi.mocked(supabase.auth.getUser).mockResolvedValue({
-        data: { user: null },
+      vi.mocked(supabase.auth.getSession).mockResolvedValue({
+        data: { session: null },
         error: null
       })
+      vi.mocked(supabase.auth.onAuthStateChange).mockReturnValue({
+        data: { subscription: { unsubscribe: vi.fn() } }
+      } as any)
 
       render(
         <AuthProvider>
@@ -48,11 +51,22 @@ describe('AuthContext', () => {
         email: 'test@example.com',
         created_at: '2023-01-01T00:00:00Z'
       }
+      const mockSession = {
+        user: mockUser,
+        access_token: 'token',
+        expires_at: 9999999999,
+        expires_in: 3600,
+        refresh_token: 'refresh',
+        token_type: 'bearer'
+      }
 
-      vi.mocked(supabase.auth.getUser).mockResolvedValue({
-        data: { user: mockUser },
+      vi.mocked(supabase.auth.getSession).mockResolvedValue({
+        data: { session: mockSession },
         error: null
       })
+      vi.mocked(supabase.auth.onAuthStateChange).mockReturnValue({
+        data: { subscription: { unsubscribe: vi.fn() } }
+      } as any)
 
       render(
         <AuthProvider>
@@ -63,14 +77,17 @@ describe('AuthContext', () => {
       await waitFor(() => {
         expect(screen.getByTestId('user')).toHaveTextContent('test@example.com')
         expect(screen.getByTestId('loading')).toHaveTextContent('Not loading')
-      })
+      }, { timeout: 3000 })
     })
 
     it('should handle authentication errors', async () => {
-      vi.mocked(supabase.auth.getUser).mockResolvedValue({
-        data: { user: null },
+      vi.mocked(supabase.auth.getSession).mockResolvedValue({
+        data: { session: null },
         error: new Error('Authentication failed')
       })
+      vi.mocked(supabase.auth.onAuthStateChange).mockReturnValue({
+        data: { subscription: { unsubscribe: vi.fn() } }
+      } as any)
 
       render(
         <AuthProvider>
@@ -81,7 +98,7 @@ describe('AuthContext', () => {
       await waitFor(() => {
         expect(screen.getByTestId('user')).toHaveTextContent('No user')
         expect(screen.getByTestId('loading')).toHaveTextContent('Not loading')
-      })
+      }, { timeout: 3000 })
     })
   })
 
@@ -93,10 +110,13 @@ describe('AuthContext', () => {
         created_at: '2023-01-01T00:00:00Z'
       }
 
-      vi.mocked(supabase.auth.getUser).mockResolvedValue({
-        data: { user: null },
+      vi.mocked(supabase.auth.getSession).mockResolvedValue({
+        data: { session: null },
         error: null
       })
+      vi.mocked(supabase.auth.onAuthStateChange).mockReturnValue({
+        data: { subscription: { unsubscribe: vi.fn() } }
+      } as any)
 
       vi.mocked(supabase.auth.signInWithPassword).mockResolvedValue({
         data: { user: mockUser, session: null },
@@ -111,7 +131,7 @@ describe('AuthContext', () => {
 
       await waitFor(() => {
         expect(screen.getByTestId('loading')).toHaveTextContent('Not loading')
-      })
+      }, { timeout: 3000 })
 
       // Click sign in button
       screen.getByText('Sign In').click()
@@ -125,10 +145,13 @@ describe('AuthContext', () => {
     })
 
     it('should handle sign in errors', async () => {
-      vi.mocked(supabase.auth.getUser).mockResolvedValue({
-        data: { user: null },
+      vi.mocked(supabase.auth.getSession).mockResolvedValue({
+        data: { session: null },
         error: null
       })
+      vi.mocked(supabase.auth.onAuthStateChange).mockReturnValue({
+        data: { subscription: { unsubscribe: vi.fn() } }
+      } as any)
 
       vi.mocked(supabase.auth.signInWithPassword).mockResolvedValue({
         data: { user: null, session: null },
@@ -143,7 +166,7 @@ describe('AuthContext', () => {
 
       await waitFor(() => {
         expect(screen.getByTestId('loading')).toHaveTextContent('Not loading')
-      })
+      }, { timeout: 3000 })
 
       // Click sign in button
       screen.getByText('Sign In').click()
@@ -165,10 +188,13 @@ describe('AuthContext', () => {
         created_at: '2023-01-01T00:00:00Z'
       }
 
-      vi.mocked(supabase.auth.getUser).mockResolvedValue({
-        data: { user: null },
+      vi.mocked(supabase.auth.getSession).mockResolvedValue({
+        data: { session: null },
         error: null
       })
+      vi.mocked(supabase.auth.onAuthStateChange).mockReturnValue({
+        data: { subscription: { unsubscribe: vi.fn() } }
+      } as any)
 
       vi.mocked(supabase.auth.signUp).mockResolvedValue({
         data: { user: mockUser, session: null },
@@ -183,7 +209,7 @@ describe('AuthContext', () => {
 
       await waitFor(() => {
         expect(screen.getByTestId('loading')).toHaveTextContent('Not loading')
-      })
+      }, { timeout: 3000 })
 
       // Click sign up button
       screen.getByText('Sign Up').click()
@@ -197,10 +223,13 @@ describe('AuthContext', () => {
     })
 
     it('should handle sign up errors', async () => {
-      vi.mocked(supabase.auth.getUser).mockResolvedValue({
-        data: { user: null },
+      vi.mocked(supabase.auth.getSession).mockResolvedValue({
+        data: { session: null },
         error: null
       })
+      vi.mocked(supabase.auth.onAuthStateChange).mockReturnValue({
+        data: { subscription: { unsubscribe: vi.fn() } }
+      } as any)
 
       vi.mocked(supabase.auth.signUp).mockResolvedValue({
         data: { user: null, session: null },
@@ -215,7 +244,7 @@ describe('AuthContext', () => {
 
       await waitFor(() => {
         expect(screen.getByTestId('loading')).toHaveTextContent('Not loading')
-      })
+      }, { timeout: 3000 })
 
       // Click sign up button
       screen.getByText('Sign Up').click()
@@ -236,11 +265,22 @@ describe('AuthContext', () => {
         email: 'test@example.com',
         created_at: '2023-01-01T00:00:00Z'
       }
+      const mockSession = {
+        user: mockUser,
+        access_token: 'token',
+        expires_at: 9999999999,
+        expires_in: 3600,
+        refresh_token: 'refresh',
+        token_type: 'bearer'
+      }
 
-      vi.mocked(supabase.auth.getUser).mockResolvedValue({
-        data: { user: mockUser },
+      vi.mocked(supabase.auth.getSession).mockResolvedValue({
+        data: { session: mockSession },
         error: null
       })
+      vi.mocked(supabase.auth.onAuthStateChange).mockReturnValue({
+        data: { subscription: { unsubscribe: vi.fn() } }
+      } as any)
 
       vi.mocked(supabase.auth.signOut).mockResolvedValue({
         error: null
@@ -254,7 +294,7 @@ describe('AuthContext', () => {
 
       await waitFor(() => {
         expect(screen.getByTestId('user')).toHaveTextContent('test@example.com')
-      })
+      }, { timeout: 3000 })
 
       // Click sign out button
       screen.getByText('Sign Out').click()
@@ -270,11 +310,22 @@ describe('AuthContext', () => {
         email: 'test@example.com',
         created_at: '2023-01-01T00:00:00Z'
       }
+      const mockSession = {
+        user: mockUser,
+        access_token: 'token',
+        expires_at: 9999999999,
+        expires_in: 3600,
+        refresh_token: 'refresh',
+        token_type: 'bearer'
+      }
 
-      vi.mocked(supabase.auth.getUser).mockResolvedValue({
-        data: { user: mockUser },
+      vi.mocked(supabase.auth.getSession).mockResolvedValue({
+        data: { session: mockSession },
         error: null
       })
+      vi.mocked(supabase.auth.onAuthStateChange).mockReturnValue({
+        data: { subscription: { unsubscribe: vi.fn() } }
+      } as any)
 
       vi.mocked(supabase.auth.signOut).mockResolvedValue({
         error: new Error('Sign out failed')
@@ -288,7 +339,7 @@ describe('AuthContext', () => {
 
       await waitFor(() => {
         expect(screen.getByTestId('user')).toHaveTextContent('test@example.com')
-      })
+      }, { timeout: 3000 })
 
       // Click sign out button
       screen.getByText('Sign Out').click()

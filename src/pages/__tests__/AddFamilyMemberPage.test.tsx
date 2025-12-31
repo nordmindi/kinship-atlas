@@ -18,15 +18,17 @@ vi.mock('@/components/layout/MobileLayout', () => ({
   )
 }))
 vi.mock('react-router-dom', async () => {
-  const actual = await vi.importActual('react-router-dom')
+  const actual = await vi.importActual<typeof import('react-router-dom')>('react-router-dom')
   return {
     ...actual,
     Navigate: ({ to }: { to: string }) => {
-      const div = document.createElement('div')
-      div.setAttribute('data-testid', 'navigate')
-      div.setAttribute('data-to', to)
-      return div
+      return React.createElement('div', {
+        'data-testid': 'navigate',
+        'data-to': to
+      })
     }
+  } as typeof actual & {
+    Navigate: ({ to }: { to: string }) => React.ReactElement
   }
 })
 
@@ -70,6 +72,7 @@ describe('AddFamilyMemberPage', () => {
     const navigate = screen.queryByTestId('navigate')
     // The Navigate component is mocked in test setup, so we check for it
     expect(navigate).toBeInTheDocument()
+    expect(navigate).toHaveAttribute('data-to', '/auth')
   })
 
   it('should render AddFamilyMember component when authenticated', () => {

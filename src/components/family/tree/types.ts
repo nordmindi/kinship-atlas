@@ -3,8 +3,8 @@ import { Node as ReactFlowNode, Edge, Position } from '@xyflow/react';
 import { FamilyMember } from '@/types';
 
 export interface FamilyTreeGraphProps {
-  members: FamilyMember[];
-  onSelectMember: (memberId: string) => void;
+  members?: FamilyMember[];
+  onSelectMember?: (memberId: string) => void;
   rootMemberId?: string;
   currentUserId?: string;
 }

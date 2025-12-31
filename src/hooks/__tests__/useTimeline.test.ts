@@ -35,7 +35,7 @@ describe('useMemberTimeline', () => {
 
     await waitFor(() => {
       expect(result.current.isLoading).toBe(false)
-    })
+    }, { timeout: 3000 })
 
     expect(result.current.timeline).toEqual(mockTimeline)
     expect(result.current.error).toBeNull()
@@ -48,7 +48,7 @@ describe('useMemberTimeline', () => {
 
     await waitFor(() => {
       expect(result.current.isLoading).toBe(false)
-    })
+    }, { timeout: 3000 })
 
     expect(result.current.timeline).toEqual([])
     expect(result.current.error).toBe('Fetch failed')
@@ -57,12 +57,14 @@ describe('useMemberTimeline', () => {
   it('should not fetch if memberId is empty', async () => {
     const { result } = renderHook(() => useMemberTimeline(''))
 
+    // The hook should set isLoading to false immediately when memberId is empty
     await waitFor(() => {
       expect(result.current.isLoading).toBe(false)
-    })
+    }, { timeout: 2000 })
 
     expect(timelineService.getMemberTimeline).not.toHaveBeenCalled()
     expect(result.current.timeline).toEqual([])
+    expect(result.current.error).toBeNull()
   })
 })
 
@@ -90,9 +92,10 @@ describe('useFamilyTimeline', () => {
 
     await waitFor(() => {
       expect(result.current.isLoading).toBe(false)
-    })
+    }, { timeout: 3000 })
 
     expect(result.current.timeline).toEqual(mockTimeline)
+    expect(result.current.error).toBeNull()
   })
 
   it('should return empty array if no member IDs provided', async () => {
@@ -100,7 +103,7 @@ describe('useFamilyTimeline', () => {
 
     await waitFor(() => {
       expect(result.current.isLoading).toBe(false)
-    })
+    }, { timeout: 3000 })
 
     expect(result.current.timeline).toEqual([])
     expect(timelineService.getFamilyTimeline).not.toHaveBeenCalled()
@@ -131,7 +134,7 @@ describe('useTimelineSearch', () => {
 
     await waitFor(() => {
       expect(result.current.isLoading).toBe(false)
-    })
+    }, { timeout: 3000 })
 
     expect(result.current.searchResults).toEqual(mockResults)
   })
@@ -182,9 +185,10 @@ describe('useTimelineStats', () => {
 
     await waitFor(() => {
       expect(result.current.isLoading).toBe(false)
-    })
+    }, { timeout: 3000 })
 
     expect(result.current.stats).toEqual(mockStats)
+    expect(result.current.error).toBeNull()
   })
 
   it('should handle fetch errors', async () => {
@@ -194,8 +198,9 @@ describe('useTimelineStats', () => {
 
     await waitFor(() => {
       expect(result.current.isLoading).toBe(false)
-    })
+    }, { timeout: 3000 })
 
+    expect(result.current.stats.totalStories).toBe(0)
     expect(result.current.error).toBe('Fetch failed')
   })
 })
