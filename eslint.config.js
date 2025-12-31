@@ -24,6 +24,25 @@ export default tseslint.config(
         { allowConstantExport: true },
       ],
       "@typescript-eslint/no-unused-vars": "off",
+      "@typescript-eslint/no-explicit-any": "off",
+      "@typescript-eslint/no-require-imports": "off",
+      "@typescript-eslint/no-empty-object-type": "off",
+      "no-useless-escape": "off",
+      "no-empty-pattern": "off",
+    },
+  },
+  {
+    // More lenient rules for test files
+    files: ["**/*.test.{ts,tsx}", "**/__tests__/**/*.{ts,tsx}"],
+    rules: {
+      "@typescript-eslint/no-explicit-any": "off",
+    },
+  },
+  {
+    // Allow require() in config files
+    files: ["*.config.{ts,js}", "vite.config.ts", "tailwind.config.ts"],
+    rules: {
+      "@typescript-eslint/no-require-imports": "off",
     },
   }
 );

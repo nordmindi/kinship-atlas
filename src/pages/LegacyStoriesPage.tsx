@@ -23,11 +23,12 @@ import Timeline from "@/components/stories/Timeline";
 import StoryEditor from "@/components/stories/StoryEditor";
 import { familyMemberService } from "@/services/familyMemberService";
 import type { FamilyMember } from "@/types";
+import type { CreateStoryRequest, UpdateStoryRequest, FamilyStory } from "@/types/stories";
 
 const LegacyStoriesPage = () => {
   const { user, isLoading: authLoading } = useAuth();
   const navigate = useNavigate();
-  const { } = useFamilyTree();
+  useFamilyTree();
   const [familyMembers, setFamilyMembers] = useState<FamilyMember[]>([]);
   const [membersLoading, setMembersLoading] = useState<boolean>(true);
   const [activeTab, setActiveTab] = useState("stories");
@@ -44,12 +45,12 @@ const LegacyStoriesPage = () => {
   const deleteStoryMutation = useDeleteStory();
   
   // Wrapper functions to match old API
-  const createStory = async (request: any) => {
+  const createStory = async (request: CreateStoryRequest) => {
     const result = await createStoryMutation.mutateAsync(request);
     return result;
   };
   
-  const updateStory = async (request: any) => {
+  const updateStory = async (request: UpdateStoryRequest) => {
     const result = await updateStoryMutation.mutateAsync(request);
     return result;
   };
@@ -100,7 +101,7 @@ const LegacyStoriesPage = () => {
     setIsEditorOpen(true);
   };
 
-  const handleStorySave = (story: any) => {
+  const handleStorySave = (story: FamilyStory) => {
     setIsEditorOpen(false);
     // The createStory function from useStories hook will update the local state
   };

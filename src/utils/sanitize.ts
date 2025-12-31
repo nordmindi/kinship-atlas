@@ -18,7 +18,7 @@ const sanitizeConfig: DOMPurify.Config = {
   ALLOWED_ATTR: [
     'href', 'title', 'alt', 'src', 'class', 'style'
   ],
-  ALLOWED_URI_REGEXP: /^(?:(?:(?:f|ht)tps?|mailto|tel|callto|sms|cid|xmpp|data):|[^a-z]|[a-z+.\-]+(?:[^a-z+.\-:]|$))/i,
+  ALLOWED_URI_REGEXP: /^(?:(?:(?:f|ht)tps?|mailto|tel|callto|sms|cid|xmpp|data):|[^a-z]|[a-z+.\\-]+(?:[^a-z+.\\-:]|$))/i,
   KEEP_CONTENT: true,
   RETURN_DOM: false,
   RETURN_DOM_FRAGMENT: false,

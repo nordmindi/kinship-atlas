@@ -51,11 +51,12 @@ const Auth = () => {
       
       console.log('🧭 Navigating to home...');
       navigate("/");
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.log('❌ Catch block, error:', error);
+      const errorMessage = error instanceof Error ? error.message : "Please check your credentials and try again.";
       toast({
         title: "Sign in failed",
-        description: error?.message || "Please check your credentials and try again.",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -96,10 +97,11 @@ const Auth = () => {
         title: "Account created!",
         description: "Please check your email to confirm your account.",
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "Could not create your account. Please try again.";
       toast({
         title: "Sign up failed",
-        description: error?.message || "Could not create your account. Please try again.",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {

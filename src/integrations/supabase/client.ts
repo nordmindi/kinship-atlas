@@ -82,7 +82,7 @@ if (typeof window !== 'undefined') {
               
               // Remove if it contains a different host/port than current
               // Check for any URL that doesn't match current host
-              const urlMatches = valueStr.match(/https?:\/\/([^\/\s"']+)/g);
+              const urlMatches = valueStr.match(/https?:\/\/([^/\s"']+)/g);
               if (urlMatches) {
                 urlMatches.forEach(match => {
                   try {
