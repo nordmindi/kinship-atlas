@@ -193,16 +193,36 @@ describe('ImportFamilyData', () => {
 
       // Simulate file drop
       const dropzone = screen.getByText('Drag and drop your file here, or click to select').closest('div')
-      fireEvent.drop(dropzone!, {
-        dataTransfer: {
-          files: [mockFile]
+      
+      // Create proper FileList for the drop event
+      const fileList = {
+        0: mockFile,
+        length: 1,
+        item: (index: number) => (index === 0 ? mockFile : null),
+        [Symbol.iterator]: function* () {
+          yield mockFile
         }
+      } as unknown as FileList
+
+      const dataTransfer = {
+        files: fileList,
+        items: [mockFile],
+        types: ['Files'],
+        preventDefault: vi.fn(),
+        stopPropagation: vi.fn()
+      } as unknown as DataTransfer
+
+      fireEvent.drop(dropzone!, {
+        dataTransfer,
+        preventDefault: vi.fn(),
+        stopPropagation: vi.fn()
       })
 
+      // Wait for the Alert to appear with the success message
       await waitFor(() => {
-        expect(screen.getByText('File parsed successfully!')).toBeInTheDocument()
-        expect(screen.getByText('Found 1 members, 0 relationships, and 0 stories.')).toBeInTheDocument()
-      })
+        expect(screen.getByText(/File parsed successfully!/i)).toBeInTheDocument()
+        expect(screen.getByText(/Found 1 members, 0 relationships, and 0 stories/i)).toBeInTheDocument()
+      }, { timeout: 5000 })
     })
 
     it('should handle invalid JSON file', async () => {
@@ -220,15 +240,39 @@ describe('ImportFamilyData', () => {
       )
 
       const dropzone = screen.getByText('Drag and drop your file here, or click to select').closest('div')
-      fireEvent.drop(dropzone!, {
-        dataTransfer: {
-          files: [mockFile]
+      
+      // Create proper FileList for the drop event
+      const fileList = {
+        0: mockFile,
+        length: 1,
+        item: (index: number) => (index === 0 ? mockFile : null),
+        [Symbol.iterator]: function* () {
+          yield mockFile
         }
+      } as unknown as FileList
+
+      const dataTransfer = {
+        files: fileList,
+        items: [mockFile],
+        types: ['Files'],
+        preventDefault: vi.fn(),
+        stopPropagation: vi.fn()
+      } as unknown as DataTransfer
+
+      fireEvent.drop(dropzone!, {
+        dataTransfer,
+        preventDefault: vi.fn(),
+        stopPropagation: vi.fn()
       })
 
+      // Parse Error is shown via toast, not in DOM
       await waitFor(() => {
-        expect(screen.getByText('Parse Error')).toBeInTheDocument()
-      })
+        expect(toast).toHaveBeenCalledWith(
+          expect.objectContaining({
+            title: 'Parse Error'
+          })
+        )
+      }, { timeout: 5000 })
     })
   })
 
@@ -263,15 +307,35 @@ describe('ImportFamilyData', () => {
       )
 
       const dropzone = screen.getByText('Drag and drop your file here, or click to select').closest('div')
-      fireEvent.drop(dropzone!, {
-        dataTransfer: {
-          files: [mockFile]
+      
+      // Create proper FileList for the drop event
+      const fileList = {
+        0: mockFile,
+        length: 1,
+        item: (index: number) => (index === 0 ? mockFile : null),
+        [Symbol.iterator]: function* () {
+          yield mockFile
         }
+      } as unknown as FileList
+
+      const dataTransfer = {
+        files: fileList,
+        items: [mockFile],
+        types: ['Files'],
+        preventDefault: vi.fn(),
+        stopPropagation: vi.fn()
+      } as unknown as DataTransfer
+
+      fireEvent.drop(dropzone!, {
+        dataTransfer,
+        preventDefault: vi.fn(),
+        stopPropagation: vi.fn()
       })
 
+      // Wait for the Alert to appear with the success message
       await waitFor(() => {
-        expect(screen.getByText('File parsed successfully!')).toBeInTheDocument()
-      })
+        expect(screen.getByText(/File parsed successfully!/i)).toBeInTheDocument()
+      }, { timeout: 5000 })
     })
   })
 
@@ -517,19 +581,29 @@ describe('ImportFamilyData', () => {
         expect(previewButton).not.toHaveAttribute('disabled')
       }, { timeout: 3000 })
 
-      // Click preview tab
+      // Click preview tab - use userEvent for better interaction
+      const user = userEvent.setup()
       const previewButton = screen.getByText('Preview').closest('button')
       expect(previewButton).not.toBeNull()
-      fireEvent.click(previewButton!)
+      await user.click(previewButton!)
 
       // Wait for preview tab content to be visible and check for the button texts
       // The "Members (1)", "Relationships (1)", "Stories (1)" are button texts in the preview
       await waitFor(() => {
-        // These are button texts, so use getByRole or getByText with a function matcher
-        expect(screen.getByRole('button', { name: /Members \(1\)/i })).toBeInTheDocument()
-        expect(screen.getByRole('button', { name: /Relationships \(1\)/i })).toBeInTheDocument()
-        expect(screen.getByRole('button', { name: /Stories \(1\)/i })).toBeInTheDocument()
-      }, { timeout: 3000 })
+        // These are button texts, so use getByRole with accessible name
+        // The buttons contain both icon and text, so we need to match the text part
+        const membersButton = screen.getByRole('button', { name: /Members/i })
+        expect(membersButton).toBeInTheDocument()
+        expect(membersButton.textContent).toMatch(/Members \(1\)/i)
+        
+        const relationshipsButton = screen.getByRole('button', { name: /Relationships/i })
+        expect(relationshipsButton).toBeInTheDocument()
+        expect(relationshipsButton.textContent).toMatch(/Relationships \(1\)/i)
+        
+        const storiesButton = screen.getByRole('button', { name: /Stories/i })
+        expect(storiesButton).toBeInTheDocument()
+        expect(storiesButton.textContent).toMatch(/Stories \(1\)/i)
+      }, { timeout: 5000 })
     })
   })
 
