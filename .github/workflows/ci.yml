@@ -58,13 +58,15 @@ jobs:
           VITE_SUPABASE_MODE: local
           VITE_SUPABASE_URL_LOCAL: ${{ env.SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY_LOCAL: ${{ env.SUPABASE_ANON_KEY }}
+          CI: true
 
       - name: Upload coverage reports
         uses: codecov/codecov-action@v5
         if: always()
+        continue-on-error: true
         with:
           files: ./coverage/lcov.info
-          fail_ci_if_error: true
+          fail_ci_if_error: false
           token: ${{ secrets.CODECOV_TOKEN }}
           flags: unittests
           name: codecov-umbrella
@@ -102,14 +104,22 @@ jobs:
           VITE_SUPABASE_MODE: local
           VITE_SUPABASE_URL_LOCAL: ${{ env.SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY_LOCAL: ${{ env.SUPABASE_ANON_KEY }}
+          NODE_ENV: production
+          CI: true
+        continue-on-error: false
 
       - name: Check build artifacts
         run: |
           if [ ! -d "dist" ]; then
-            echo "Build failed: dist directory not found"
+            echo "❌ Build failed: dist directory not found"
             exit 1
           fi
-          echo "Build successful: dist directory exists"
+          if [ ! -f "dist/index.html" ]; then
+            echo "❌ Build failed: dist/index.html not found"
+            exit 1
+          fi
+          echo "✅ Build successful: dist directory exists with index.html"
+          ls -la dist/ | head -10
 
   # Database Health Check
   health-check:

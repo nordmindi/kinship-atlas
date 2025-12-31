@@ -4,8 +4,11 @@ import path from "path";
 // lovable-tagger is optional; guard require to avoid dev startup failure if absent
 let componentTagger: (() => any) | undefined;
 try {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  componentTagger = require('lovable-tagger').componentTagger;
+  // Only load in development and if not in CI
+  if (process.env.NODE_ENV !== 'production' && !process.env.CI) {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    componentTagger = require('lovable-tagger').componentTagger;
+  }
 } catch (e) {
   componentTagger = undefined;
 }
