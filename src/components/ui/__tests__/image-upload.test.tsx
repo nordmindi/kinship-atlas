@@ -54,7 +54,6 @@ describe('ImageUpload', () => {
   })
 
   it('should reject non-image files', async () => {
-    const user = userEvent.setup()
     const mockFile = new File(['test'], 'test.pdf', { type: 'application/pdf' })
 
     const { container } = render(<ImageUpload onImageUploaded={mockOnImageUploaded} />)
@@ -62,7 +61,23 @@ describe('ImageUpload', () => {
     const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement
     expect(fileInput).toBeInTheDocument()
     
-    await user.upload(fileInput, mockFile)
+    // Create a mock FileList without using DataTransfer (not available in JSDOM)
+    const fileList = {
+      0: mockFile,
+      length: 1,
+      item: (index: number) => (index === 0 ? mockFile : null),
+      [Symbol.iterator]: function* () {
+        yield mockFile
+      }
+    } as unknown as FileList
+
+    Object.defineProperty(fileInput, 'files', {
+      value: fileList,
+      writable: false,
+      configurable: true
+    })
+
+    fireEvent.change(fileInput)
 
     await waitFor(() => {
       expect(toast).toHaveBeenCalledWith(
@@ -76,7 +91,6 @@ describe('ImageUpload', () => {
   })
 
   it('should reject files larger than 5MB', async () => {
-    const user = userEvent.setup()
     // Create a file larger than 3MB (component limit is 3MB, not 5MB)
     const largeFile = new File(['x'.repeat(4 * 1024 * 1024)], 'large.jpg', { type: 'image/jpeg' })
 
@@ -85,7 +99,23 @@ describe('ImageUpload', () => {
     const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement
     expect(fileInput).toBeInTheDocument()
     
-    await user.upload(fileInput, largeFile)
+    // Create a mock FileList without using DataTransfer (not available in JSDOM)
+    const fileList = {
+      0: largeFile,
+      length: 1,
+      item: (index: number) => (index === 0 ? largeFile : null),
+      [Symbol.iterator]: function* () {
+        yield largeFile
+      }
+    } as unknown as FileList
+
+    Object.defineProperty(fileInput, 'files', {
+      value: fileList,
+      writable: false,
+      configurable: true
+    })
+
+    fireEvent.change(fileInput)
 
     await waitFor(() => {
       expect(toast).toHaveBeenCalledWith(
