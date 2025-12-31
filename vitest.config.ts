@@ -47,14 +47,18 @@ export default defineConfig({
     // Timeout for individual tests
     testTimeout: 10000,
     hookTimeout: 10000,
-    // Configure worker pool to handle memory better - use single thread to reduce memory pressure
+    // Configure worker pool to handle memory better
     pool: 'threads',
     poolOptions: {
       threads: {
         singleThread: true, // Use single thread to reduce memory usage
         isolate: false, // Disable isolation to reduce memory overhead
+        minThreads: 1,
+        maxThreads: 1, // Force single thread
       },
     },
+    // Reduce memory usage by limiting concurrent tests
+    maxConcurrency: 1,
   },
   resolve: {
     alias: {

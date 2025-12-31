@@ -115,8 +115,6 @@ describe('ImageUpload', () => {
 
     vi.mocked(uploadFile).mockReturnValue(uploadPromise)
 
-    render(<ImageUpload onImageUploaded={mockOnImageUploaded} />)
-
     const { container } = render(<ImageUpload onImageUploaded={mockOnImageUploaded} />)
     
     const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement
@@ -124,9 +122,10 @@ describe('ImageUpload', () => {
     
     await user.upload(fileInput, mockFile)
 
-    // Should show loading state
+    // Should show loading state (Loader2 icon with animate-spin class)
     await waitFor(() => {
-      expect(screen.queryByRole('button', { name: /upload/i })).not.toBeInTheDocument()
+      const loader = container.querySelector('.animate-spin')
+      expect(loader).toBeInTheDocument()
     }, { timeout: 3000 })
 
     // Resolve the upload
@@ -142,8 +141,6 @@ describe('ImageUpload', () => {
     const mockFile = new File(['test'], 'test.jpg', { type: 'image/jpeg' })
 
     vi.mocked(uploadFile).mockRejectedValue(new Error('Upload failed'))
-
-    render(<ImageUpload onImageUploaded={mockOnImageUploaded} />)
 
     const { container } = render(<ImageUpload onImageUploaded={mockOnImageUploaded} />)
     
@@ -169,8 +166,6 @@ describe('ImageUpload', () => {
     const mockUrl = 'https://example.com/uploaded.jpg'
 
     vi.mocked(uploadFile).mockResolvedValue(mockUrl)
-
-    render(<ImageUpload onImageUploaded={mockOnImageUploaded} />)
 
     const { container } = render(<ImageUpload onImageUploaded={mockOnImageUploaded} />)
     

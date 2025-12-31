@@ -12,15 +12,15 @@ import { spawn } from 'child_process';
 const TEST_TIMEOUT = 300000; // 5 minutes
 let timeoutId;
 
-// Set NODE_OPTIONS for increased memory
-process.env.NODE_OPTIONS = process.env.NODE_OPTIONS || '--max-old-space-size=8192';
+// Set NODE_OPTIONS for increased memory (increased to 12GB for CI)
+process.env.NODE_OPTIONS = process.env.NODE_OPTIONS || '--max-old-space-size=12288';
 
 const testProcess = spawn('npx', ['vitest', 'run', '--reporter=verbose', '--no-watch', '--run'], {
   stdio: 'inherit',
   shell: true,
   env: {
     ...process.env,
-    NODE_OPTIONS: process.env.NODE_OPTIONS || '--max-old-space-size=8192',
+    NODE_OPTIONS: process.env.NODE_OPTIONS || '--max-old-space-size=12288',
   },
 });
 
