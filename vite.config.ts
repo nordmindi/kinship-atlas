@@ -7,7 +7,6 @@ let componentTagger: (() => any) | undefined;
 try {
   // Only load in development and if not in CI
   if (process.env.NODE_ENV !== 'production' && !process.env.CI) {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
     componentTagger = require('lovable-tagger').componentTagger;
   }
 } catch (e) {
