@@ -1,6 +1,6 @@
 import React from 'react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import ImageUpload from '../image-upload'
 import { uploadFile } from '@/services/supabaseService'
@@ -71,13 +71,19 @@ describe('ImageUpload', () => {
       }
     } as unknown as FileList
 
+    // Set files property on the input before triggering change
     Object.defineProperty(fileInput, 'files', {
       value: fileList,
       writable: false,
       configurable: true
     })
 
-    fireEvent.change(fileInput)
+    // Trigger change event - the handler will read from event.target.files
+    fireEvent.change(fileInput, {
+      target: {
+        files: fileList
+      }
+    } as any)
 
     await waitFor(() => {
       expect(toast).toHaveBeenCalledWith(

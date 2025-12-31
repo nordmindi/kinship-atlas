@@ -331,9 +331,15 @@ describe('ImportFamilyData', () => {
         }
       })
 
+      // Wait for file to be parsed (toast will be called)
+      await waitFor(() => {
+        expect(toast).toHaveBeenCalled()
+      }, { timeout: 3000 })
+
+      // Then wait for Start Import button to appear
       await waitFor(() => {
         expect(screen.getByText('Start Import')).toBeInTheDocument()
-      })
+      }, { timeout: 3000 })
 
       // Start import
       await user.click(screen.getByText('Start Import'))
@@ -402,21 +408,21 @@ describe('ImportFamilyData', () => {
         }
       })
 
-      // Wait for Preview tab to be enabled (this indicates file was parsed)
+      // Wait for file to be parsed (toast will be called)
+      await waitFor(() => {
+        expect(toast).toHaveBeenCalled()
+      }, { timeout: 3000 })
+
+      // Now wait for Preview tab to be enabled (this indicates file was parsed and importData is set)
       // The tab is enabled when importData is set
       await waitFor(() => {
         const previewTab = screen.getByText('Preview')
         expect(previewTab).toBeInTheDocument()
         const previewButton = previewTab.closest('button')
         expect(previewButton).not.toBeNull()
-        // Check that the button is not disabled
-        // The button should not have the disabled attribute, or it should be false
-        const hasDisabledAttr = previewButton?.hasAttribute('disabled')
-        const disabledValue = previewButton?.getAttribute('disabled')
-        // Button is enabled if disabled attribute doesn't exist or is explicitly false
-        const isEnabled = !hasDisabledAttr || disabledValue === 'false' || disabledValue === null
-        expect(isEnabled).toBe(true)
-      }, { timeout: 5000 })
+        // Check that the button is not disabled - it should not have the disabled attribute
+        expect(previewButton).not.toHaveAttribute('disabled')
+      }, { timeout: 3000 })
 
       // Click preview tab
       const previewButton = screen.getByText('Preview').closest('button')
