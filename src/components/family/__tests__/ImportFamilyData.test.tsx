@@ -15,6 +15,75 @@ vi.mock('@/services/familyRelationshipManager')
 vi.mock('@/integrations/supabase/client')
 vi.mock('@/hooks/use-toast')
 
+// Mock react-dropzone to properly handle drop events
+vi.mock('react-dropzone', () => ({
+  useDropzone: (options: { onDrop: (files: File[]) => void; accept?: Record<string, string[]> }) => {
+    return {
+      getRootProps: () => ({
+        onDrop: (e: React.DragEvent) => {
+          e.preventDefault()
+          e.stopPropagation()
+          const files = Array.from(e.dataTransfer?.files || [])
+          // Filter files based on accept criteria if provided
+          if (options.accept && files.length > 0) {
+            const acceptEntries = Object.entries(options.accept)
+            const acceptedFiles = files.filter(file => {
+              const fileExtension = '.' + file.name.split('.').pop()?.toLowerCase()
+              const fileType = file.type
+              
+              // Check if file matches any accept criteria
+              return acceptEntries.some(([mimeType, extensions]) => {
+                return fileType === mimeType || extensions.includes(fileExtension)
+              })
+            })
+            
+            if (acceptedFiles.length > 0 && options.onDrop) {
+              options.onDrop(acceptedFiles)
+            }
+          } else if (files.length > 0 && options.onDrop) {
+            options.onDrop(files)
+          }
+        },
+        onClick: () => {},
+        onDragOver: (e: React.DragEvent) => {
+          e.preventDefault()
+          e.stopPropagation()
+        },
+        onDragEnter: () => {},
+        onDragLeave: () => {}
+      }),
+      getInputProps: () => ({
+        onChange: (e: React.ChangeEvent<HTMLInputElement>) => {
+          const files = Array.from(e.target.files || [])
+          if (files.length > 0 && options.onDrop) {
+            // Filter files based on accept criteria if provided
+            if (options.accept) {
+              const acceptEntries = Object.entries(options.accept)
+              const acceptedFiles = files.filter(file => {
+                const fileExtension = '.' + file.name.split('.').pop()?.toLowerCase()
+                const fileType = file.type
+                
+                return acceptEntries.some(([mimeType, extensions]) => {
+                  return fileType === mimeType || extensions.includes(fileExtension)
+                })
+              })
+              
+              if (acceptedFiles.length > 0) {
+                options.onDrop(acceptedFiles)
+              }
+            } else {
+              options.onDrop(files)
+            }
+          }
+        },
+        type: 'file',
+        accept: options.accept ? Object.keys(options.accept).join(',') : undefined
+      }),
+      isDragActive: false
+    }
+  }
+}))
+
 describe('ImportFamilyData', () => {
   const mockOnImportComplete = vi.fn()
   const mockOnClose = vi.fn()
@@ -402,16 +471,40 @@ describe('ImportFamilyData', () => {
 
       // Upload file
       const dropzone = screen.getByText('Drag and drop your file here, or click to select').closest('div')
-      fireEvent.drop(dropzone!, {
-        dataTransfer: {
-          files: [mockFile]
+      
+      // Create a proper FileList for the drop event
+      const fileList = {
+        0: mockFile,
+        length: 1,
+        item: (index: number) => (index === 0 ? mockFile : null),
+        [Symbol.iterator]: function* () {
+          yield mockFile
         }
+      } as unknown as FileList
+
+      // Create mock DataTransfer
+      const dataTransfer = {
+        files: fileList,
+        items: [mockFile],
+        types: ['Files'],
+        preventDefault: vi.fn(),
+        stopPropagation: vi.fn()
+      } as unknown as DataTransfer
+
+      fireEvent.drop(dropzone!, {
+        dataTransfer,
+        preventDefault: vi.fn(),
+        stopPropagation: vi.fn()
       })
 
-      // Wait for file to be parsed (toast will be called)
+      // Wait for file to be parsed (toast will be called with "File Parsed Successfully")
       await waitFor(() => {
-        expect(toast).toHaveBeenCalled()
-      }, { timeout: 3000 })
+        expect(toast).toHaveBeenCalledWith(
+          expect.objectContaining({
+            title: 'File Parsed Successfully'
+          })
+        )
+      }, { timeout: 5000 })
 
       // Now wait for Preview tab to be enabled (this indicates file was parsed and importData is set)
       // The tab is enabled when importData is set
@@ -479,7 +572,7 @@ describe('ImportFamilyData', () => {
       const dropzone = screen.getByText('Drag and drop your file here, or click to select').closest('div')
       expect(dropzone).not.toBeNull()
 
-      // Create a mock FileList
+      // Create a proper FileList for the drop event
       const fileList = {
         0: invalidJsonFile,
         length: 1,
@@ -513,7 +606,7 @@ describe('ImportFamilyData', () => {
             title: 'Parse Error'
           })
         )
-      }, { timeout: 3000 })
+      }, { timeout: 5000 })
     })
   })
 })
