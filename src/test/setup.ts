@@ -136,3 +136,24 @@ global.matchMedia = vi.fn().mockImplementation((query) => ({
   removeEventListener: vi.fn(),
   dispatchEvent: vi.fn(),
 }))
+
+// Polyfill File.text() for JSDOM environment
+// JSDOM doesn't implement File.text() which is needed by ImportFamilyData component
+if (typeof File !== 'undefined' && !File.prototype.text) {
+  File.prototype.text = function(): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        if (typeof reader.result === 'string') {
+          resolve(reader.result);
+        } else {
+          reject(new Error('Failed to read file as text'));
+        }
+      };
+      reader.onerror = () => {
+        reject(new Error('Failed to read file'));
+      };
+      reader.readAsText(this);
+    });
+  };
+}

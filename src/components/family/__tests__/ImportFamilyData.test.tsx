@@ -522,11 +522,13 @@ describe('ImportFamilyData', () => {
       expect(previewButton).not.toBeNull()
       fireEvent.click(previewButton!)
 
-      // Wait for preview content to appear
+      // Wait for preview tab content to be visible and check for the button texts
+      // The "Members (1)", "Relationships (1)", "Stories (1)" are button texts in the preview
       await waitFor(() => {
-        expect(screen.getByText('Members (1)')).toBeInTheDocument()
-        expect(screen.getByText('Relationships (1)')).toBeInTheDocument()
-        expect(screen.getByText('Stories (1)')).toBeInTheDocument()
+        // These are button texts, so use getByRole or getByText with a function matcher
+        expect(screen.getByRole('button', { name: /Members \(1\)/i })).toBeInTheDocument()
+        expect(screen.getByRole('button', { name: /Relationships \(1\)/i })).toBeInTheDocument()
+        expect(screen.getByRole('button', { name: /Stories \(1\)/i })).toBeInTheDocument()
       }, { timeout: 3000 })
     })
   })
