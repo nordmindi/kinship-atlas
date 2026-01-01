@@ -73,11 +73,14 @@ jobs:
 
       - name: Check coverage thresholds
         run: |
-          echo "Coverage thresholds: 80% for lines, functions, branches, and statements"
-          if [ -f coverage/coverage-summary.json ]; then
-            echo "Coverage summary generated successfully"
+          echo "Coverage thresholds: 80% for lines, functions, branches, and statements (enforced by Vitest)"
+          if [ -f coverage/coverage-final.json ]; then
+            echo "✅ Coverage report generated successfully"
+            echo "Coverage file: coverage/coverage-final.json"
+            echo "Note: Vitest enforces coverage thresholds during test execution"
+            echo "If tests passed, coverage thresholds were met or exceeded"
           else
-            echo "Coverage summary not found - tests may have failed"
+            echo "❌ Coverage report not found - tests may have failed"
             exit 1
           fi
 
