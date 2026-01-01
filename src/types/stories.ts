@@ -7,8 +7,12 @@ export interface FamilyStory {
   createdAt: string;
   updatedAt: string;
   attrs?: Record<string, any>;
+  location?: string;
+  lat?: number;
+  lng?: number;
   relatedMembers: StoryMember[];
   media?: Media[];
+  artifacts?: Artifact[];
 }
 
 export interface StoryMember {
@@ -93,11 +97,15 @@ export interface CreateStoryRequest {
   title: string;
   content: string;
   date?: string;
+  location?: string;
+  lat?: number;
+  lng?: number;
   relatedMembers: {
     familyMemberId: string;
     role: 'protagonist' | 'witness' | 'narrator' | 'participant';
   }[];
   mediaIds?: string[];
+  artifactIds?: string[];
   attrs?: Record<string, any>;
 }
 
@@ -106,11 +114,15 @@ export interface UpdateStoryRequest {
   title?: string;
   content?: string;
   date?: string;
+  location?: string;
+  lat?: number;
+  lng?: number;
   relatedMembers?: {
     familyMemberId: string;
     role: 'protagonist' | 'witness' | 'narrator' | 'participant';
   }[];
   mediaIds?: string[];
+  artifactIds?: string[];
   attrs?: Record<string, any>;
 }
 
@@ -184,4 +196,45 @@ export interface EventWithPeople {
     name: string;
     role: string;
   }>;
+}
+
+export interface Artifact {
+  id: string;
+  name: string;
+  description?: string;
+  artifactType: 'document' | 'heirloom' | 'photo' | 'letter' | 'certificate' | 'other';
+  dateCreated?: string;
+  dateAcquired?: string;
+  condition?: string;
+  locationStored?: string;
+  ownerId?: string;
+  createdAt: string;
+  updatedAt: string;
+  attrs?: Record<string, any>;
+  media?: Media[];
+}
+
+export interface CreateArtifactRequest {
+  name: string;
+  description?: string;
+  artifactType: 'document' | 'heirloom' | 'photo' | 'letter' | 'certificate' | 'other';
+  dateCreated?: string;
+  dateAcquired?: string;
+  condition?: string;
+  locationStored?: string;
+  mediaIds?: string[];
+  attrs?: Record<string, any>;
+}
+
+export interface UpdateArtifactRequest {
+  id: string;
+  name?: string;
+  description?: string;
+  artifactType?: 'document' | 'heirloom' | 'photo' | 'letter' | 'certificate' | 'other';
+  dateCreated?: string;
+  dateAcquired?: string;
+  condition?: string;
+  locationStored?: string;
+  mediaIds?: string[];
+  attrs?: Record<string, any>;
 }

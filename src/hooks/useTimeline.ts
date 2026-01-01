@@ -71,11 +71,11 @@ export const useFamilyTimeline = (familyMemberIds: string[]) => {
     } finally {
       setIsLoading(false);
     }
-  }, [memberIdsKey]); // Use the stable key instead of the array
+  }, []); // memberIdsRef.current is used, so no dependencies needed
 
   useEffect(() => {
     fetchTimeline();
-  }, [fetchTimeline]);
+  }, [fetchTimeline, memberIdsKey]); // Depend on memberIdsKey to refetch when IDs change
 
   return {
     timeline,

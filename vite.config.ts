@@ -2,7 +2,6 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
 // lovable-tagger is optional; guard require to avoid dev startup failure if absent
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 let componentTagger: (() => any) | undefined;
 try {
   // Only load in development and if not in CI

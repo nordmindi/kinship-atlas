@@ -12,7 +12,9 @@ import {
   Edit, 
   Trash2,
   Eye,
-  X
+  X,
+  MapPin,
+  Package
 } from 'lucide-react';
 import { FamilyStory } from '@/types/stories';
 import { FamilyMember } from '@/types';
@@ -169,7 +171,7 @@ const StoryList: React.FC<StoryListProps> = ({
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
                     <CardTitle className="text-lg mb-2 group-hover:text-heritage-purple transition-colors">{story.title}</CardTitle>
-                    <div className="flex items-center gap-4 text-sm text-gray-600">
+                    <div className="flex items-center gap-4 text-sm text-gray-600 flex-wrap">
                       {story.date && (
                         <div className="flex items-center gap-1">
                           <Calendar className="h-4 w-4" />
@@ -180,6 +182,18 @@ const StoryList: React.FC<StoryListProps> = ({
                         <User className="h-4 w-4" />
                         {story.relatedMembers.length} {story.relatedMembers.length === 1 ? 'person' : 'people'}
                       </div>
+                      {story.location && (
+                        <div className="flex items-center gap-1">
+                          <MapPin className="h-4 w-4" />
+                          {story.location}
+                        </div>
+                      )}
+                      {story.artifacts && story.artifacts.length > 0 && (
+                        <div className="flex items-center gap-1">
+                          <Package className="h-4 w-4" />
+                          {story.artifacts.length} {story.artifacts.length === 1 ? 'artifact' : 'artifacts'}
+                        </div>
+                      )}
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
@@ -239,6 +253,43 @@ const StoryList: React.FC<StoryListProps> = ({
                         >
                           {member.familyMember?.firstName} {member.familyMember?.lastName}
                           <span className="ml-1 text-xs opacity-75">({member.role})</span>
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Location */}
+                {story.location && (
+                  <div className="mt-4">
+                    <h4 className="text-sm font-medium text-gray-900 mb-2 flex items-center gap-2">
+                      <MapPin className="h-4 w-4" />
+                      Location
+                    </h4>
+                    <p className="text-sm text-gray-700">{story.location}</p>
+                    {story.lat && story.lng && (
+                      <p className="text-xs text-gray-500 mt-1">
+                        Coordinates: {story.lat.toFixed(6)}, {story.lng.toFixed(6)}
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {/* Artifacts */}
+                {story.artifacts && story.artifacts.length > 0 && (
+                  <div className="mt-4">
+                    <h4 className="text-sm font-medium text-gray-900 mb-2 flex items-center gap-2">
+                      <Package className="h-4 w-4" />
+                      Artifacts ({story.artifacts.length})
+                    </h4>
+                    <div className="flex flex-wrap gap-2">
+                      {story.artifacts.map(artifact => (
+                        <Badge
+                          key={artifact.id}
+                          variant="outline"
+                          className="text-xs"
+                        >
+                          {artifact.name}
                         </Badge>
                       ))}
                     </div>
@@ -348,6 +399,52 @@ const StoryList: React.FC<StoryListProps> = ({
                         {member.familyMember?.firstName} {member.familyMember?.lastName}
                         <span className="ml-1 text-xs opacity-75">({member.role})</span>
                       </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Location in detail view */}
+              {selectedStory.location && (
+                <div>
+                  <h4 className="font-medium mb-2 flex items-center gap-2">
+                    <MapPin className="h-4 w-4" />
+                    Location
+                  </h4>
+                  <p className="text-sm text-gray-700">{selectedStory.location}</p>
+                  {selectedStory.lat && selectedStory.lng && (
+                    <p className="text-xs text-gray-500 mt-1">
+                      Coordinates: {selectedStory.lat.toFixed(6)}, {selectedStory.lng.toFixed(6)}
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {/* Artifacts in detail view */}
+              {selectedStory.artifacts && selectedStory.artifacts.length > 0 && (
+                <div>
+                  <h4 className="font-medium mb-2 flex items-center gap-2">
+                    <Package className="h-4 w-4" />
+                    Artifacts ({selectedStory.artifacts.length})
+                  </h4>
+                  <div className="space-y-2">
+                    {selectedStory.artifacts.map(artifact => (
+                      <div key={artifact.id} className="p-3 bg-gray-50 rounded-lg border">
+                        <div className="font-medium text-sm">{artifact.name}</div>
+                        {artifact.description && (
+                          <div className="text-xs text-gray-600 mt-1">{artifact.description}</div>
+                        )}
+                        <div className="flex items-center gap-2 mt-2">
+                          <Badge variant="outline" className="text-xs">
+                            {artifact.artifactType}
+                          </Badge>
+                          {artifact.dateCreated && (
+                            <span className="text-xs text-gray-500">
+                              Created: {new Date(artifact.dateCreated).getFullYear()}
+                            </span>
+                          )}
+                        </div>
+                      </div>
                     ))}
                   </div>
                 </div>

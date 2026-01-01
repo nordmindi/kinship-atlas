@@ -9,8 +9,13 @@ import {
   UploadMediaRequest,
   TimelineItem,
   StoryWithPeople,
-  EventWithPeople
+  EventWithPeople,
+  Artifact,
+  CreateArtifactRequest,
+  UpdateArtifactRequest,
+  Media
 } from '@/types/stories';
+import { isCurrentUserAdmin } from './userService';
 
 class StoryService {
   // Story Management
@@ -34,6 +39,9 @@ class StoryService {
           title: request.title,
           content: request.content,
           date: request.date || null,
+          location: request.location || null,
+          lat: request.lat || null,
+          lng: request.lng || null,
           author_id: user.id
         })
         .select('id')
@@ -76,6 +84,22 @@ class StoryService {
         }
       }
 
+      // Add artifacts if provided
+      if (request.artifactIds && request.artifactIds.length > 0) {
+        const { error: artifactsError } = await (supabase as any)
+          .from('story_artifacts')
+          .insert(
+            request.artifactIds.map(artifactId => ({
+              story_id: storyData.id,
+              artifact_id: artifactId
+            }))
+          );
+
+        if (artifactsError) {
+          console.error('Error adding story artifacts:', artifactsError);
+        }
+      }
+
       // Fetch the complete story
       const completeStory = await this.getStory(storyData.id);
       return { success: true, story: completeStory };
@@ -87,7 +111,15 @@ class StoryService {
 
   async getStory(storyId: string): Promise<FamilyStory | null> {
     try {
-      const { data, error } = await supabase
+      if (!storyId) {
+        console.error('getStory: storyId is required');
+        return null;
+      }
+
+      console.log('getStory: Fetching story with ID:', storyId);
+      
+      // First, fetch the story with members and media (matching getAllStories structure)
+      let { data, error } = await supabase
         .from('family_stories')
         .select(`
           *,
@@ -111,14 +143,210 @@ class StoryService {
         .eq('id', storyId)
         .single();
 
-      if (error) {
+      // If error is about missing location columns, retry with explicit columns
+      if (error && (error.message?.includes("'location' column") || 
+                    error.message?.includes("'lat' column") || 
+                    error.message?.includes("'lng' column"))) {
+        console.warn('getStory: Location columns not available in schema cache, fetching without them');
+        const { data: fallbackData, error: fallbackError } = await supabase
+          .from('family_stories')
+          .select(`
+            id,
+            title,
+            content,
+            date,
+            author_id,
+            created_at,
+            updated_at,
+            attrs,
+            story_members (
+              id,
+              role,
+              family_member_id,
+              family_members (
+                id,
+                first_name,
+                last_name
+              )
+            ),
+            story_media (
+              media_id,
+              media (
+                *
+              )
+            )
+          `)
+          .eq('id', storyId)
+          .single();
+        
+        if (fallbackError) {
+          console.error('Error fetching story (fallback):', fallbackError);
+          return null;
+        }
+        // Set location fields to undefined since they don't exist
+        if (fallbackData) {
+          data = fallbackData as any;
+          (data as any).location = undefined;
+          (data as any).lat = undefined;
+          (data as any).lng = undefined;
+        }
+        error = null;
+      } else if (error) {
         console.error('Error fetching story:', error);
+        console.error('Error details:', {
+          code: error.code,
+          message: error.message,
+          details: error.details,
+          hint: error.hint
+        });
         return null;
       }
 
-      return this.transformStoryData(data);
+      if (!data) {
+        console.warn('getStory: No data returned for story ID:', storyId);
+        return null;
+      }
+
+      // Fetch artifacts separately to avoid PostgREST schema cache issues
+      let artifacts: Artifact[] = [];
+      try {
+        // First, get artifact IDs from story_artifacts
+        const { data: storyArtifactsData, error: storyArtifactsError } = await (supabase as any)
+          .from('story_artifacts')
+          .select('artifact_id')
+          .eq('story_id', storyId);
+
+        // If story_artifacts table doesn't exist in PostgREST schema cache, skip artifacts
+        if (storyArtifactsError) {
+          if (storyArtifactsError.code === '42P01' || 
+              storyArtifactsError.message?.includes('does not exist') ||
+              storyArtifactsError.message?.includes('relation') ||
+              storyArtifactsError.status === 404 ||
+              storyArtifactsError.statusCode === 404) {
+            console.warn('getStory: story_artifacts table not available in PostgREST schema cache. Skipping artifacts.');
+            artifacts = [];
+          } else {
+            // Other errors - log but continue
+            console.warn('getStory: Error fetching story_artifacts:', storyArtifactsError);
+            artifacts = [];
+          }
+        } else if (storyArtifactsData && storyArtifactsData.length > 0) {
+          const artifactIds = storyArtifactsData.map((sa: any) => sa.artifact_id).filter(Boolean);
+          
+          // Fetch artifacts
+          const { data: artifactsData, error: artifactsError } = await (supabase as any)
+            .from('artifacts')
+            .select('*')
+            .in('id', artifactIds);
+
+          // If artifacts table doesn't exist, skip artifacts
+          if (artifactsError) {
+            if (artifactsError.code === '42P01' || 
+                artifactsError.message?.includes('does not exist') ||
+                artifactsError.message?.includes('relation') ||
+                artifactsError.status === 404 ||
+                artifactsError.statusCode === 404) {
+              console.warn('getStory: artifacts table not available in PostgREST schema cache. Skipping artifacts.');
+              artifacts = [];
+            } else {
+              // Other errors - log but continue
+              console.warn('getStory: Error fetching artifacts:', artifactsError);
+              artifacts = [];
+            }
+          } else if (artifactsData && artifactsData.length > 0) {
+            // Fetch media for all artifacts separately
+            const mediaMap: Record<string, Media[]> = {};
+            try {
+              // First get artifact_media relationships
+              const { data: artifactMediaData, error: artifactMediaError } = await (supabase as any)
+                .from('artifact_media')
+                .select('artifact_id, media_id')
+                .in('artifact_id', artifactIds);
+
+              // If artifact_media table doesn't exist, continue without media
+              if (artifactMediaError) {
+                if (artifactMediaError.code === '42P01' || 
+                    artifactMediaError.message?.includes('does not exist') ||
+                    artifactMediaError.message?.includes('relation') ||
+                    artifactMediaError.status === 404 ||
+                    artifactMediaError.statusCode === 404) {
+                  console.warn('getStory: artifact_media table not available. Continuing without artifact media.');
+                  // Continue without media - artifacts will still be returned
+                } else {
+                  console.warn('getStory: Error fetching artifact_media:', artifactMediaError);
+                }
+              } else if (artifactMediaData && artifactMediaData.length > 0) {
+                const mediaIds = artifactMediaData.map((am: any) => am.media_id).filter(Boolean);
+                
+                // Then fetch the actual media
+                if (mediaIds.length > 0) {
+                  const { data: mediaData, error: mediaError } = await (supabase as any)
+                    .from('media')
+                    .select('*')
+                    .in('id', mediaIds);
+
+                  if (!mediaError && mediaData) {
+                    // Create a map of media_id to media
+                    const mediaById: Record<string, Media> = {};
+                    mediaData.forEach((m: any) => {
+                      mediaById[m.id] = m;
+                    });
+
+                    // Group media by artifact_id
+                    artifactMediaData.forEach((am: any) => {
+                      if (am.artifact_id && am.media_id && mediaById[am.media_id]) {
+                        if (!mediaMap[am.artifact_id]) {
+                          mediaMap[am.artifact_id] = [];
+                        }
+                        mediaMap[am.artifact_id].push(mediaById[am.media_id]);
+                      }
+                    });
+                  }
+                }
+              }
+            } catch (mediaErr) {
+              console.warn('getStory: Could not fetch artifact media:', mediaErr);
+            }
+
+            // Transform artifacts and add media
+            artifacts = artifactsData
+              .map((artifactData: any) => {
+                const artifact = this.transformArtifactData(artifactData);
+                if (artifact) {
+                  artifact.media = mediaMap[artifact.id] || [];
+                }
+                return artifact;
+              })
+              .filter(Boolean);
+          } else {
+            artifacts = [];
+          }
+        }
+      } catch (artifactsErr: any) {
+        // If it's a "table doesn't exist" error, that's okay - artifacts feature may not be available
+        if (artifactsErr?.code === '42P01' || 
+            artifactsErr?.message?.includes('does not exist') ||
+            artifactsErr?.message?.includes('relation') ||
+            artifactsErr?.status === 404 ||
+            artifactsErr?.statusCode === 404) {
+          console.warn('getStory: Artifacts tables not available in PostgREST schema cache. Continuing without artifacts.');
+          artifacts = [];
+        } else {
+          console.warn('getStory: Could not fetch artifacts, continuing without them:', artifactsErr);
+          artifacts = [];
+        }
+        // Continue without artifacts - not critical for story display
+      }
+
+      console.log('getStory: Successfully fetched story:', data.id);
+      const story = this.transformStoryData(data);
+      // Add artifacts to the story
+      if (story) {
+        story.artifacts = artifacts;
+      }
+      return story;
     } catch (error) {
-      console.error('Error fetching story:', error);
+      console.error('Error fetching story (exception):', error);
       return null;
     }
   }
@@ -210,21 +438,67 @@ class StoryService {
         return { success: false, error: 'You must be logged in to update stories' };
       }
 
+      // Check if user is admin - admins can edit any story
+      const isAdmin = await isCurrentUserAdmin();
+      
       // Update the story
       const updateData: any = {};
       if (request.title !== undefined) updateData.title = request.title;
       if (request.content !== undefined) updateData.content = request.content;
       if (request.date !== undefined) updateData.date = request.date;
+      if (request.location !== undefined) updateData.location = request.location;
+      
+      // Only include lat/lng if they are valid numbers (not null, undefined, or NaN)
+      // This prevents errors if the columns don't exist in the schema cache
+      if (request.lat !== undefined && request.lat !== null && !isNaN(request.lat)) {
+        updateData.lat = request.lat;
+      }
+      if (request.lng !== undefined && request.lng !== null && !isNaN(request.lng)) {
+        updateData.lng = request.lng;
+      }
       // attrs may not exist on some DBs; avoid updating it for compatibility
 
-      const { error: storyError } = await supabase
+      // Build the query - admins can update any story, others can only update their own
+      let updateQuery = supabase
         .from('family_stories')
         .update(updateData)
-        .eq('id', request.id)
-        .eq('author_id', user.id);
+        .eq('id', request.id);
+      
+      // Only enforce author_id check if user is not admin
+      // RLS policies will handle the actual permission enforcement
+      if (!isAdmin) {
+        updateQuery = updateQuery.eq('author_id', user.id);
+      }
+
+      const { error: storyError } = await updateQuery;
 
       if (storyError) {
-        return { success: false, error: 'Failed to update story in database' };
+        // If the error is about missing location columns, try updating without them
+        if (storyError.message?.includes("'location' column") || 
+            storyError.message?.includes("'lat' column") || 
+            storyError.message?.includes("'lng' column")) {
+          console.warn('Location columns not available in schema cache, updating without location data');
+          const fallbackData = { ...updateData };
+          delete fallbackData.location;
+          delete fallbackData.lat;
+          delete fallbackData.lng;
+          
+          let fallbackQuery = supabase
+            .from('family_stories')
+            .update(fallbackData)
+            .eq('id', request.id);
+          
+          if (!isAdmin) {
+            fallbackQuery = fallbackQuery.eq('author_id', user.id);
+          }
+          
+          const { error: fallbackError } = await fallbackQuery;
+          if (fallbackError) {
+            return { success: false, error: 'Failed to update story in database' };
+          }
+        } else {
+          return { success: false, error: 'Failed to update story in database' };
+        }
       }
 
       // Update story members if provided
@@ -278,6 +552,31 @@ class StoryService {
         }
       }
 
+      // Update artifacts if provided
+      if (request.artifactIds) {
+        // Delete existing artifacts
+        await (supabase as any)
+          .from('story_artifacts')
+          .delete()
+          .eq('story_id', request.id);
+
+        // Add new artifacts
+        if (request.artifactIds.length > 0) {
+          const { error: artifactsError } = await (supabase as any)
+            .from('story_artifacts')
+            .insert(
+              request.artifactIds.map(artifactId => ({
+                story_id: request.id,
+                artifact_id: artifactId
+              }))
+            );
+
+          if (artifactsError) {
+            console.error('Error updating story artifacts:', artifactsError);
+          }
+        }
+      }
+
       // Fetch the updated story
       const updatedStory = await this.getStory(request.id);
       return { success: true, story: updatedStory };
@@ -299,11 +598,22 @@ class StoryService {
         return { success: false, error: 'You must be logged in to delete stories' };
       }
 
-      const { error } = await supabase
+      // Check if user is admin - admins can delete any story
+      const isAdmin = await isCurrentUserAdmin();
+      
+      // Build the delete query - admins can delete any story, others can only delete their own
+      let deleteQuery = supabase
         .from('family_stories')
         .delete()
-        .eq('id', storyId)
-        .eq('author_id', user.id);
+        .eq('id', storyId);
+      
+      // Only enforce author_id check if user is not admin
+      // RLS policies will handle the actual permission enforcement
+      if (!isAdmin) {
+        deleteQuery = deleteQuery.eq('author_id', user.id);
+      }
+
+      const { error } = await deleteQuery;
 
       if (error) {
         return { success: false, error: 'Failed to delete story from database' };
@@ -469,15 +779,30 @@ class StoryService {
   // Timeline Management
   async getMemberTimeline(memberId: string): Promise<TimelineItem[]> {
     try {
-      const { data, error } = await supabase
-        .rpc('get_member_timeline', { member_id: memberId });
+      // Note: This RPC function may not exist yet - using view instead
+      const { data, error } = await (supabase as any)
+        .from('v_member_timeline')
+        .select('*')
+        .eq('member_id', memberId)
+        .order('date', { ascending: false });
 
       if (error) {
         console.error('Error fetching member timeline:', error);
         return [];
       }
 
-      return data || [];
+      return (data || []).map((item: any) => ({
+        memberId: item.member_id,
+        itemType: item.item_type,
+        itemId: item.item_id,
+        title: item.title,
+        date: item.date,
+        location: item.location,
+        lat: item.lat,
+        lng: item.lng,
+        description: item.description,
+        content: item.content
+      }));
     } catch (error) {
       console.error('Error fetching member timeline:', error);
       return [];
@@ -548,6 +873,219 @@ class StoryService {
     }
   }
 
+  // Artifact Management
+  async createArtifact(request: CreateArtifactRequest): Promise<{ success: boolean; artifact?: Artifact; error?: string }> {
+    try {
+      let { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        const { data: sessionData } = await supabase.auth.getSession();
+        user = sessionData.session?.user ?? null;
+      }
+      if (!user) {
+        return { success: false, error: 'You must be logged in to create artifacts' };
+      }
+
+      const { data: artifactData, error: artifactError } = await (supabase as any)
+        .from('artifacts')
+        .insert({
+          name: request.name,
+          description: request.description,
+          artifact_type: request.artifactType,
+          date_created: request.dateCreated || null,
+          date_acquired: request.dateAcquired || null,
+          condition: request.condition,
+          location_stored: request.locationStored,
+          owner_id: user.id
+        })
+        .select('id')
+        .single();
+
+      if (artifactError) {
+        // Check if it's a "table doesn't exist" error (PostgREST schema cache issue)
+        if (artifactError.code === '42P01' || 
+            artifactError.message?.includes('does not exist') ||
+            artifactError.message?.includes('relation') ||
+            artifactError.status === 404 ||
+            artifactError.statusCode === 404 ||
+            (artifactError as any)?.code === 'PGRST200') {
+          console.error('createArtifact: artifacts table not available in PostgREST schema cache:', artifactError);
+          return { 
+            success: false, 
+            error: 'Artifacts feature is not available. The artifacts table exists but PostgREST cannot see it. Please restart Supabase (supabase stop && supabase start) to refresh the schema cache.' 
+          };
+        }
+        console.error('createArtifact: Error creating artifact:', artifactError);
+        return { 
+          success: false, 
+          error: artifactError.message || 'Failed to create artifact' 
+        };
+      }
+
+      // Add media if provided
+      if (request.mediaIds && request.mediaIds.length > 0) {
+        const { error: mediaError } = await (supabase as any)
+          .from('artifact_media')
+          .insert(
+            request.mediaIds.map(mediaId => ({
+              artifact_id: artifactData.id,
+              media_id: mediaId
+            }))
+          );
+
+        if (mediaError) {
+          console.error('Error adding artifact media:', mediaError);
+        }
+      }
+
+      const artifact = await this.getArtifact(artifactData.id);
+      return { success: true, artifact: artifact || undefined };
+    } catch (error) {
+      console.error('Error creating artifact:', error);
+      return { success: false, error: 'An unexpected error occurred' };
+    }
+  }
+
+  async getArtifact(artifactId: string): Promise<Artifact | null> {
+    try {
+      // Fetch artifact first
+      const { data, error } = await (supabase as any)
+        .from('artifacts')
+        .select('*')
+        .eq('id', artifactId)
+        .single();
+
+      if (error) {
+        // If table doesn't exist (PostgREST schema cache issue), return null
+        if (error.code === '42P01' || error.message?.includes('does not exist')) {
+          console.warn('getArtifact: artifacts table not available in PostgREST schema cache.');
+          return null;
+        }
+        console.error('Error fetching artifact:', error);
+        return null;
+      }
+
+      if (!data) {
+        return null;
+      }
+
+      // Fetch artifact media separately
+      let media: Media[] = [];
+      try {
+        // First get artifact_media relationships
+        const { data: artifactMediaData, error: artifactMediaError } = await (supabase as any)
+          .from('artifact_media')
+          .select('media_id')
+          .eq('artifact_id', artifactId);
+
+        // If artifact_media table doesn't exist, continue without media
+        if (artifactMediaError && (artifactMediaError.code === '42P01' || artifactMediaError.message?.includes('does not exist'))) {
+          console.warn('getArtifact: artifact_media table not available. Continuing without media.');
+          media = [];
+        } else if (!artifactMediaError && artifactMediaData && artifactMediaData.length > 0) {
+          const mediaIds = artifactMediaData.map((am: any) => am.media_id).filter(Boolean);
+          
+          // Then fetch the actual media
+          if (mediaIds.length > 0) {
+            const { data: mediaData, error: mediaError } = await (supabase as any)
+              .from('media')
+              .select('*')
+              .in('id', mediaIds);
+
+            if (!mediaError && mediaData) {
+              media = mediaData;
+            }
+          }
+        }
+      } catch (mediaErr) {
+        console.warn('getArtifact: Could not fetch artifact media:', mediaErr);
+      }
+
+      const artifact = this.transformArtifactData(data);
+      if (artifact) {
+        artifact.media = media;
+      }
+      return artifact;
+    } catch (error) {
+      console.error('Error fetching artifact:', error);
+      return null;
+    }
+  }
+
+  async getAllArtifacts(): Promise<Artifact[]> {
+    try {
+      // Fetch artifacts first
+      const { data, error } = await (supabase as any)
+        .from('artifacts')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching artifacts:', error);
+        return [];
+      }
+
+      if (!data || data.length === 0) {
+        return [];
+      }
+
+      // Fetch artifact media separately for all artifacts
+      const artifactIds = data.map((a: any) => a.id);
+      const mediaMap: Record<string, Media[]> = {};
+
+      try {
+        // First get artifact_media relationships
+        const { data: artifactMediaData, error: artifactMediaError } = await (supabase as any)
+          .from('artifact_media')
+          .select('artifact_id, media_id')
+          .in('artifact_id', artifactIds);
+
+        if (!artifactMediaError && artifactMediaData && artifactMediaData.length > 0) {
+          const mediaIds = artifactMediaData.map((am: any) => am.media_id).filter(Boolean);
+          
+          // Then fetch the actual media
+          if (mediaIds.length > 0) {
+            const { data: mediaData, error: mediaError } = await (supabase as any)
+              .from('media')
+              .select('*')
+              .in('id', mediaIds);
+
+            if (!mediaError && mediaData) {
+              // Create a map of media_id to media
+              const mediaById: Record<string, Media> = {};
+              mediaData.forEach((m: any) => {
+                mediaById[m.id] = m;
+              });
+
+              // Group media by artifact_id
+              artifactMediaData.forEach((am: any) => {
+                if (am.artifact_id && am.media_id && mediaById[am.media_id]) {
+                  if (!mediaMap[am.artifact_id]) {
+                    mediaMap[am.artifact_id] = [];
+                  }
+                  mediaMap[am.artifact_id].push(mediaById[am.media_id]);
+                }
+              });
+            }
+          }
+        }
+      } catch (mediaErr) {
+        console.warn('getAllArtifacts: Could not fetch artifact media:', mediaErr);
+      }
+
+      // Transform artifacts and add media
+      return data.map((artifactData: any) => {
+        const artifact = this.transformArtifactData(artifactData);
+        if (artifact) {
+          artifact.media = mediaMap[artifact.id] || [];
+        }
+        return artifact;
+      });
+    } catch (error) {
+      console.error('Error fetching artifacts:', error);
+      return [];
+    }
+  }
+
   // Helper methods
   private transformStoryData(data: any): FamilyStory {
     return {
@@ -559,6 +1097,9 @@ class StoryService {
       createdAt: data.created_at,
       updatedAt: data.updated_at,
       attrs: data.attrs,
+      location: data.location,
+      lat: data.lat,
+      lng: data.lng,
       relatedMembers: data.story_members?.map((sm: any) => ({
         id: sm.id,
         storyId: sm.story_id,
@@ -570,7 +1111,26 @@ class StoryService {
           lastName: sm.family_members.last_name
         } : undefined
       })) || [],
-      media: data.story_media?.map((sm: any) => sm.media).filter(Boolean) || []
+      media: data.story_media?.map((sm: any) => sm.media).filter(Boolean) || [],
+      artifacts: data.story_artifacts?.map((sa: any) => this.transformArtifactData(sa.artifacts)).filter(Boolean) || []
+    };
+  }
+
+  private transformArtifactData(data: any): Artifact {
+    return {
+      id: data.id,
+      name: data.name,
+      description: data.description,
+      artifactType: data.artifact_type,
+      dateCreated: data.date_created,
+      dateAcquired: data.date_acquired,
+      condition: data.condition,
+      locationStored: data.location_stored,
+      ownerId: data.owner_id,
+      createdAt: data.created_at,
+      updatedAt: data.updated_at,
+      attrs: data.attrs,
+      media: data.artifact_media?.map((am: any) => am.media).filter(Boolean) || []
     };
   }
 

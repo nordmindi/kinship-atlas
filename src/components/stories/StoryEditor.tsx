@@ -49,6 +49,8 @@ import { FamilyMember } from '@/types';
 import { useFamilyTree } from '@/contexts/FamilyTreeContext';
 import { CreateStoryRequest, UpdateStoryRequest, FamilyStory } from '@/types/stories';
 import { storyService } from '@/services/storyService';
+import LocationPicker from './LocationPicker';
+import ArtifactManager from './ArtifactManager';
 
 const storySchema = z.object({
   title: z.string().min(1, 'Title is required').max(200, 'Title is too long'),
@@ -87,6 +89,8 @@ const StoryEditor: React.FC<StoryEditorProps> = ({
   const [uploadedMedia, setUploadedMedia] = useState<string[]>([]);
   const [uploadedMediaPreview, setUploadedMediaPreview] = useState<Array<{ id: string; url: string; fileName?: string }>>([]);
   const [showWritingTips, setShowWritingTips] = useState(false);
+  const [location, setLocation] = useState<{ location?: string; lat?: number; lng?: number }>({});
+  const [selectedArtifactIds, setSelectedArtifactIds] = useState<string[]>([]);
 
   const form = useForm<StoryFormValues>({
     resolver: zodResolver(storySchema),
@@ -110,6 +114,21 @@ const StoryEditor: React.FC<StoryEditorProps> = ({
           familyMemberId: member.familyMemberId,
           role: member.role
         })));
+        setLocation({
+          location: existingStory.location,
+          lat: existingStory.lat,
+          lng: existingStory.lng
+        });
+        setSelectedArtifactIds(existingStory.artifacts?.map(a => a.id) || []);
+        // Set media previews
+        if (existingStory.media && existingStory.media.length > 0) {
+          setUploadedMedia(existingStory.media.map(m => m.id));
+          setUploadedMediaPreview(existingStory.media.map(m => ({
+            id: m.id,
+            url: m.url,
+            fileName: m.file_name || 'media'
+          })));
+        }
       } else {
         form.reset({
           title: '',
@@ -117,9 +136,11 @@ const StoryEditor: React.FC<StoryEditorProps> = ({
           date: ''
         });
         setSelectedMembers([]);
+        setLocation({});
+        setSelectedArtifactIds([]);
+        setUploadedMedia([]);
+        setUploadedMediaPreview([]);
       }
-      setUploadedMedia([]);
-      setUploadedMediaPreview([]);
       // Ensure we have latest members when opening
       const hasMembers = familyMembers && familyMembers.length > 0;
       if (!hasMembers) {
@@ -204,8 +225,12 @@ const StoryEditor: React.FC<StoryEditorProps> = ({
         title: values.title,
         content: values.content,
         date: values.date || undefined,
+        location: location.location,
+        lat: location.lat,
+        lng: location.lng,
         relatedMembers: selectedMembers,
-        mediaIds: uploadedMedia
+        mediaIds: uploadedMedia,
+        artifactIds: selectedArtifactIds.length > 0 ? selectedArtifactIds : undefined
       };
 
       let result;
@@ -495,6 +520,20 @@ const StoryEditor: React.FC<StoryEditorProps> = ({
                 )}
               </CardContent>
             </Card>
+
+            {/* Location Picker */}
+            <LocationPicker
+              location={location.location}
+              lat={location.lat}
+              lng={location.lng}
+              onLocationChange={setLocation}
+            />
+
+            {/* Artifact Manager */}
+            <ArtifactManager
+              selectedArtifactIds={selectedArtifactIds}
+              onArtifactsChange={setSelectedArtifactIds}
+            />
 
             <DialogFooter>
               <Button type="button" variant="outline" onClick={onClose}>

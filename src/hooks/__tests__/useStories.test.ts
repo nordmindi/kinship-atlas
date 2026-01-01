@@ -36,8 +36,12 @@ describe('useStories', () => {
         createdAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-01-01T00:00:00Z',
         attrs: null,
+        location: 'New York, USA',
+        lat: 40.7128,
+        lng: -74.0060,
         relatedMembers: [],
-        media: []
+        media: [],
+        artifacts: []
       }
     ]
 
@@ -84,14 +88,21 @@ describe('useStories', () => {
       createdAt: '2024-01-01T00:00:00Z',
       updatedAt: '2024-01-01T00:00:00Z',
       attrs: null,
+      location: 'New York, USA',
+      lat: 40.7128,
+      lng: -74.0060,
       relatedMembers: [],
-      media: []
+      media: [],
+      artifacts: []
     }
 
     const updatedStory = {
       ...existingStory,
       title: 'Updated Story',
-      content: 'Updated content'
+      content: 'Updated content',
+      location: 'Boston, USA',
+      lat: 42.3601,
+      lng: -71.0589
     }
 
     vi.mocked(storyService.getAllStories).mockResolvedValue([existingStory])
@@ -126,8 +137,12 @@ describe('useStories', () => {
       createdAt: '2024-01-01T00:00:00Z',
       updatedAt: '2024-01-01T00:00:00Z',
       attrs: null,
+      location: 'New York, USA',
+      lat: 40.7128,
+      lng: -74.0060,
       relatedMembers: [],
-      media: []
+      media: [],
+      artifacts: []
     }
 
     vi.mocked(storyService.getAllStories).mockResolvedValue([mockStory])
@@ -163,8 +178,12 @@ describe('useStory', () => {
       createdAt: '2024-01-01T00:00:00Z',
       updatedAt: '2024-01-01T00:00:00Z',
       attrs: null,
+      location: 'New York, USA',
+      lat: 40.7128,
+      lng: -74.0060,
       relatedMembers: [],
-      media: []
+      media: [],
+      artifacts: []
     }
 
     vi.mocked(storyService.getStory).mockResolvedValue(mockStory)
@@ -210,8 +229,12 @@ describe('useMemberStories', () => {
         createdAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-01-01T00:00:00Z',
         attrs: null,
+        location: 'New York, USA',
+        lat: 40.7128,
+        lng: -74.0060,
         relatedMembers: [],
-        media: []
+        media: [],
+        artifacts: []
       }
     ]
 

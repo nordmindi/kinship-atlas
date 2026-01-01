@@ -13,15 +13,25 @@ describe('usePermissions', () => {
   })
 
   it('should return correct permissions for admin user', async () => {
-    const mockUser = { id: 'user-123', email: 'admin@example.com' }
+    const mockUser = { id: 'user-123', email: 'admin@example.com' } as any
+    const mockUserProfile = { id: 'user-123', role: 'admin' as const, createdAt: '2024-01-01', updatedAt: '2024-01-01' }
     
     vi.mocked(useAuth).mockReturnValue({
       user: mockUser,
-      isAdmin: true,
+      userProfile: mockUserProfile,
+      session: null,
       isLoading: false,
+      isAdmin: true,
+      isEditor: false,
+      isViewer: false,
+      role: 'admin' as const,
+      canWrite: true,
+      canDelete: true,
+      canManageUsers: true,
       signIn: vi.fn(),
       signUp: vi.fn(),
-      signOut: vi.fn()
+      signOut: vi.fn(),
+      refreshUserProfile: vi.fn()
     } as any)
 
     const { result } = renderHook(() => usePermissions())
@@ -30,22 +40,32 @@ describe('usePermissions', () => {
     expect(result.current.isAuthenticated).toBe(true)
     expect(result.current.canAddFamilyMember()).toBe(true)
     expect(result.current.canDeleteFamilyMember()).toBe(true)
-    expect(result.current.canManageUsers()).toBe(true)
+    expect(result.current.canManageUsers).toBe(true)
 
     const canEdit = await result.current.canEditFamilyMember('member-123')
     expect(canEdit).toBe(true)
   })
 
   it('should return correct permissions for regular user', async () => {
-    const mockUser = { id: 'user-123', email: 'user@example.com' }
+    const mockUser = { id: 'user-123', email: 'user@example.com' } as any
+    const mockUserProfile = { id: 'user-123', role: 'editor' as const, createdAt: '2024-01-01', updatedAt: '2024-01-01' }
     
     vi.mocked(useAuth).mockReturnValue({
       user: mockUser,
-      isAdmin: false,
+      userProfile: mockUserProfile,
+      session: null,
       isLoading: false,
+      isAdmin: false,
+      isEditor: true,
+      isViewer: false,
+      role: 'editor' as const,
+      canWrite: true,
+      canDelete: false,
+      canManageUsers: false,
       signIn: vi.fn(),
       signUp: vi.fn(),
-      signOut: vi.fn()
+      signOut: vi.fn(),
+      refreshUserProfile: vi.fn()
     } as any)
 
     vi.mocked(canUserEditFamilyMember).mockResolvedValue(true)
@@ -56,7 +76,7 @@ describe('usePermissions', () => {
     expect(result.current.isAuthenticated).toBe(true)
     expect(result.current.canAddFamilyMember()).toBe(true)
     expect(result.current.canDeleteFamilyMember()).toBe(false)
-    expect(result.current.canManageUsers()).toBe(false)
+    expect(result.current.canManageUsers).toBe(false)
 
     const canEdit = await result.current.canEditFamilyMember('member-123')
     expect(canEdit).toBe(true)
@@ -66,11 +86,20 @@ describe('usePermissions', () => {
   it('should return false for unauthenticated user', async () => {
     vi.mocked(useAuth).mockReturnValue({
       user: null,
-      isAdmin: false,
+      userProfile: null,
+      session: null,
       isLoading: false,
+      isAdmin: false,
+      isEditor: false,
+      isViewer: false,
+      role: null,
+      canWrite: false,
+      canDelete: false,
+      canManageUsers: false,
       signIn: vi.fn(),
       signUp: vi.fn(),
-      signOut: vi.fn()
+      signOut: vi.fn(),
+      refreshUserProfile: vi.fn()
     } as any)
 
     const { result } = renderHook(() => usePermissions())
@@ -78,36 +107,49 @@ describe('usePermissions', () => {
     expect(result.current.isAuthenticated).toBe(false)
     expect(result.current.canAddFamilyMember()).toBe(false)
     expect(result.current.canDeleteFamilyMember()).toBe(false)
-    expect(result.current.canManageUsers()).toBe(false)
+    expect(result.current.canManageUsers).toBe(false)
 
     const canEdit = await result.current.canEditFamilyMember('member-123')
     expect(canEdit).toBe(false)
   })
 
     it('should cache permission results', async () => {
-      const mockUser = { id: 'user-123', email: 'user@example.com' }
+      const mockUser = { id: 'user-123', email: 'user@example.com' } as any
+      const mockUserProfile = { id: 'user-123', role: 'editor' as const, createdAt: '2024-01-01', updatedAt: '2024-01-01' }
       
       vi.mocked(useAuth).mockReturnValue({
         user: mockUser,
-        isAdmin: false,
+        userProfile: mockUserProfile,
+        session: null,
         isLoading: false,
+        isAdmin: false,
+        isEditor: true,
+        isViewer: false,
+        role: 'editor' as const,
+        canWrite: true,
+        canDelete: false,
+        canManageUsers: false,
         signIn: vi.fn(),
         signUp: vi.fn(),
-        signOut: vi.fn()
+        signOut: vi.fn(),
+        refreshUserProfile: vi.fn()
       } as any)
 
       vi.mocked(canUserEditFamilyMember).mockResolvedValue(true)
 
-      const { result } = renderHook(() => usePermissions())
+      const { result, waitForNextUpdate } = renderHook(() => usePermissions())
 
       // First call
       const canEdit1 = await result.current.canEditFamilyMember('member-123')
       expect(canEdit1).toBe(true)
       expect(canUserEditFamilyMember).toHaveBeenCalledTimes(1)
 
-      // Second call should use cache - wait a bit to ensure state has settled
-      await new Promise(resolve => setTimeout(resolve, 10))
+      // Wait for state to update (cache to be set)
+      await waitFor(() => {
+        expect(canUserEditFamilyMember).toHaveBeenCalledTimes(1)
+      }, { timeout: 100 })
 
+      // Second call should use cache
       const canEdit2 = await result.current.canEditFamilyMember('member-123')
       expect(canEdit2).toBe(true)
       // The function should still only be called once due to caching
@@ -115,15 +157,25 @@ describe('usePermissions', () => {
     })
 
   it('should clear cache', async () => {
-    const mockUser = { id: 'user-123', email: 'user@example.com' }
+    const mockUser = { id: 'user-123', email: 'user@example.com' } as any
+    const mockUserProfile = { id: 'user-123', role: 'editor' as const, createdAt: '2024-01-01', updatedAt: '2024-01-01' }
     
     vi.mocked(useAuth).mockReturnValue({
       user: mockUser,
-      isAdmin: false,
+      userProfile: mockUserProfile,
+      session: null,
       isLoading: false,
+      isAdmin: false,
+      isEditor: true,
+      isViewer: false,
+      role: 'editor' as const,
+      canWrite: true,
+      canDelete: false,
+      canManageUsers: false,
       signIn: vi.fn(),
       signUp: vi.fn(),
-      signOut: vi.fn()
+      signOut: vi.fn(),
+      refreshUserProfile: vi.fn()
     } as any)
 
     vi.mocked(canUserEditFamilyMember).mockResolvedValue(true)
@@ -140,15 +192,25 @@ describe('usePermissions', () => {
   })
 
   it('should handle permission check errors', async () => {
-    const mockUser = { id: 'user-123', email: 'user@example.com' }
+    const mockUser = { id: 'user-123', email: 'user@example.com' } as any
+    const mockUserProfile = { id: 'user-123', role: 'editor' as const, createdAt: '2024-01-01', updatedAt: '2024-01-01' }
     
     vi.mocked(useAuth).mockReturnValue({
       user: mockUser,
-      isAdmin: false,
+      userProfile: mockUserProfile,
+      session: null,
       isLoading: false,
+      isAdmin: false,
+      isEditor: true,
+      isViewer: false,
+      role: 'editor' as const,
+      canWrite: true,
+      canDelete: false,
+      canManageUsers: false,
       signIn: vi.fn(),
       signUp: vi.fn(),
-      signOut: vi.fn()
+      signOut: vi.fn(),
+      refreshUserProfile: vi.fn()
     } as any)
 
     vi.mocked(canUserEditFamilyMember).mockRejectedValue(new Error('Permission check failed'))
