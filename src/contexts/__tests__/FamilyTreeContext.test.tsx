@@ -42,7 +42,7 @@ describe('FamilyTreeContext', () => {
     })
     vi.mocked(supabase.auth.onAuthStateChange).mockReturnValue({
       data: { subscription: { unsubscribe: vi.fn() } }
-    } as { data: { subscription: { unsubscribe: () => void } } } })
+    } as { data: { subscription: { unsubscribe: () => void } } })
   })
 
   describe('Initial State', () => {
