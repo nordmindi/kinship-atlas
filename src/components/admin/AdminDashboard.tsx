@@ -6,7 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Crown, Users, UserCheck, UserX, Shield, Database } from 'lucide-react';
-import { UserProfile, FamilyMember } from '@/types';
+import { UserProfile, FamilyMember, UserRole } from '@/types';
 import { getAllUsers, updateUserRole } from '@/services/userService';
 import { getFamilyMembers } from '@/services/supabaseService';
 import { toast } from '@/hooks/use-toast';
@@ -42,7 +42,7 @@ const AdminDashboard: React.FC = () => {
     }
   };
 
-  const handleRoleUpdate = async (userId: string, newRole: 'admin' | 'family_member') => {
+  const handleRoleUpdate = async (userId: string, newRole: UserRole) => {
     setUpdatingRole(userId);
     try {
       const success = await updateUserRole(userId, newRole);
@@ -70,7 +70,8 @@ const AdminDashboard: React.FC = () => {
   };
 
   const adminCount = users.filter(user => user.role === 'admin').length;
-  const familyMemberCount = users.filter(user => user.role === 'family_member').length;
+  const editorCount = users.filter(user => user.role === 'editor').length;
+  const viewerCount = users.filter(user => user.role === 'viewer').length;
   const totalMembers = familyMembers.length;
   const rootMembers = familyMembers.filter(member => member.isRootMember).length;
 
@@ -104,7 +105,7 @@ const AdminDashboard: React.FC = () => {
           <CardContent>
             <div className="text-2xl font-bold">{users.length}</div>
             <p className="text-xs text-muted-foreground">
-              {adminCount} admins, {familyMemberCount} family members
+              {adminCount} admins, {editorCount} editors, {viewerCount} viewers
             </p>
           </CardContent>
         </Card>
@@ -137,13 +138,26 @@ const AdminDashboard: React.FC = () => {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Family Members</CardTitle>
+            <CardTitle className="text-sm font-medium">Editors</CardTitle>
             <UserCheck className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{familyMemberCount}</div>
+            <div className="text-2xl font-bold">{editorCount}</div>
             <p className="text-xs text-muted-foreground">
-              Branch-level access
+              Can manage families and members
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Viewers</CardTitle>
+            <UserX className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{viewerCount}</div>
+            <p className="text-xs text-muted-foreground">
+              Read-only access
             </p>
           </CardContent>
         </Card>
@@ -184,16 +198,25 @@ const AdminDashboard: React.FC = () => {
                         </div>
                       </TableCell>
                       <TableCell>
-                        <Badge variant={user.role === 'admin' ? 'default' : 'secondary'}>
+                        <Badge variant={
+                          user.role === 'admin' ? 'default' : 
+                          user.role === 'editor' ? 'secondary' : 
+                          'outline'
+                        }>
                           {user.role === 'admin' ? (
                             <>
                               <Crown className="h-3 w-3 mr-1" />
                               Admin
                             </>
-                          ) : (
+                          ) : user.role === 'editor' ? (
                             <>
                               <UserCheck className="h-3 w-3 mr-1" />
-                              Family Member
+                              Editor
+                            </>
+                          ) : (
+                            <>
+                              <UserX className="h-3 w-3 mr-1" />
+                              Viewer
                             </>
                           )}
                         </Badge>
@@ -204,7 +227,7 @@ const AdminDashboard: React.FC = () => {
                       <TableCell>
                         <Select
                           value={user.role}
-                          onValueChange={(newRole: 'admin' | 'family_member') => 
+                          onValueChange={(newRole: UserRole) => 
                             handleRoleUpdate(user.id, newRole)
                           }
                           disabled={updatingRole === user.id}
@@ -213,10 +236,16 @@ const AdminDashboard: React.FC = () => {
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="family_member">
+                            <SelectItem value="viewer">
+                              <div className="flex items-center">
+                                <UserX className="h-4 w-4 mr-2" />
+                                Viewer
+                              </div>
+                            </SelectItem>
+                            <SelectItem value="editor">
                               <div className="flex items-center">
                                 <UserCheck className="h-4 w-4 mr-2" />
-                                Family Member
+                                Editor
                               </div>
                             </SelectItem>
                             <SelectItem value="admin">

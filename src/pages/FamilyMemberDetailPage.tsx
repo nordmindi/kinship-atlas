@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import MobileLayout from "@/components/layout/MobileLayout";
 import { useAuth } from "@/contexts/AuthContext";
+import { usePermissions } from "@/hooks/usePermissions";
 import { Navigate } from "react-router-dom";
 import { FamilyMember } from '@/types';
 import { getFamilyMembers, updateFamilyMemberAvatar, updateFamilyMember } from '@/services/supabaseService';
@@ -46,7 +47,8 @@ import Timeline from '@/components/stories/Timeline';
 import { useMemberTimeline } from '@/hooks/useTimeline';
 
 const FamilyMemberDetailPage = () => {
-  const { user, isLoading: authLoading } = useAuth();
+  const { user, isLoading: authLoading, canWrite } = useAuth();
+  const { canEditFamilyMember } = usePermissions();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [member, setMember] = useState<FamilyMember | null>(null);
@@ -164,12 +166,19 @@ const FamilyMemberDetailPage = () => {
   }, [id, user]);
 
   // Refresh data when page comes back into focus (e.g., after navigating away and back)
+  // Only refresh if data might be stale (avoid unnecessary refreshes)
   useEffect(() => {
+    let lastRefreshTime = Date.now();
+    const STALE_THRESHOLD = 1000 * 60 * 2; // 2 minutes - only refresh if data is older than this
+
     const handleFocus = () => {
-      if (id && user && member) {
+      // Only refresh if we have a member and enough time has passed since last refresh
+      const timeSinceLastRefresh = Date.now() - lastRefreshTime;
+      if (id && user && member && timeSinceLastRefresh > STALE_THRESHOLD) {
         console.log('🔄 Page focused, refreshing member data...');
         const refreshData = async () => {
           try {
+            // Don't set loading state - just update in background
             const allMembers = await getFamilyMembers();
             const currentMember = allMembers.find(m => m.id === id);
             if (currentMember) {
@@ -178,9 +187,11 @@ const FamilyMemberDetailPage = () => {
                 avatar: currentMember.avatar || 'no avatar'
               });
               setMember(currentMember);
+              lastRefreshTime = Date.now();
             }
           } catch (error) {
             console.error('Error refreshing data on focus:', error);
+            // Don't show error to user - this is a background refresh
           }
         };
         refreshData();
@@ -560,39 +571,41 @@ const FamilyMemberDetailPage = () => {
                   </div>
                   
                   {/* Edit Controls */}
-                  <div className="flex gap-2 mt-4">
-                    {isEditing ? (
-                      <>
+                  {canWrite && (
+                    <div className="flex gap-2 mt-4">
+                      {isEditing ? (
+                        <>
+                          <Button
+                            size="sm"
+                            onClick={handleSaveChanges}
+                            disabled={isSaving}
+                            className="bg-green-600 hover:bg-green-700"
+                          >
+                            <Save className="h-4 w-4 mr-2" />
+                            {isSaving ? 'Saving...' : 'Save'}
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={handleCancelEdit}
+                            disabled={isSaving}
+                          >
+                            <X className="h-4 w-4 mr-2" />
+                            Cancel
+                          </Button>
+                        </>
+                      ) : (
                         <Button
-                          size="sm"
-                          onClick={handleSaveChanges}
-                          disabled={isSaving}
-                          className="bg-green-600 hover:bg-green-700"
-                        >
-                          <Save className="h-4 w-4 mr-2" />
-                          {isSaving ? 'Saving...' : 'Save'}
-                        </Button>
-                        <Button
-                          size="sm"
                           variant="outline"
-                          onClick={handleCancelEdit}
-                          disabled={isSaving}
+                          size="sm"
+                          onClick={handleEditToggle}
                         >
-                          <X className="h-4 w-4 mr-2" />
-                          Cancel
+                          <Edit className="h-4 w-4 mr-2" />
+                          Edit Details
                         </Button>
-                      </>
-                    ) : (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={handleEditToggle}
-                      >
-                        <Edit className="h-4 w-4 mr-2" />
-                        Edit Details
-                      </Button>
-                    )}
-                  </div>
+                      )}
+                    </div>
+                  )}
                 </div>
                 
                 {/* Biography Section */}

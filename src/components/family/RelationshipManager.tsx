@@ -291,6 +291,21 @@ const RelationshipManager: React.FC<RelationshipManagerProps> = ({
     }
   };
 
+  // Helper function to get the connected family member's name
+  const getConnectedMemberName = (relation: any): string => {
+    // First try to get from relation.person (if populated)
+    if (relation.person?.firstName && relation.person?.lastName) {
+      return `${relation.person.firstName} ${relation.person.lastName}`;
+    }
+    // Fallback to looking up in allMembers using personId
+    const connectedMember = allMembers.find(m => m.id === relation.personId);
+    if (connectedMember) {
+      return `${connectedMember.firstName} ${connectedMember.lastName}`;
+    }
+    // Last resort
+    return 'Unknown';
+  };
+
   const availableMembers = allMembers.filter(member => 
     member.id !== currentMember.id && 
     !currentMember.relations?.some(rel => rel.personId === member.id) &&
@@ -310,34 +325,39 @@ const RelationshipManager: React.FC<RelationshipManagerProps> = ({
         <CardContent className="pt-0">
           {currentMember.relations && currentMember.relations.length > 0 ? (
             <div className="space-y-4">
-              {currentMember.relations.map((relation) => (
-                <div key={relation.id} className="flex items-center justify-between p-4 border rounded-xl hover:shadow-md transition-shadow bg-white">
-                  <div className="flex items-center gap-4">
-                    <div className="p-2 rounded-lg bg-gray-50">
-                      {getRelationshipIcon(relation.type)}
+              {currentMember.relations.map((relation) => {
+                const connectedMemberName = getConnectedMemberName(relation);
+                return (
+                  <div key={relation.id} className="flex items-center justify-between p-4 border rounded-xl hover:shadow-md transition-shadow bg-white">
+                    <div className="flex items-center gap-4 flex-1">
+                      <div className="p-2 rounded-lg bg-gray-50">
+                        {getRelationshipIcon(relation.type)}
+                      </div>
+                      <div className="flex items-center gap-3 flex-1">
+                        <div className="flex-1">
+                          <p className="font-semibold text-lg text-gray-900">
+                            {connectedMemberName}
+                          </p>
+                        </div>
+                        <Badge className={`${getRelationshipColor(relation.type)} px-3 py-1 text-sm font-medium whitespace-nowrap`}>
+                          {relation.type}
+                        </Badge>
+                      </div>
                     </div>
-                    <div className="space-y-1">
-                      <p className="font-semibold text-lg">
-                        {relation.person?.firstName} {relation.person?.lastName}
-                      </p>
-                      <Badge className={`${getRelationshipColor(relation.type)} px-3 py-1`}>
-                        {relation.type}
-                      </Badge>
-                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleDeleteRelationship(
+                        relation.id, 
+                        connectedMemberName
+                      )}
+                      className="text-red-600 hover:text-red-700 hover:bg-red-50 p-2 ml-2"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleDeleteRelationship(
-                      relation.id, 
-                      `${relation.person?.firstName} ${relation.person?.lastName}`
-                    )}
-                    className="text-red-600 hover:text-red-700 hover:bg-red-50 p-2"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-              ))}
+                );
+              })}
             </div>
           ) : (
             <div className="text-center py-12 text-muted-foreground">

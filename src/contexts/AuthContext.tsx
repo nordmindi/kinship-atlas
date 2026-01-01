@@ -2,8 +2,9 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
-import { UserProfile } from '@/types';
+import { UserProfile, UserRole } from '@/types';
 import { getUserProfile } from '@/services/userService';
+import { isAdmin, isEditor, isViewer, canWrite, canDelete, canManageUsers } from '@/lib/permissions';
 
 type AuthContextType = {
   user: User | null;
@@ -11,6 +12,12 @@ type AuthContextType = {
   session: Session | null;
   isLoading: boolean;
   isAdmin: boolean;
+  isEditor: boolean;
+  isViewer: boolean;
+  role: UserRole | null;
+  canWrite: boolean;
+  canDelete: boolean;
+  canManageUsers: boolean;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signUp: (email: string, password: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
@@ -150,12 +157,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     await supabase.auth.signOut();
   };
 
+  const role = userProfile?.role ?? null;
+  
   const value = {
     user,
     userProfile,
     session,
     isLoading,
-    isAdmin: userProfile?.role === 'admin',
+    isAdmin: isAdmin(role),
+    isEditor: isEditor(role),
+    isViewer: isViewer(role),
+    role,
+    canWrite: canWrite(role),
+    canDelete: canDelete(role),
+    canManageUsers: canManageUsers(role),
     signIn,
     signUp,
     signOut,

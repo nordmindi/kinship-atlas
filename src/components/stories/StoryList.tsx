@@ -18,6 +18,8 @@ import { FamilyStory } from '@/types/stories';
 import { FamilyMember } from '@/types';
 import { getYearRange } from '@/utils/dateUtils';
 import StoryEditor from './StoryEditor';
+import { useAuth } from '@/contexts/AuthContext';
+import { usePermissions } from '@/hooks/usePermissions';
 
 interface StoryListProps {
   stories: FamilyStory[];
@@ -35,6 +37,8 @@ const StoryList: React.FC<StoryListProps> = ({
   onStoryDelete,
   familyMembers
  , showCreateCTA = true }) => {
+  const { user, canWrite, isAdmin } = useAuth();
+  const { canCreateStory, canEditStory, canDeleteStory } = usePermissions();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedStory, setSelectedStory] = useState<FamilyStory | null>(null);
   const [isEditorOpen, setIsEditorOpen] = useState(false);
@@ -116,7 +120,7 @@ const StoryList: React.FC<StoryListProps> = ({
             {stories.length} {stories.length === 1 ? 'story' : 'stories'} in your family archive
           </p>
         </div>
-        {showCreateCTA && (
+        {showCreateCTA && canCreateStory() && (
           <Button onClick={handleCreateStory} className="flex items-center gap-2">
             <Plus className="h-4 w-4" />
             Add Story
@@ -149,7 +153,7 @@ const StoryList: React.FC<StoryListProps> = ({
                 : 'Start building your family story collection'
               }
             </p>
-            {!searchTerm && showCreateCTA && (
+            {!searchTerm && showCreateCTA && canCreateStory() && (
               <Button onClick={handleCreateStory} className="flex items-center gap-2">
                 <Plus className="h-4 w-4" />
                 Create First Story
@@ -189,27 +193,31 @@ const StoryList: React.FC<StoryListProps> = ({
                     >
                       <Eye className="h-4 w-4" />
                     </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleEditStory(story);
-                      }}
-                    >
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDeleteStory(story.id);
-                      }}
-                      className="text-red-600 hover:text-red-700"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                    {canEditStory(story.authorId) && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleEditStory(story);
+                        }}
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                    )}
+                    {canDeleteStory() && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteStory(story.id);
+                        }}
+                        className="text-red-600 hover:text-red-700"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
                   </div>
                 </div>
               </CardHeader>

@@ -18,7 +18,7 @@ export const getUserProfile = async (userId: string): Promise<UserProfile | null
         console.warn('user_profiles table not found, returning default profile');
         return {
           id: userId,
-          role: 'family_member',
+          role: 'viewer',
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         };
@@ -78,11 +78,13 @@ export const getAllUsers = async (): Promise<UserProfile[]> => {
   }
 };
 
+import { UserRole } from '@/types';
+
 /**
  * Update user role (admin only)
  * Uses a database function with proper admin verification
  */
-export const updateUserRole = async (userId: string, role: 'admin' | 'family_member'): Promise<boolean> => {
+export const updateUserRole = async (userId: string, role: UserRole): Promise<boolean> => {
   try {
     const { data, error } = await supabase.rpc('update_user_role' as any, {
       target_user_id: userId,

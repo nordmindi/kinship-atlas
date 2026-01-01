@@ -13,6 +13,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useFamilyTree } from "@/contexts/FamilyTreeContext";
 import { useFamilyMembers } from "@/hooks/useFamilyMembers";
 import { useStories } from "@/hooks/useStories";
+import { usePermissions } from "@/hooks/usePermissions";
 import { FamilyMember, FamilyStory } from "@/types";
 import { getYearRange } from "@/utils/dateUtils";
 import { useStorageUrl } from "@/hooks/useStorageUrl";
@@ -62,7 +63,8 @@ const FamilyMemberOverviewCard = ({ member, onClick }: { member: FamilyMember; o
 };
 
 const Index = () => {
-  const { user, isLoading: authLoading } = useAuth();
+  const { user, isLoading: authLoading, canWrite } = useAuth();
+  const { canAddFamilyMember, canCreateStory } = usePermissions();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("home");
   const [searchQuery, setSearchQuery] = useState("");
@@ -344,53 +346,61 @@ const Index = () => {
                   </div>
                 )}
                 
-                <div className="bg-white rounded-xl shadow-sm border border-heritage-purple/10 p-6 sm:p-8">
-                  <Button 
-                    className="w-full bg-heritage-purple hover:bg-heritage-purple-medium shadow-sm"
-                    onClick={handleAddStory}
-                  >
-                    <BookPlus className="h-4 w-4 mr-2" />
-                    Add New Story
-                  </Button>
-                </div>
+                {canCreateStory() && (
+                  <div className="bg-white rounded-xl shadow-sm border border-heritage-purple/10 p-6 sm:p-8">
+                    <Button 
+                      className="w-full bg-heritage-purple hover:bg-heritage-purple-medium shadow-sm"
+                      onClick={handleAddStory}
+                    >
+                      <BookPlus className="h-4 w-4 mr-2" />
+                      Add New Story
+                    </Button>
+                  </div>
+                )}
               </div>
             </TabsContent>
           </Tabs>
         </div>
       </div>
       
-      <div className="fixed right-6 bottom-20 z-40 md:bottom-6">
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button size="icon" className="rounded-full shadow-lg bg-heritage-purple hover:bg-heritage-purple-medium h-14 w-14">
-              <PlusCircle className="h-6 w-6" />
-              <span className="sr-only">Add new</span>
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent side="top" align="end" className="mb-2">
-            <DropdownMenuItem onClick={handleAddMember} className="cursor-pointer">
-              <UserPlus className="mr-2 h-4 w-4" />
-              <span>Add Family Member</span>
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={handleAddStory} className="cursor-pointer">
-              <BookPlus className="mr-2 h-4 w-4" />
-              <span>Add Story</span>
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={handleImportFamilyData} className="cursor-pointer">
-              <Upload className="mr-2 h-4 w-4" />
-              <span>Import Family Data</span>
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={handleExportFamilyData} className="cursor-pointer">
-              <Download className="mr-2 h-4 w-4" />
-              <span>Export Family Data</span>
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={handleLegacyStories} className="cursor-pointer">
-              <History className="mr-2 h-4 w-4" />
-              <span>Legacy Stories</span>
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
+      {canWrite && (
+        <div className="fixed right-6 bottom-20 z-40 md:bottom-6">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button size="icon" className="rounded-full shadow-lg bg-heritage-purple hover:bg-heritage-purple-medium h-14 w-14">
+                <PlusCircle className="h-6 w-6" />
+                <span className="sr-only">Add new</span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent side="top" align="end" className="mb-2">
+              {canAddFamilyMember() && (
+                <DropdownMenuItem onClick={handleAddMember} className="cursor-pointer">
+                  <UserPlus className="mr-2 h-4 w-4" />
+                  <span>Add Family Member</span>
+                </DropdownMenuItem>
+              )}
+              {canCreateStory() && (
+                <DropdownMenuItem onClick={handleAddStory} className="cursor-pointer">
+                  <BookPlus className="mr-2 h-4 w-4" />
+                  <span>Add Story</span>
+                </DropdownMenuItem>
+              )}
+              <DropdownMenuItem onClick={handleImportFamilyData} className="cursor-pointer">
+                <Upload className="mr-2 h-4 w-4" />
+                <span>Import Family Data</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleExportFamilyData} className="cursor-pointer">
+                <Download className="mr-2 h-4 w-4" />
+                <span>Export Family Data</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleLegacyStories} className="cursor-pointer">
+                <History className="mr-2 h-4 w-4" />
+                <span>Legacy Stories</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      )}
     </MobileLayout>
   );
 };

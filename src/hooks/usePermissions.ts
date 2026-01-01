@@ -1,9 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { canUserEditFamilyMember } from '@/services/userService';
+import { hasPermission, canEditResource } from '@/lib/permissions';
+import type { Permission } from '@/lib/permissions';
 
 export const usePermissions = () => {
-  const { user, isAdmin } = useAuth();
+  const { user, userProfile, isAdmin, isEditor, isViewer, canWrite, canDelete, canManageUsers, role } = useAuth();
   const [canEditCache, setCanEditCache] = useState<Map<string, boolean>>(new Map());
 
   const canEditFamilyMember = async (memberId: string): Promise<boolean> => {
@@ -13,7 +15,7 @@ export const usePermissions = () => {
     }
 
     // If no user, can't edit
-    if (!user) {
+    if (!user || !role) {
       setCanEditCache(prev => new Map(prev).set(memberId, false));
       return false;
     }
@@ -24,28 +26,60 @@ export const usePermissions = () => {
       return true;
     }
 
-    // Check specific permissions
-    try {
-      const canEdit = await canUserEditFamilyMember(memberId);
-      setCanEditCache(prev => new Map(prev).set(memberId, canEdit));
-      return canEdit;
-    } catch (error) {
-      console.error('Error checking edit permission:', error);
-      setCanEditCache(prev => new Map(prev).set(memberId, false));
-      return false;
+    // Editors can edit members they created or in their branch
+    if (isEditor) {
+      try {
+        const canEdit = await canUserEditFamilyMember(memberId);
+        setCanEditCache(prev => new Map(prev).set(memberId, canEdit));
+        return canEdit;
+      } catch (error) {
+        console.error('Error checking edit permission:', error);
+        setCanEditCache(prev => new Map(prev).set(memberId, false));
+        return false;
+      }
     }
+
+    // Viewers cannot edit
+    setCanEditCache(prev => new Map(prev).set(memberId, false));
+    return false;
   };
 
   const canAddFamilyMember = (): boolean => {
-    return !!user; // Any authenticated user can add family members
+    return canWrite; // Admins and editors can add family members
   };
 
   const canDeleteFamilyMember = (): boolean => {
-    return isAdmin; // Only admins can delete
+    return canDelete; // Only admins can delete
   };
 
-  const canManageUsers = (): boolean => {
-    return isAdmin; // Only admins can manage users
+  const canCreateStory = (): boolean => {
+    return canWrite; // Admins and editors can create stories
+  };
+
+  const canEditStory = (storyAuthorId?: string): boolean => {
+    if (!user || !role) return false;
+    return canEditResource(role, storyAuthorId, user.id);
+  };
+
+  const canDeleteStory = (): boolean => {
+    return canDelete; // Only admins can delete stories
+  };
+
+  const canUploadMedia = (): boolean => {
+    return canWrite; // Admins and editors can upload media
+  };
+
+  const canEditMedia = (mediaUserId?: string): boolean => {
+    if (!user || !role) return false;
+    return canEditResource(role, mediaUserId, user.id);
+  };
+
+  const canDeleteMedia = (): boolean => {
+    return canDelete; // Only admins can delete media
+  };
+
+  const checkPermission = (permission: Permission): boolean => {
+    return hasPermission(role, permission);
   };
 
   const clearCache = () => {
@@ -56,9 +90,21 @@ export const usePermissions = () => {
     canEditFamilyMember,
     canAddFamilyMember,
     canDeleteFamilyMember,
+    canCreateStory,
+    canEditStory,
+    canDeleteStory,
+    canUploadMedia,
+    canEditMedia,
+    canDeleteMedia,
     canManageUsers,
+    checkPermission,
     clearCache,
     isAdmin,
-    isAuthenticated: !!user
+    isEditor,
+    isViewer,
+    canWrite,
+    canDelete,
+    isAuthenticated: !!user,
+    role,
   };
 };

@@ -46,7 +46,7 @@ const FamilyMemberActions: React.FC<FamilyMemberActionsProps> = ({
   onMemberDeleted,
   onRelationshipRemoved
 }) => {
-  const { user, isAdmin } = useAuth();
+  const { user, isAdmin, canWrite } = useAuth();
   const { canEditFamilyMember, canDeleteFamilyMember } = usePermissions();
   const [canEdit, setCanEdit] = useState(false);
   const [canDelete, setCanDelete] = useState(false);
@@ -57,15 +57,18 @@ const FamilyMemberActions: React.FC<FamilyMemberActionsProps> = ({
   // Check permissions
   React.useEffect(() => {
     const checkPermissions = async () => {
-      if (user) {
+      if (user && canWrite) {
         const editPermission = await canEditFamilyMember(member.id);
         const deletePermission = canDeleteFamilyMember();
         setCanEdit(editPermission);
         setCanDelete(deletePermission);
+      } else {
+        setCanEdit(false);
+        setCanDelete(false);
       }
     };
     checkPermissions();
-  }, [member.id, user, canEditFamilyMember, canDeleteFamilyMember]);
+  }, [member.id, user, canWrite, canEditFamilyMember, canDeleteFamilyMember]);
 
   const handleRemoveRelationship = async () => {
     if (!relationshipType) return;
@@ -129,8 +132,8 @@ const FamilyMemberActions: React.FC<FamilyMemberActionsProps> = ({
     }
   };
 
-  // Don't show actions if user doesn't have permissions
-  if (!canEdit && !isAdmin) {
+  // Don't show actions if user doesn't have write permissions
+  if (!canWrite) {
     return null;
   }
 

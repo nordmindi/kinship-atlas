@@ -1,16 +1,18 @@
 
+export type UserRole = 'admin' | 'editor' | 'viewer';
+
 export interface User {
   id: string;
   name: string;
   email: string;
   avatar?: string;
-  role: 'admin' | 'family_member';
+  role: UserRole;
   displayName?: string;
 }
 
 export interface UserProfile {
   id: string;
-  role: 'admin' | 'family_member';
+  role: UserRole;
   displayName?: string;
   createdAt: string;
   updatedAt: string;
