@@ -122,6 +122,7 @@ describe('ImportFamilyData', () => {
   describe('Template Download', () => {
     let mockAnchor: { href: string; download: string; click: ReturnType<typeof vi.fn> }
     let createElementSpy: ReturnType<typeof vi.spyOn>
+    let isCreatingAnchor = false
 
     beforeEach(() => {
       // Create mock anchor element
@@ -131,16 +132,23 @@ describe('ImportFamilyData', () => {
         click: vi.fn(),
       }
       
-      // Store the original implementation before mocking
-      const originalCreateElement = document.createElement.bind(document)
+      // Get the original implementation from the prototype
+      const originalImpl = Object.getOwnPropertyDescriptor(Document.prototype, 'createElement')?.value
       
       // Mock document.createElement for anchor element downloads only
-      createElementSpy = vi.spyOn(document, 'createElement').mockImplementation((tagName: string) => {
-        if (tagName === 'a') {
-          return mockAnchor as unknown as HTMLElement
+      createElementSpy = vi.spyOn(document, 'createElement').mockImplementation(function(this: Document, tagName: string) {
+        if (tagName === 'a' && !isCreatingAnchor) {
+          isCreatingAnchor = true
+          const result = mockAnchor as unknown as HTMLElement
+          isCreatingAnchor = false
+          return result
         }
-        // For other elements, use the original implementation
-        return originalCreateElement(tagName)
+        // For other elements, call the original implementation directly
+        if (originalImpl) {
+          return originalImpl.call(this, tagName)
+        }
+        // Fallback: create element using createElementNS
+        return document.createElementNS('http://www.w3.org/1999/xhtml', tagName) as HTMLElement
       })
       
       // Mock URL.createObjectURL and revokeObjectURL
@@ -149,7 +157,10 @@ describe('ImportFamilyData', () => {
     })
 
     afterEach(() => {
-      createElementSpy.mockRestore()
+      if (createElementSpy) {
+        createElementSpy.mockRestore()
+      }
+      isCreatingAnchor = false
       vi.restoreAllMocks()
     })
 
