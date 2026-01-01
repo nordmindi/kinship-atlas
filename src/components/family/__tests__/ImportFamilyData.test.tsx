@@ -120,22 +120,36 @@ describe('ImportFamilyData', () => {
   })
 
   describe('Template Download', () => {
+    let originalCreateElement: typeof document.createElement
+    let mockAnchor: { href: string; download: string; click: ReturnType<typeof vi.fn> }
+
     beforeEach(() => {
-      // Mock document.createElement for anchor element downloads
-      const mockAnchor = {
+      // Store original createElement
+      originalCreateElement = document.createElement.bind(document)
+      
+      // Create mock anchor element
+      mockAnchor = {
         href: '',
         download: '',
         click: vi.fn(),
       }
+      
+      // Mock document.createElement for anchor element downloads only
       vi.spyOn(document, 'createElement').mockImplementation((tagName: string) => {
         if (tagName === 'a') {
           return mockAnchor as unknown as HTMLElement
         }
-        return document.createElement(tagName)
+        // For other elements, use the original implementation
+        return originalCreateElement(tagName)
       })
+      
       // Mock URL.createObjectURL and revokeObjectURL
       global.URL.createObjectURL = vi.fn(() => 'blob:mock-url')
       global.URL.revokeObjectURL = vi.fn()
+    })
+
+    afterEach(() => {
+      vi.restoreAllMocks()
     })
 
     it('should download JSON template', async () => {

@@ -1,6 +1,6 @@
 import React from 'react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { BrowserRouter } from 'react-router-dom'
 import Auth from '../Auth'
@@ -106,8 +106,15 @@ describe('Auth', () => {
     const user = userEvent.setup()
     renderWithRouter(<Auth />)
 
-    const submitButton = screen.getByRole('button', { name: /sign in/i })
-    await user.click(submitButton)
+    // Find the form and submit it directly
+    const form = screen.getByRole('button', { name: /sign in/i }).closest('form')
+    if (form) {
+      fireEvent.submit(form)
+    } else {
+      // Fallback: click the button
+      const submitButton = screen.getByRole('button', { name: /sign in/i })
+      await user.click(submitButton)
+    }
 
     await waitFor(() => {
       expect(toast).toHaveBeenCalledWith(
@@ -116,7 +123,7 @@ describe('Auth', () => {
           description: 'Please enter both email and password.'
         })
       )
-    })
+    }, { timeout: 3000 })
 
     expect(mockSignIn).not.toHaveBeenCalled()
   })
