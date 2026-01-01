@@ -120,13 +120,10 @@ describe('ImportFamilyData', () => {
   })
 
   describe('Template Download', () => {
-    let originalCreateElement: typeof document.createElement
     let mockAnchor: { href: string; download: string; click: ReturnType<typeof vi.fn> }
+    let createElementSpy: ReturnType<typeof vi.spyOn>
 
     beforeEach(() => {
-      // Store original createElement
-      originalCreateElement = document.createElement.bind(document)
-      
       // Create mock anchor element
       mockAnchor = {
         href: '',
@@ -134,8 +131,11 @@ describe('ImportFamilyData', () => {
         click: vi.fn(),
       }
       
+      // Store the original implementation before mocking
+      const originalCreateElement = document.createElement.bind(document)
+      
       // Mock document.createElement for anchor element downloads only
-      vi.spyOn(document, 'createElement').mockImplementation((tagName: string) => {
+      createElementSpy = vi.spyOn(document, 'createElement').mockImplementation((tagName: string) => {
         if (tagName === 'a') {
           return mockAnchor as unknown as HTMLElement
         }
@@ -149,6 +149,7 @@ describe('ImportFamilyData', () => {
     })
 
     afterEach(() => {
+      createElementSpy.mockRestore()
       vi.restoreAllMocks()
     })
 

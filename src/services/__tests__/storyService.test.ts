@@ -180,7 +180,7 @@ describe('StoryService', () => {
       const mockEq = vi.fn().mockReturnThis()
       const mockSingle = vi.fn().mockResolvedValue({
         data: null,
-        error: { message: 'Not found' }
+        error: { message: 'Not found', code: 'PGRST116' }
       })
 
       vi.mocked(supabase.from).mockReturnValue({
@@ -290,7 +290,8 @@ describe('StoryService', () => {
         return {} as any
       })
 
-      vi.spyOn(storyService, 'getStory').mockResolvedValue({
+      // Mock getStory to return the updated story
+      const mockGetStory = vi.spyOn(storyService, 'getStory').mockResolvedValue({
         id: 'story-123',
         title: 'Updated Story',
         content: 'Updated content',
@@ -311,6 +312,7 @@ describe('StoryService', () => {
 
       expect(result.success).toBe(true)
       expect(result.story?.title).toBe('Updated Story')
+      expect(mockGetStory).toHaveBeenCalledWith('story-123')
     })
   })
 
