@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { renderHook, waitFor } from '@testing-library/react'
+import { renderHook, waitFor, act } from '@testing-library/react'
 import {
   useMemberTimeline,
   useFamilyTimeline,
@@ -137,13 +137,14 @@ describe('useTimelineSearch', () => {
 
     const { result } = renderHook(() => useTimelineSearch())
 
-    await result.current.searchTimeline('Test')
+    await act(async () => {
+      await result.current.searchTimeline('Test')
+    })
 
     await waitFor(() => {
+      expect(result.current.searchResults).toEqual(mockResults)
       expect(result.current.isLoading).toBe(false)
     }, { timeout: 3000 })
-
-    expect(result.current.searchResults).toEqual(mockResults)
   })
 
   it('should clear search results', async () => {

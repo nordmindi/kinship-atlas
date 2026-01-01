@@ -75,6 +75,7 @@ describe('storageUrl', () => {
       const result = await getAccessibleStorageUrl(publicUrl)
 
       expect(result).toBe(signedUrl)
+      expect(supabase.storage.from).toHaveBeenCalledWith('family-media')
     })
 
     it('should return original URL if signed URL generation fails', async () => {
@@ -90,6 +91,7 @@ describe('storageUrl', () => {
       const result = await getAccessibleStorageUrl(publicUrl)
 
       expect(result).toBe(publicUrl) // Falls back to original
+      expect(supabase.storage.from).toHaveBeenCalledWith('family-media')
     })
 
     it('should return original URL if path extraction fails', async () => {
@@ -122,6 +124,7 @@ describe('storageUrl', () => {
       const result = await getAccessibleStorageUrl(publicUrl)
 
       expect(result).toBe(publicUrl) // Falls back to original on error
+      expect(supabase.storage.from).toHaveBeenCalledWith('family-media')
     })
   })
 })

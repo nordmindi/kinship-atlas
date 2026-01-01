@@ -2,11 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import { FamilyTreeProvider, useFamilyTree } from '../FamilyTreeContext'
 import { AuthProvider } from '../AuthContext'
-import { familyMemberService } from '@/services/familyMemberService'
 import { supabase } from '@/integrations/supabase/client'
-
-// Mock the family member service
-vi.mock('@/services/familyMemberService')
 
 // Mock the supabase client
 vi.mock('@/integrations/supabase/client')
@@ -14,20 +10,16 @@ vi.mock('@/integrations/supabase/client')
 // Test component to access family tree context
 const TestComponent = () => {
   const { 
-    familyMembers, 
-    isLoading, 
     selectedMemberId, 
     setSelectedMemberId,
-    refreshFamilyMembers 
+    clearSelectedMember 
   } = useFamilyTree()
   
   return (
     <div>
-      <div data-testid="loading">{isLoading ? 'Loading' : 'Not loading'}</div>
-      <div data-testid="member-count">{familyMembers.length}</div>
       <div data-testid="selected-member">{selectedMemberId || 'None'}</div>
       <button onClick={() => setSelectedMemberId('member-1')}>Select Member</button>
-      <button onClick={() => refreshFamilyMembers()}>Refresh</button>
+      <button onClick={() => clearSelectedMember()}>Clear Selection</button>
     </div>
   )
 }
@@ -37,18 +29,31 @@ describe('FamilyTreeContext', () => {
     vi.clearAllMocks()
     // Mock supabase auth for AuthProvider
     vi.mocked(supabase.auth.getSession).mockResolvedValue({
-      data: { session: null },
+      data: { session: { user: { id: 'user-123' } } },
       error: null
     })
     vi.mocked(supabase.auth.onAuthStateChange).mockReturnValue({
       data: { subscription: { unsubscribe: vi.fn() } }
     } as { data: { subscription: { unsubscribe: () => void } } })
+    
+    // Mock supabase.from for getUserProfile
+    vi.mocked(supabase.from).mockReturnValue({
+      select: vi.fn().mockReturnThis(),
+      eq: vi.fn().mockReturnThis(),
+      single: vi.fn().mockResolvedValue({
+        data: { id: 'user-123', email: 'test@example.com' },
+        error: null
+      })
+    } as any)
+    
+    // Clear sessionStorage before each test
+    if (typeof window !== 'undefined') {
+      window.sessionStorage.clear()
+    }
   })
 
   describe('Initial State', () => {
-    it('should provide initial loading state', () => {
-      vi.mocked(familyMemberService.getAllFamilyMembers).mockResolvedValue([])
-
+    it('should provide initial selected member state', () => {
       render(
         <AuthProvider>
           <FamilyTreeProvider>
@@ -57,28 +62,14 @@ describe('FamilyTreeContext', () => {
         </AuthProvider>
       )
 
-      expect(screen.getByTestId('loading')).toHaveTextContent('Loading')
+      expect(screen.getByTestId('selected-member')).toHaveTextContent('None')
     })
 
-    it('should load family members on mount', async () => {
-      const mockMembers = [
-        {
-          id: 'member-1',
-          firstName: 'John',
-          lastName: 'Smith',
-          gender: 'male',
-          relations: []
-        },
-        {
-          id: 'member-2',
-          firstName: 'Mary',
-          lastName: 'Smith',
-          gender: 'female',
-          relations: []
-        }
-      ]
-
-      vi.mocked(familyMemberService.getAllFamilyMembers).mockResolvedValue(mockMembers)
+    it('should load selected member from sessionStorage', async () => {
+      // Set up sessionStorage before rendering
+      if (typeof window !== 'undefined') {
+        window.sessionStorage.setItem('family-tree:selected-member:user-123', 'member-1')
+      }
 
       render(
         <AuthProvider>
@@ -89,62 +80,13 @@ describe('FamilyTreeContext', () => {
       )
 
       await waitFor(() => {
-        expect(screen.getByTestId('loading')).toHaveTextContent('Not loading')
-        expect(screen.getByTestId('member-count')).toHaveTextContent('2')
-      })
-
-      expect(familyMemberService.getAllFamilyMembers).toHaveBeenCalled()
-    })
-
-    it('should handle empty family members', async () => {
-      vi.mocked(familyMemberService.getAllFamilyMembers).mockResolvedValue([])
-
-      render(
-        <AuthProvider>
-          <FamilyTreeProvider>
-            <TestComponent />
-          </FamilyTreeProvider>
-        </AuthProvider>
-      )
-
-      await waitFor(() => {
-        expect(screen.getByTestId('loading')).toHaveTextContent('Not loading')
-        expect(screen.getByTestId('member-count')).toHaveTextContent('0')
-      })
-    })
-
-    it('should handle loading errors', async () => {
-      vi.mocked(familyMemberService.getAllFamilyMembers).mockRejectedValue(new Error('Database error'))
-
-      render(
-        <AuthProvider>
-          <FamilyTreeProvider>
-            <TestComponent />
-          </FamilyTreeProvider>
-        </AuthProvider>
-      )
-
-      await waitFor(() => {
-        expect(screen.getByTestId('loading')).toHaveTextContent('Not loading')
-        expect(screen.getByTestId('member-count')).toHaveTextContent('0')
+        expect(screen.getByTestId('selected-member')).toHaveTextContent('member-1')
       })
     })
   })
 
   describe('Member Selection', () => {
     it('should allow selecting a member', async () => {
-      const mockMembers = [
-        {
-          id: 'member-1',
-          firstName: 'John',
-          lastName: 'Smith',
-          gender: 'male',
-          relations: []
-        }
-      ]
-
-      vi.mocked(familyMemberService.getAllFamilyMembers).mockResolvedValue(mockMembers)
-
       render(
         <AuthProvider>
           <FamilyTreeProvider>
@@ -153,28 +95,21 @@ describe('FamilyTreeContext', () => {
         </AuthProvider>
       )
 
-      await waitFor(() => {
-        expect(screen.getByTestId('loading')).toHaveTextContent('Not loading')
-      })
+      expect(screen.getByTestId('selected-member')).toHaveTextContent('None')
 
       // Click select member button
       screen.getByText('Select Member').click()
 
-      expect(screen.getByTestId('selected-member')).toHaveTextContent('member-1')
+      await waitFor(() => {
+        expect(screen.getByTestId('selected-member')).toHaveTextContent('member-1')
+      })
     })
 
-    it('should clear selection when setting to null', async () => {
-      const mockMembers = [
-        {
-          id: 'member-1',
-          firstName: 'John',
-          lastName: 'Smith',
-          gender: 'male',
-          relations: []
-        }
-      ]
-
-      vi.mocked(familyMemberService.getAllFamilyMembers).mockResolvedValue(mockMembers)
+    it('should clear selection when clearSelectedMember is called', async () => {
+      // Set up sessionStorage before rendering
+      if (typeof window !== 'undefined') {
+        window.sessionStorage.setItem('family-tree:selected-member:user-123', 'member-1')
+      }
 
       render(
         <AuthProvider>
@@ -185,52 +120,20 @@ describe('FamilyTreeContext', () => {
       )
 
       await waitFor(() => {
-        expect(screen.getByTestId('loading')).toHaveTextContent('Not loading')
+        expect(screen.getByTestId('selected-member')).toHaveTextContent('member-1')
       })
 
-      // Select member first
-      screen.getByText('Select Member').click()
-      expect(screen.getByTestId('selected-member')).toHaveTextContent('member-1')
+      // Click clear selection button
+      screen.getByText('Clear Selection').click()
 
-      // Clear selection
-      screen.getByText('Select Member').click() // This would need to be modified to clear
-      // For now, we'll test the initial state
-      expect(screen.getByTestId('selected-member')).toHaveTextContent('member-1')
+      await waitFor(() => {
+        expect(screen.getByTestId('selected-member')).toHaveTextContent('None')
+      })
     })
-  })
 
-  describe('Refresh Functionality', () => {
-    it('should refresh family members', async () => {
-      const initialMembers = [
-        {
-          id: 'member-1',
-          firstName: 'John',
-          lastName: 'Smith',
-          gender: 'male',
-          relations: []
-        }
-      ]
-
-      const updatedMembers = [
-        {
-          id: 'member-1',
-          firstName: 'John',
-          lastName: 'Smith',
-          gender: 'male',
-          relations: []
-        },
-        {
-          id: 'member-2',
-          firstName: 'Mary',
-          lastName: 'Smith',
-          gender: 'female',
-          relations: []
-        }
-      ]
-
-      vi.mocked(familyMemberService.getAllFamilyMembers)
-        .mockResolvedValueOnce(initialMembers)
-        .mockResolvedValueOnce(updatedMembers)
+    it('should persist selection to sessionStorage', async () => {
+      const { userEvent } = await import('@testing-library/user-event')
+      const user = userEvent.setup()
 
       render(
         <AuthProvider>
@@ -240,65 +143,23 @@ describe('FamilyTreeContext', () => {
         </AuthProvider>
       )
 
-      await waitFor(() => {
-        expect(screen.getByTestId('member-count')).toHaveTextContent('1')
-      })
-
-      // Click refresh button
-      screen.getByText('Refresh').click()
+      // Click select member button
+      await user.click(screen.getByText('Select Member'))
 
       await waitFor(() => {
-        expect(screen.getByTestId('member-count')).toHaveTextContent('2')
+        expect(screen.getByTestId('selected-member')).toHaveTextContent('member-1')
       })
 
-      expect(familyMemberService.getAllFamilyMembers).toHaveBeenCalledTimes(2)
-    })
-
-    it('should handle refresh errors', async () => {
-      const initialMembers = [
-        {
-          id: 'member-1',
-          firstName: 'John',
-          lastName: 'Smith',
-          gender: 'male',
-          relations: []
-        }
-      ]
-
-      vi.mocked(familyMemberService.getAllFamilyMembers)
-        .mockResolvedValueOnce(initialMembers)
-        .mockRejectedValueOnce(new Error('Database error'))
-
-      render(
-        <AuthProvider>
-          <FamilyTreeProvider>
-            <TestComponent />
-          </FamilyTreeProvider>
-        </AuthProvider>
-      )
-
-      await waitFor(() => {
-        expect(screen.getByTestId('member-count')).toHaveTextContent('1')
-      })
-
-      // Click refresh button
-      screen.getByText('Refresh').click()
-
-      await waitFor(() => {
-        // Should still show the original count (error doesn't update state)
-        expect(screen.getByTestId('member-count')).toHaveTextContent('1')
-      })
-
-      expect(familyMemberService.getAllFamilyMembers).toHaveBeenCalledTimes(2)
+      // Check that it's persisted in sessionStorage
+      if (typeof window !== 'undefined') {
+        expect(window.sessionStorage.getItem('family-tree:selected-member:user-123')).toBe('member-1')
+      }
     })
   })
 
   describe('Context Provider', () => {
     it('should throw error when used outside provider', () => {
       // Suppress console.error for this test
-      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
-
-      // Suppress the useAuth error to test the FamilyTreeProvider error
       const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
       
       expect(() => {
@@ -309,8 +170,6 @@ describe('FamilyTreeContext', () => {
         )
       }).toThrow('useFamilyTree must be used within a FamilyTreeProvider')
       
-      consoleSpy.mockRestore()
-
       consoleSpy.mockRestore()
     })
   })

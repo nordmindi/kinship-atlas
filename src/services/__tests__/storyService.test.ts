@@ -5,6 +5,7 @@ import { supabase } from '@/integrations/supabase/client'
 describe('StoryService', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.restoreAllMocks()
   })
 
   describe('createStory', () => {
@@ -183,15 +184,22 @@ describe('StoryService', () => {
         error: { message: 'Not found', code: 'PGRST116' }
       })
 
-      vi.mocked(supabase.from).mockReturnValue({
-        select: mockSelect,
-        eq: mockEq,
-        single: mockSingle
-      } as any)
+      vi.mocked(supabase.from).mockImplementation((table: string) => {
+        if (table === 'family_stories') {
+          return {
+            select: mockSelect,
+            eq: mockEq,
+            single: mockSingle
+          } as any
+        }
+        return {} as any
+      })
 
       const result = await storyService.getStory('story-123')
 
       expect(result).toBeNull()
+      expect(mockSingle).toHaveBeenCalled()
+      expect(mockEq).toHaveBeenCalledWith('id', 'story-123')
     })
   })
 
@@ -268,18 +276,14 @@ describe('StoryService', () => {
         error: null
       })
 
-      const mockUpdate = vi.fn().mockReturnThis()
-      const mockEq = vi.fn().mockResolvedValue({
-        data: null,
-        error: null
-      })
+      const queryBuilder: any = {
+        update: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis()
+      }
 
       vi.mocked(supabase.from).mockImplementation((table: string) => {
         if (table === 'family_stories') {
-          return {
-            update: mockUpdate,
-            eq: mockEq
-          } as any
+          return queryBuilder as any
         }
         if (table === 'story_members' || table === 'story_media') {
           return {
@@ -288,6 +292,14 @@ describe('StoryService', () => {
           } as any
         }
         return {} as any
+      })
+
+      // Make the final eq() call resolve
+      queryBuilder.eq.mockImplementation((key: string) => {
+        if (key === 'author_id') {
+          return Promise.resolve({ data: null, error: null })
+        }
+        return queryBuilder
       })
 
       // Mock getStory to return the updated story
@@ -325,16 +337,19 @@ describe('StoryService', () => {
         error: null
       })
 
-      const mockDelete = vi.fn().mockReturnThis()
-      const mockEq = vi.fn().mockResolvedValue({
-        data: null,
-        error: null
+      const queryBuilder: any = {
+        delete: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis()
+      }
+
+      queryBuilder.eq.mockImplementation((key: string) => {
+        if (key === 'author_id') {
+          return Promise.resolve({ data: null, error: null })
+        }
+        return queryBuilder
       })
 
-      vi.mocked(supabase.from).mockReturnValue({
-        delete: mockDelete,
-        eq: mockEq
-      } as any)
+      vi.mocked(supabase.from).mockReturnValue(queryBuilder as any)
 
       const result = await storyService.deleteStory('story-123')
 

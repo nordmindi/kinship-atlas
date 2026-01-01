@@ -84,32 +84,35 @@ describe('usePermissions', () => {
     expect(canEdit).toBe(false)
   })
 
-  it('should cache permission results', async () => {
-    const mockUser = { id: 'user-123', email: 'user@example.com' }
-    
-    vi.mocked(useAuth).mockReturnValue({
-      user: mockUser,
-      isAdmin: false,
-      isLoading: false,
-      signIn: vi.fn(),
-      signUp: vi.fn(),
-      signOut: vi.fn()
-    } as any)
+    it('should cache permission results', async () => {
+      const mockUser = { id: 'user-123', email: 'user@example.com' }
+      
+      vi.mocked(useAuth).mockReturnValue({
+        user: mockUser,
+        isAdmin: false,
+        isLoading: false,
+        signIn: vi.fn(),
+        signUp: vi.fn(),
+        signOut: vi.fn()
+      } as any)
 
-    vi.mocked(canUserEditFamilyMember).mockResolvedValue(true)
+      vi.mocked(canUserEditFamilyMember).mockResolvedValue(true)
 
-    const { result } = renderHook(() => usePermissions())
+      const { result } = renderHook(() => usePermissions())
 
-    // First call
-    const canEdit1 = await result.current.canEditFamilyMember('member-123')
-    expect(canEdit1).toBe(true)
-    expect(canUserEditFamilyMember).toHaveBeenCalledTimes(1)
+      // First call
+      const canEdit1 = await result.current.canEditFamilyMember('member-123')
+      expect(canEdit1).toBe(true)
+      expect(canUserEditFamilyMember).toHaveBeenCalledTimes(1)
 
-    // Second call should use cache
-    const canEdit2 = await result.current.canEditFamilyMember('member-123')
-    expect(canEdit2).toBe(true)
-    expect(canUserEditFamilyMember).toHaveBeenCalledTimes(1) // Still 1, used cache
-  })
+      // Second call should use cache - wait a bit to ensure state has settled
+      await new Promise(resolve => setTimeout(resolve, 10))
+
+      const canEdit2 = await result.current.canEditFamilyMember('member-123')
+      expect(canEdit2).toBe(true)
+      // The function should still only be called once due to caching
+      expect(canUserEditFamilyMember).toHaveBeenCalledTimes(1)
+    })
 
   it('should clear cache', async () => {
     const mockUser = { id: 'user-123', email: 'user@example.com' }

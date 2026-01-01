@@ -43,12 +43,28 @@ vi.mock('@/integrations/supabase/client', () => ({
       update: vi.fn().mockReturnThis(),
       delete: vi.fn().mockReturnThis(),
       eq: vi.fn().mockReturnThis(),
+      in: vi.fn().mockReturnThis(),
       order: vi.fn().mockReturnThis(),
       single: vi.fn().mockResolvedValue({
         data: null,
         error: null
       }),
     })),
+    storage: {
+      from: vi.fn(() => ({
+        upload: vi.fn().mockResolvedValue({
+          data: { path: '' },
+          error: null
+        }),
+        getPublicUrl: vi.fn().mockReturnValue({
+          data: { publicUrl: '' }
+        }),
+        createSignedUrl: vi.fn().mockResolvedValue({
+          data: { signedUrl: '' },
+          error: null
+        })
+      }))
+    },
     rpc: vi.fn().mockResolvedValue({
       data: null,
       error: null

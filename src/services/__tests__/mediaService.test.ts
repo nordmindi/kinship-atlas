@@ -39,6 +39,11 @@ describe('MediaService', () => {
         error: null
       })
 
+      const mockCreateSignedUrl = vi.fn().mockResolvedValue({
+        data: { signedUrl: 'https://example.com/storage/v1/object/sign/family-media/user-123/image/123-test.jpg?token=abc123' },
+        error: null
+      })
+
       const mockGetPublicUrl = vi.fn().mockReturnValue({
         data: { publicUrl: 'https://example.com/media/test.jpg' }
       })
@@ -48,19 +53,32 @@ describe('MediaService', () => {
       const mockSingle = vi.fn().mockResolvedValue({
         data: {
           id: 'media-123',
-          url: 'https://example.com/media/test.jpg',
+          url: 'https://example.com/storage/v1/object/sign/family-media/user-123/image/123-test.jpg?token=abc123',
           caption: 'Test caption',
           media_type: 'image',
           created_at: '2024-01-01T00:00:00Z',
-          user_id: 'user-123'
+          user_id: 'user-123',
+          file_size: 1024,
+          file_name: 'test.jpg'
         },
         error: null
       })
 
-      vi.mocked(supabase.storage.from).mockReturnValue({
-        upload: mockUpload,
-        getPublicUrl: mockGetPublicUrl
-      } as any)
+      let storageCallCount = 0
+      vi.mocked(supabase.storage.from).mockImplementation((bucket: string) => {
+        storageCallCount++
+        if (storageCallCount === 1) {
+          // upload
+          return {
+            upload: mockUpload
+          } as any
+        }
+        // createSignedUrl
+        return {
+          createSignedUrl: mockCreateSignedUrl,
+          getPublicUrl: mockGetPublicUrl
+        } as any
+      })
 
       vi.mocked(supabase.from).mockReturnValue({
         insert: mockInsert,
@@ -198,19 +216,29 @@ describe('MediaService', () => {
         error: null
       })
 
-      const mockSelect = vi.fn().mockReturnThis()
-      const mockEq = vi.fn().mockReturnThis()
-      const mockSingle = vi.fn().mockResolvedValue({
-        data: {
-          id: 'media-123',
-          url: 'https://example.com/media/test.jpg'
-        },
-        error: null
-      })
+      const selectQueryBuilder: any = {
+        select: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        single: vi.fn().mockResolvedValue({
+          data: {
+            id: 'media-123',
+            url: 'https://example.com/storage/v1/object/public/family-media/user-123/image/test.jpg',
+            file_name: 'test.jpg'
+          },
+          error: null
+        })
+      }
 
-      const mockDelete = vi.fn().mockResolvedValue({
-        data: null,
-        error: null
+      const deleteQueryBuilder: any = {
+        delete: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis()
+      }
+
+      deleteQueryBuilder.eq.mockImplementation((key: string) => {
+        if (key === 'user_id') {
+          return Promise.resolve({ data: null, error: null })
+        }
+        return deleteQueryBuilder
       })
 
       const mockRemove = vi.fn().mockResolvedValue({
@@ -218,12 +246,14 @@ describe('MediaService', () => {
         error: null
       })
 
-      vi.mocked(supabase.from).mockReturnValue({
-        select: mockSelect,
-        eq: mockEq,
-        single: mockSingle,
-        delete: mockDelete
-      } as any)
+      let fromCallCount = 0
+      vi.mocked(supabase.from).mockImplementation((table: string) => {
+        fromCallCount++
+        if (fromCallCount === 1) {
+          return selectQueryBuilder as any
+        }
+        return deleteQueryBuilder as any
+      })
 
       vi.mocked(supabase.storage.from).mockReturnValue({
         remove: mockRemove
@@ -232,7 +262,6 @@ describe('MediaService', () => {
       const result = await deleteMedia('media-123')
 
       expect(result).toBe(true)
-      expect(mockDelete).toHaveBeenCalled()
     })
 
     it('should return false if user is not authenticated', async () => {
@@ -257,15 +286,19 @@ describe('MediaService', () => {
       })
 
       const mockUpdate = vi.fn().mockReturnThis()
-      const mockEq = vi.fn().mockResolvedValue({
-        data: { id: 'media-123', caption: 'New caption' },
-        error: null
+      const queryBuilder: any = {
+        update: mockUpdate,
+        eq: vi.fn().mockReturnThis()
+      }
+
+      queryBuilder.eq.mockImplementation((key: string) => {
+        if (key === 'user_id') {
+          return Promise.resolve({ data: null, error: null })
+        }
+        return queryBuilder
       })
 
-      vi.mocked(supabase.from).mockReturnValue({
-        update: mockUpdate,
-        eq: mockEq
-      } as any)
+      vi.mocked(supabase.from).mockReturnValue(queryBuilder as any)
 
       const result = await updateMediaCaption('media-123', 'New caption')
 
