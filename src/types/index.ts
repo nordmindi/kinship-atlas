@@ -34,6 +34,17 @@ export interface FamilyMember {
   createdBy?: string;
   branchRoot?: string;
   isRootMember?: boolean;
+  familyGroups?: FamilyGroup[]; // Groups this member belongs to
+}
+
+export interface FamilyGroup {
+  id: string;
+  name: string;
+  description?: string;
+  userId: string;
+  createdAt: string;
+  updatedAt: string;
+  memberCount?: number; // Optional count of members in this group
 }
 
 export interface Relation {

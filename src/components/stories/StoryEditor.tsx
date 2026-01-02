@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { RichTextEditor } from '@/components/ui/rich-text-editor';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -230,7 +231,9 @@ const StoryEditor: React.FC<StoryEditorProps> = ({
         lng: location.lng,
         relatedMembers: selectedMembers,
         mediaIds: uploadedMedia,
-        artifactIds: selectedArtifactIds.length > 0 ? selectedArtifactIds : undefined
+        // Always pass artifactIds when updating existing story (even if empty) to allow removal
+        // For new stories, only pass if there are artifacts
+        artifactIds: existingStory ? selectedArtifactIds : (selectedArtifactIds.length > 0 ? selectedArtifactIds : undefined)
       };
 
       let result;
@@ -254,13 +257,28 @@ const StoryEditor: React.FC<StoryEditorProps> = ({
         }
       }
 
-      if (result.success && result.story) {
-        toast({
-          title: existingStory ? 'Story updated' : 'Story created',
-          description: 'Your story has been saved successfully'
-        });
-        onSave(result.story);
-        onClose();
+      if (result.success) {
+        if (result.story) {
+          toast({
+            title: existingStory ? 'Story updated' : 'Story created',
+            description: 'Your story has been saved successfully'
+          });
+          onSave(result.story);
+          onClose();
+        } else {
+          // Update succeeded but couldn't fetch the updated story
+          // Still close the dialog and let the parent refetch
+          toast({
+            title: existingStory ? 'Story updated' : 'Story created',
+            description: result.error || 'Your story has been saved. Refreshing...',
+            variant: 'default'
+          });
+          // Call onSave with the existing story to trigger a refetch
+          if (existingStory) {
+            onSave(existingStory);
+          }
+          onClose();
+        }
       } else {
         toast({
           title: 'Error',
@@ -384,10 +402,11 @@ const StoryEditor: React.FC<StoryEditorProps> = ({
                   )}
                   
                   <FormControl>
-                    <Textarea
-                      placeholder="Tell your story here..."
-                      className="min-h-[200px]"
-                      {...field}
+                    <RichTextEditor
+                      content={field.value}
+                      onChange={field.onChange}
+                      placeholder="Tell your story here... You can use formatting tools to make your story more engaging."
+                      minHeight="300px"
                     />
                   </FormControl>
                   <FormMessage />

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Navigate } from 'react-router-dom';
 import MobileLayout from "@/components/layout/MobileLayout";
 import { useAuth } from "@/contexts/AuthContext";
@@ -8,11 +8,13 @@ import { useNavigate } from 'react-router-dom';
 import FamilyTreeHeader from '@/components/family/tree/FamilyTreeHeader';
 import FamilyTreeTutorial from '@/components/family/tree/FamilyTreeTutorial';
 import EmptyFamilyTree from '@/components/family/tree/EmptyFamilyTree';
+import { FamilyGroupFilter } from '@/components/family/FamilyGroupFilter';
 import { Button } from '@/components/ui/button';
 import { Users, Loader2, Plus } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { getFamilyMembers } from '@/services/supabaseService';
 import { useFamilyTree } from '@/contexts/FamilyTreeContext';
+import { familyGroupService } from '@/services/familyGroupService';
 
 const FamilyTreeViewPage = () => {
   const { user, isLoading: authLoading } = useAuth();
@@ -26,6 +28,8 @@ const FamilyTreeViewPage = () => {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [loadError, setLoadError] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [selectedGroupIds, setSelectedGroupIds] = useState<string[]>([]);
+  const [filteredMemberIds, setFilteredMemberIds] = useState<string[]>([]);
   const { selectedMemberId, setSelectedMemberId } = useFamilyTree();
   
   // Fetch family members data (using mock data for demonstration)
@@ -96,6 +100,35 @@ const FamilyTreeViewPage = () => {
   const handleRelationshipUpdated = () => {
     setRefreshKey(prev => prev + 1);
   };
+
+  // Filter members by selected groups
+  useEffect(() => {
+    const filterMembers = async () => {
+      if (selectedGroupIds.length === 0) {
+        setFilteredMemberIds([]);
+        return;
+      }
+
+      try {
+        const memberIds = await familyGroupService.filterMembersByGroups(selectedGroupIds);
+        setFilteredMemberIds(memberIds);
+      } catch (error) {
+        console.error('Error filtering members by groups:', error);
+        setFilteredMemberIds([]);
+      }
+    };
+
+    filterMembers();
+  }, [selectedGroupIds]);
+
+  // Compute filtered members
+  const displayedMembers = useMemo(() => {
+    if (selectedGroupIds.length === 0 || filteredMemberIds.length === 0) {
+      return familyMembers;
+    }
+
+    return familyMembers.filter(member => filteredMemberIds.includes(member.id));
+  }, [familyMembers, filteredMemberIds, selectedGroupIds]);
   
   if (authLoading) {
     return (
@@ -188,9 +221,15 @@ const FamilyTreeViewPage = () => {
                 recentChangesCount={0} // TODO: Implement recent changes tracking
               />
               
+              <FamilyGroupFilter
+                selectedGroupIds={selectedGroupIds}
+                onSelectionChange={setSelectedGroupIds}
+                className="mb-2"
+              />
+              
               <div className="flex-1 h-[600px] min-h-[600px] bg-white rounded-lg border overflow-hidden relative">
                 <FamilyTreeGraph 
-                  members={familyMembers}
+                  members={displayedMembers}
                   onSelectMember={handleNavToProfile}
                   rootMemberId={selectedMemberId || undefined}
                   currentUserId={currentUserMember?.id}

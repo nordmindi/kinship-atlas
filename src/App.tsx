@@ -25,6 +25,7 @@ import ImportFamilyDataPage from "./pages/ImportFamilyDataPage";
 import ExportFamilyDataPage from "./pages/ExportFamilyDataPage";
 import LegacyStoriesPage from "./pages/LegacyStoriesPage";
 import StoryDetailPage from "./pages/StoryDetailPage";
+import FamilyGroupsPage from "./pages/FamilyGroupsPage";
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -53,6 +54,7 @@ const App = () => (
             <Route path="/export-family-data" element={<ExportFamilyDataPage />} />
             <Route path="/legacy-stories" element={<LegacyStoriesPage />} />
             <Route path="/story/:id" element={<StoryDetailPage />} />
+            <Route path="/family-groups" element={<FamilyGroupsPage />} />
             <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>

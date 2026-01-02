@@ -528,58 +528,130 @@ class StoryService {
       }
 
       // Update media if provided
-      if (request.mediaIds) {
-        // Delete existing media
-        await supabase
-          .from('story_media')
-          .delete()
-          .eq('story_id', request.id);
-
-        // Add new media
-        if (request.mediaIds.length > 0) {
-          const { error: mediaError } = await supabase
+      if (request.mediaIds !== undefined) {
+        try {
+          // Delete existing media
+          const { error: deleteMediaError } = await supabase
             .from('story_media')
-            .insert(
-              request.mediaIds.map(mediaId => ({
-                story_id: request.id,
-                media_id: mediaId
-              }))
-            );
+            .delete()
+            .eq('story_id', request.id);
 
-          if (mediaError) {
-            console.error('Error updating story media:', mediaError);
+          if (deleteMediaError) {
+            console.error('Error deleting story media:', deleteMediaError);
           }
+
+          // Add new media
+          if (request.mediaIds.length > 0) {
+            const { error: mediaError } = await supabase
+              .from('story_media')
+              .insert(
+                request.mediaIds.map(mediaId => ({
+                  story_id: request.id,
+                  media_id: mediaId
+                }))
+              );
+
+            if (mediaError) {
+              console.error('Error updating story media:', mediaError);
+            }
+          }
+        } catch (mediaErr) {
+          console.error('Error updating story media:', mediaErr);
         }
       }
 
       // Update artifacts if provided
-      if (request.artifactIds) {
-        // Delete existing artifacts
-        await (supabase as any)
-          .from('story_artifacts')
-          .delete()
-          .eq('story_id', request.id);
+      if (request.artifactIds !== undefined) {
+        try {
+          // Add timeout to prevent hanging - wrap the entire operation
+          const artifactUpdatePromise = (async () => {
+            // Delete existing artifacts
+            const { error: deleteError } = await (supabase as any)
+              .from('story_artifacts')
+              .delete()
+              .eq('story_id', request.id);
 
-        // Add new artifacts
-        if (request.artifactIds.length > 0) {
-          const { error: artifactsError } = await (supabase as any)
-            .from('story_artifacts')
-            .insert(
-              request.artifactIds.map(artifactId => ({
-                story_id: request.id,
-                artifact_id: artifactId
-              }))
-            );
+            // If table doesn't exist, skip artifact updates
+            if (deleteError) {
+              if (deleteError.code === '42P01' || 
+                  deleteError.code === 'PGRST204' ||
+                  deleteError.message?.includes('does not exist') ||
+                  deleteError.message?.includes('relation') ||
+                  deleteError.message?.includes("'story_artifacts'") ||
+                  deleteError.status === 404 ||
+                  deleteError.statusCode === 404) {
+                console.warn('updateStory: story_artifacts table not available in PostgREST schema cache. Skipping artifact updates.');
+                return; // Exit early if table doesn't exist
+              } else {
+                console.error('Error deleting story artifacts:', deleteError);
+                return; // Exit early on other errors
+              }
+            }
 
-          if (artifactsError) {
-            console.error('Error updating story artifacts:', artifactsError);
+            // Add new artifacts only if delete succeeded
+            if (request.artifactIds.length > 0) {
+              const { error: artifactsError } = await (supabase as any)
+                .from('story_artifacts')
+                .insert(
+                  request.artifactIds.map(artifactId => ({
+                    story_id: request.id,
+                    artifact_id: artifactId
+                  }))
+                );
+
+              if (artifactsError) {
+                if (artifactsError.code === 'PGRST204' ||
+                    artifactsError.message?.includes("'story_artifacts'")) {
+                  console.warn('updateStory: story_artifacts insert failed. Continuing without artifacts.');
+                } else {
+                  console.error('Error updating story artifacts:', artifactsError);
+                }
+              }
+            }
+          })();
+
+          // Race against timeout
+          const timeoutPromise = new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Artifact update timeout after 5 seconds')), 5000)
+          );
+
+          await Promise.race([artifactUpdatePromise, timeoutPromise]);
+        } catch (artifactsErr: any) {
+          // If it's a "table doesn't exist" error or timeout, that's okay - artifacts feature may not be available
+          if (artifactsErr?.code === '42P01' || 
+              artifactsErr?.code === 'PGRST204' ||
+              artifactsErr?.message?.includes('does not exist') ||
+              artifactsErr?.message?.includes('relation') ||
+              artifactsErr?.message?.includes('timeout') ||
+              artifactsErr?.message?.includes("'story_artifacts'") ||
+              artifactsErr?.status === 404 ||
+              artifactsErr?.statusCode === 404) {
+            console.warn('updateStory: story_artifacts table not available or timeout. Skipping artifact updates.');
+          } else {
+            console.error('Error updating story artifacts:', artifactsErr);
           }
         }
       }
 
-      // Fetch the updated story
-      const updatedStory = await this.getStory(request.id);
-      return { success: true, story: updatedStory };
+      // Fetch the updated story with timeout
+      try {
+        const getStoryPromise = this.getStory(request.id);
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('getStory timeout after 10 seconds')), 10000)
+        );
+
+        const updatedStory = await Promise.race([getStoryPromise, timeoutPromise]) as FamilyStory | null;
+        if (!updatedStory) {
+          console.warn('updateStory: getStory returned null, but update succeeded');
+          // Still return success since the update worked
+          return { success: true, error: 'Story updated but could not fetch updated data' };
+        }
+        return { success: true, story: updatedStory };
+      } catch (getStoryError) {
+        console.error('Error fetching updated story:', getStoryError);
+        // Still return success since the update worked
+        return { success: true, error: 'Story updated but could not fetch updated data' };
+      }
     } catch (error) {
       console.error('Error updating story:', error);
       return { success: false, error: 'An unexpected error occurred while updating the story' };

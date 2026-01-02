@@ -42,6 +42,7 @@ import { toast } from '@/hooks/use-toast';
 import { getAccessibleStorageUrl } from '@/utils/storageUrl';
 import AddRelationshipDialog from '@/components/family/AddRelationshipDialog';
 import FamilyMemberActions from '@/components/family/FamilyMemberActions';
+import { AssignMemberToGroupDialog } from '@/components/family/AssignMemberToGroupDialog';
 import NewFamilyTab from '@/components/family/NewFamilyTab';
 import Timeline from '@/components/stories/Timeline';
 import { useMemberTimeline } from '@/hooks/useTimeline';
@@ -73,6 +74,7 @@ const FamilyMemberDetailPage = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [isAddRelationshipOpen, setIsAddRelationshipOpen] = useState(false);
   const [selectedRelationshipType, setSelectedRelationshipType] = useState<'parent' | 'child' | 'spouse' | 'sibling'>('parent');
+  const [isAssignGroupDialogOpen, setIsAssignGroupDialogOpen] = useState(false);
 
   // Timeline functionality
   const { timeline, isLoading: timelineLoading, error: timelineError } = useMemberTimeline(id || '');
@@ -604,6 +606,14 @@ const FamilyMemberDetailPage = () => {
                           Edit Details
                         </Button>
                       )}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setIsAssignGroupDialogOpen(true)}
+                      >
+                        <Users className="h-4 w-4 mr-2" />
+                        Assign to Groups
+                      </Button>
                     </div>
                   )}
                 </div>
@@ -772,6 +782,16 @@ const FamilyMemberDetailPage = () => {
           currentMember={member}
           relationshipType={selectedRelationshipType}
           onRelationshipAdded={handleRelationshipAdded}
+        />
+      )}
+
+      {/* Assign to Group Dialog */}
+      {member && (
+        <AssignMemberToGroupDialog
+          isOpen={isAssignGroupDialogOpen}
+          onClose={() => setIsAssignGroupDialogOpen(false)}
+          member={member}
+          onUpdate={handleRelationshipAdded}
         />
       )}
 

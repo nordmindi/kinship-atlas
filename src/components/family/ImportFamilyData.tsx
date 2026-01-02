@@ -23,14 +23,58 @@ import {
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { FamilyMember, Relation, FamilyStory } from '@/types';
+import { Artifact } from '@/types/stories';
 import { familyMemberService } from '@/services/familyMemberService';
 import { familyRelationshipManager } from '@/services/familyRelationshipManager';
+import { storyService } from '@/services/storyService';
 import { supabase } from '@/integrations/supabase/client';
+
+interface ImportLocation {
+  familyMemberId?: string;
+  familyMemberName?: string;
+  description: string;
+  lat?: number;
+  lng?: number;
+  currentResidence?: boolean;
+}
+
+interface ImportMedia {
+  url: string;
+  mediaType: string;
+  caption?: string;
+  fileName?: string;
+  fileSize?: number;
+  linkedToType: 'story' | 'artifact' | 'member';
+  linkedToId: string;
+}
+
+interface ImportArtifact {
+  name: string;
+  description?: string;
+  artifactType: 'document' | 'heirloom' | 'photo' | 'letter' | 'certificate' | 'other';
+  dateCreated?: string;
+  dateAcquired?: string;
+  condition?: string;
+  locationStored?: string;
+  mediaIds?: string[];
+}
+
+interface ImportStoryMember {
+  storyId?: string;
+  storyTitle?: string;
+  familyMemberId?: string;
+  familyMemberName?: string;
+  role: string;
+}
 
 interface ImportData {
   familyMembers: FamilyMember[];
   relationships: Relation[];
   stories: FamilyStory[];
+  locations?: ImportLocation[];
+  media?: ImportMedia[];
+  artifacts?: ImportArtifact[];
+  storyMembers?: ImportStoryMember[];
 }
 
 interface ImportResult {
@@ -39,6 +83,10 @@ interface ImportResult {
     members: number;
     relationships: number;
     stories: number;
+    locations: number;
+    media: number;
+    artifacts: number;
+    storyMembers: number;
   };
   errors: string[];
   warnings: string[];
@@ -57,13 +105,17 @@ const ImportFamilyData: React.FC<ImportFamilyDataProps> = ({
   const [isImporting, setIsImporting] = useState(false);
   const [importProgress, setImportProgress] = useState(0);
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
-  const [previewMode, setPreviewMode] = useState<'members' | 'relationships' | 'stories'>('members');
+  const [previewMode, setPreviewMode] = useState<'members' | 'relationships' | 'stories' | 'locations' | 'media' | 'artifacts'>('members');
 
   // File parsing functions
   const parseExcelFile = useCallback(async (file: File): Promise<ImportData> => {
     const familyMembers: FamilyMember[] = [];
     const relationships: Relation[] = [];
     const stories: FamilyStory[] = [];
+    const locations: ImportLocation[] = [];
+    const media: ImportMedia[] = [];
+    const artifacts: ImportArtifact[] = [];
+    const storyMembers: ImportStoryMember[] = [];
 
     // Helpers to normalize dates from Excel
     const toISODate = (d: Date) => {
@@ -103,6 +155,114 @@ const ImportFamilyData: React.FC<ImportFamilyDataProps> = ({
       return trimmed;
     };
 
+    const parseSheet = (worksheet: XLSX.WorkSheet, sheetName: string) => {
+      const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+      if (jsonData.length < 2) return;
+
+      const headers = (jsonData[0] as string[]).map(h => h?.toString().toLowerCase().trim() || '');
+
+      for (let i = 1; i < jsonData.length; i++) {
+        const row = jsonData[i] as unknown[];
+        if (!row || row.length === 0) continue;
+
+        const rowData: Record<string, string> = {};
+        headers.forEach((header, index) => {
+          rowData[header] = row[index]?.toString().trim() || '';
+        });
+
+        if (sheetName === 'Family Members' || sheetName.toLowerCase().includes('member')) {
+          if (rowData.first_name && rowData.last_name) {
+            const member: FamilyMember = {
+              id: `temp_${i}`,
+              firstName: rowData.first_name,
+              lastName: rowData.last_name,
+              birthDate: normalizeDateString(rowData.birth_date),
+              deathDate: normalizeDateString(rowData.death_date),
+              birthPlace: rowData.birth_place || undefined,
+              bio: rowData.bio || undefined,
+              gender: (rowData.gender as 'male' | 'female' | 'other') || 'other',
+              relations: [],
+              currentLocation: rowData.lat && rowData.lng ? {
+                lat: parseFloat(rowData.lat),
+                lng: parseFloat(rowData.lng),
+                description: rowData.location_description || ''
+              } : undefined
+            };
+            familyMembers.push(member);
+          }
+        } else if (sheetName === 'Relationships' || sheetName.toLowerCase().includes('relationship')) {
+          if (rowData.from_member_id || rowData.from_member_name) {
+            const relationship: Relation = {
+              id: `temp_rel_${i}`,
+              type: (rowData.relationship_type as 'parent' | 'child' | 'spouse' | 'sibling') || 'sibling',
+              personId: rowData.to_member_id || ''
+            };
+            relationships.push(relationship);
+          }
+        } else if (sheetName === 'Stories' || sheetName.toLowerCase().includes('story')) {
+          if (rowData.story_title || rowData.title) {
+            const story: FamilyStory = {
+              id: rowData.story_id || `temp_story_${i}`,
+              title: rowData.story_title || rowData.title,
+              content: rowData.story_content || rowData.content || '',
+              date: normalizeDateString(rowData.story_date || rowData.date),
+              location: rowData.location || undefined,
+              lat: rowData.lat ? parseFloat(rowData.lat) : undefined,
+              lng: rowData.lng ? parseFloat(rowData.lng) : undefined,
+              authorId: rowData.author_id || undefined,
+              relatedMembers: []
+            };
+            stories.push(story);
+          }
+        } else if (sheetName === 'Locations' || sheetName.toLowerCase().includes('location')) {
+          if (rowData.description) {
+            locations.push({
+              familyMemberId: rowData.family_member_id,
+              familyMemberName: rowData.family_member_name,
+              description: rowData.description,
+              lat: rowData.lat ? parseFloat(rowData.lat) : undefined,
+              lng: rowData.lng ? parseFloat(rowData.lng) : undefined,
+              currentResidence: rowData.current_residence?.toLowerCase() === 'yes' || rowData.current_residence === 'true'
+            });
+          }
+        } else if (sheetName === 'Media' || sheetName.toLowerCase().includes('media')) {
+          if (rowData.url) {
+            media.push({
+              url: rowData.url,
+              mediaType: rowData.media_type || 'image',
+              caption: rowData.caption,
+              fileName: rowData.file_name,
+              fileSize: rowData.file_size ? parseInt(rowData.file_size) : undefined,
+              linkedToType: (rowData.linked_to_type as 'story' | 'artifact' | 'member') || 'member',
+              linkedToId: rowData.linked_to_id || ''
+            });
+          }
+        } else if (sheetName === 'Artifacts' || sheetName.toLowerCase().includes('artifact')) {
+          if (rowData.name) {
+            artifacts.push({
+              name: rowData.name,
+              description: rowData.description,
+              artifactType: (rowData.artifact_type as any) || 'other',
+              dateCreated: normalizeDateString(rowData.date_created),
+              dateAcquired: normalizeDateString(rowData.date_acquired),
+              condition: rowData.condition,
+              locationStored: rowData.location_stored
+            });
+          }
+        } else if (sheetName === 'Story Members' || sheetName.toLowerCase().includes('story member')) {
+          if (rowData.story_id || rowData.family_member_id) {
+            storyMembers.push({
+              storyId: rowData.story_id,
+              storyTitle: rowData.story_title,
+              familyMemberId: rowData.family_member_id,
+              familyMemberName: rowData.family_member_name,
+              role: rowData.role || 'participant'
+            });
+          }
+        }
+      }
+    };
+
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       
@@ -114,77 +274,23 @@ const ImportFamilyData: React.FC<ImportFamilyDataProps> = ({
             return;
           }
 
-          // Parse Excel file
-          const workbook = XLSX.read(data, { type: 'binary' });
-          const sheetName = workbook.SheetNames[0];
-          const worksheet = workbook.Sheets[sheetName];
+          let workbook: XLSX.WorkBook;
           
-          // Convert to JSON
-          const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-          
-          if (jsonData.length < 2) {
-            reject(new Error('File must contain at least a header row and one data row'));
-            return;
+          if (file.name.endsWith('.csv')) {
+            // Handle CSV files - convert text to workbook
+            workbook = XLSX.read(data as string, { type: 'string' });
+          } else {
+            // Handle Excel files
+            workbook = XLSX.read(data, { type: 'binary' });
           }
-
-          const headers = (jsonData[0] as string[]).map(h => h?.toString().toLowerCase().trim() || '');
           
-          // Parse each row
-          for (let i = 1; i < jsonData.length; i++) {
-            const row = jsonData[i] as unknown[];
-            if (!row || row.length === 0) continue;
+          // Parse each sheet
+          workbook.SheetNames.forEach(sheetName => {
+            const worksheet = workbook.Sheets[sheetName];
+            parseSheet(worksheet, sheetName);
+          });
 
-            const rowData: Record<string, string> = {};
-            headers.forEach((header, index) => {
-              rowData[header] = row[index]?.toString().trim() || '';
-            });
-
-            // Parse family member data
-            if (rowData.first_name && rowData.last_name) {
-              const member: FamilyMember = {
-                id: `temp_${i}`,
-                firstName: rowData.first_name,
-                lastName: rowData.last_name,
-                birthDate: normalizeDateString(rowData.birth_date),
-                deathDate: normalizeDateString(rowData.death_date),
-                birthPlace: rowData.birth_place || undefined,
-                bio: rowData.bio || undefined,
-                gender: (rowData.gender as 'male' | 'female' | 'other') || 'other',
-                relations: [],
-                currentLocation: rowData.lat && rowData.lng ? {
-                  lat: parseFloat(rowData.lat),
-                  lng: parseFloat(rowData.lng),
-                  description: rowData.location_description || ''
-                } : undefined
-              };
-              familyMembers.push(member);
-            }
-
-            // Parse relationship data (if present)
-            if (rowData.from_member && rowData.to_member && rowData.relationship_type) {
-              const relationship: Relation = {
-                id: `temp_rel_${i}`,
-                type: rowData.relationship_type as 'parent' | 'child' | 'spouse' | 'sibling',
-                personId: rowData.to_member
-              };
-              relationships.push(relationship);
-            }
-
-            // Parse story data (if present)
-            if (rowData.story_title && rowData.story_content) {
-              const story: FamilyStory = {
-                id: `temp_story_${i}`,
-                title: rowData.story_title,
-                content: rowData.story_content,
-                date: rowData.story_date || undefined,
-                authorId: rowData.author_id || undefined,
-                relatedMembers: []
-              };
-              stories.push(story);
-            }
-          }
-
-          resolve({ familyMembers, relationships, stories });
+          resolve({ familyMembers, relationships, stories, locations, media, artifacts, storyMembers });
         } catch (error) {
           reject(error);
         }
@@ -209,7 +315,11 @@ const ImportFamilyData: React.FC<ImportFamilyDataProps> = ({
     return {
       familyMembers: data.familyMembers || data.members || [],
       relationships: data.relationships || data.relations || [],
-      stories: data.stories || []
+      stories: data.stories || [],
+      locations: data.locations || [],
+      media: data.media || [],
+      artifacts: data.artifacts || [],
+      storyMembers: data.storyMembers || []
     };
   }, []);
 
@@ -242,7 +352,7 @@ const ImportFamilyData: React.FC<ImportFamilyDataProps> = ({
       setImportData(data);
       toast({
         title: "File Parsed Successfully",
-        description: `Found ${data.familyMembers.length} members, ${data.relationships.length} relationships, and ${data.stories.length} stories.`
+        description: `Found ${data.familyMembers.length} members, ${data.relationships.length} relationships, ${data.stories.length} stories, ${data.locations?.length || 0} locations, ${data.media?.length || 0} media, ${data.artifacts?.length || 0} artifacts, and ${data.storyMembers?.length || 0} story-member connections.`
       });
     } catch (error) {
       console.error('Error parsing file:', error);
@@ -296,7 +406,7 @@ const ImportFamilyData: React.FC<ImportFamilyDataProps> = ({
     setImportProgress(0);
     const result: ImportResult = {
       success: true,
-      imported: { members: 0, relationships: 0, stories: 0 },
+      imported: { members: 0, relationships: 0, stories: 0, locations: 0, media: 0, artifacts: 0, storyMembers: 0 },
       errors: [],
       warnings: []
     };
@@ -308,8 +418,16 @@ const ImportFamilyData: React.FC<ImportFamilyDataProps> = ({
     try {
       const totalItems = importData.familyMembers.length + 
                         importData.relationships.length + 
-                        importData.stories.length;
+                        importData.stories.length +
+                        (importData.locations?.length || 0) +
+                        (importData.media?.length || 0) +
+                        (importData.artifacts?.length || 0) +
+                        (importData.storyMembers?.length || 0);
       let processedItems = 0;
+      
+      // Create a map of member names to IDs for later reference
+      const memberNameToId: Record<string, string> = {};
+      const storyTitleToId: Record<string, string> = {};
 
       // Import family members
       for (const member of importData.familyMembers) {
@@ -343,6 +461,9 @@ const ImportFamilyData: React.FC<ImportFamilyDataProps> = ({
             result.imported.members++;
             // Update the member ID for relationship creation
             member.id = response.member!.id;
+            // Store in name-to-ID map
+            const nameKey = `${member.firstName} ${member.lastName}`;
+            memberNameToId[nameKey] = response.member!.id;
           } else {
             console.log('❌ Import failed for', member.firstName, member.lastName, ':', response.error);
             result.errors.push(`Failed to import ${member.firstName} ${member.lastName}: ${response.error}`);
@@ -380,19 +501,25 @@ const ImportFamilyData: React.FC<ImportFamilyDataProps> = ({
       // Import stories
       for (const story of importData.stories) {
         try {
-          const { error } = await supabase
+          const { data: storyData, error } = await supabase
             .from('family_stories')
             .insert({
               title: story.title,
               content: story.content,
               date: story.date,
+              location: story.location,
+              lat: story.lat,
+              lng: story.lng,
               author_id: story.authorId
-            });
+            })
+            .select('id')
+            .single();
 
-          if (!error) {
+          if (!error && storyData) {
             result.imported.stories++;
+            storyTitleToId[story.title] = storyData.id;
           } else {
-            result.errors.push(`Failed to import story "${story.title}": ${error.message}`);
+            result.errors.push(`Failed to import story "${story.title}": ${error?.message || 'Unknown error'}`);
           }
         } catch (error) {
           result.errors.push(`Error importing story "${story.title}": ${error}`);
@@ -402,6 +529,149 @@ const ImportFamilyData: React.FC<ImportFamilyDataProps> = ({
         setImportProgress((processedItems / totalItems) * 100);
       }
 
+      // Import locations
+      if (importData.locations && importData.locations.length > 0) {
+        for (const location of importData.locations) {
+          try {
+            let memberId = location.familyMemberId;
+            
+            // If we have a name but no ID, try to find the member
+            if (!memberId && location.familyMemberName) {
+              memberId = memberNameToId[location.familyMemberName];
+            }
+            
+            if (!memberId) {
+              result.warnings.push(`Skipping location "${location.description}" - member not found`);
+              processedItems++;
+              setImportProgress((processedItems / totalItems) * 100);
+              continue;
+            }
+
+            const { error } = await supabase
+              .from('locations')
+              .insert({
+                family_member_id: memberId,
+                description: location.description,
+                lat: location.lat,
+                lng: location.lng,
+                current_residence: location.currentResidence || false
+              });
+
+            if (!error) {
+              result.imported.locations++;
+            } else {
+              result.errors.push(`Failed to import location "${location.description}": ${error.message}`);
+            }
+          } catch (error) {
+            result.errors.push(`Error importing location "${location.description}": ${error}`);
+          }
+
+          processedItems++;
+          setImportProgress((processedItems / totalItems) * 100);
+        }
+      }
+
+      // Import artifacts
+      if (importData.artifacts && importData.artifacts.length > 0) {
+        for (const artifact of importData.artifacts) {
+          try {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) continue;
+
+            const { data: artifactData, error } = await supabase
+              .from('artifacts')
+              .insert({
+                name: artifact.name,
+                description: artifact.description,
+                artifact_type: artifact.artifactType,
+                date_created: artifact.dateCreated,
+                date_acquired: artifact.dateAcquired,
+                condition: artifact.condition,
+                location_stored: artifact.locationStored,
+                owner_id: user.id
+              })
+              .select('id')
+              .single();
+
+            if (!error && artifactData) {
+              result.imported.artifacts++;
+              
+              // Link media if provided
+              if (artifact.mediaIds && artifact.mediaIds.length > 0) {
+                for (const mediaId of artifact.mediaIds) {
+                  await supabase
+                    .from('artifact_media')
+                    .insert({
+                      artifact_id: artifactData.id,
+                      media_id: mediaId
+                    });
+                }
+              }
+            } else {
+              result.errors.push(`Failed to import artifact "${artifact.name}": ${error?.message || 'Unknown error'}`);
+            }
+          } catch (error) {
+            result.errors.push(`Error importing artifact "${artifact.name}": ${error}`);
+          }
+
+          processedItems++;
+          setImportProgress((processedItems / totalItems) * 100);
+        }
+      }
+
+      // Import story-members connections
+      if (importData.storyMembers && importData.storyMembers.length > 0) {
+        for (const storyMember of importData.storyMembers) {
+          try {
+            let storyId = storyMember.storyId;
+            let memberId = storyMember.familyMemberId;
+            
+            // Try to find by title if ID not provided
+            if (!storyId && storyMember.storyTitle) {
+              storyId = storyTitleToId[storyMember.storyTitle];
+            }
+            
+            // Try to find member by name if ID not provided
+            if (!memberId && storyMember.familyMemberName) {
+              memberId = memberNameToId[storyMember.familyMemberName];
+            }
+            
+            if (!storyId || !memberId) {
+              result.warnings.push(`Skipping story-member connection - story or member not found`);
+              processedItems++;
+              setImportProgress((processedItems / totalItems) * 100);
+              continue;
+            }
+
+            const { error } = await supabase
+              .from('story_members')
+              .insert({
+                story_id: storyId,
+                family_member_id: memberId,
+                role: storyMember.role
+              });
+
+            if (!error) {
+              result.imported.storyMembers++;
+            } else {
+              result.errors.push(`Failed to import story-member connection: ${error.message}`);
+            }
+          } catch (error) {
+            result.errors.push(`Error importing story-member connection: ${error}`);
+          }
+
+          processedItems++;
+          setImportProgress((processedItems / totalItems) * 100);
+        }
+      }
+
+      // Note: Media import is handled separately as it requires file uploads
+      // Media references in the export are informational - actual media files
+      // would need to be uploaded separately
+      if (importData.media && importData.media.length > 0) {
+        result.warnings.push(`Note: ${importData.media.length} media references found. Media files must be uploaded separately through the media gallery.`);
+      }
+
       result.success = result.errors.length === 0;
       setImportResult(result);
       setIsImporting(false);
@@ -409,7 +679,7 @@ const ImportFamilyData: React.FC<ImportFamilyDataProps> = ({
       if (result.success) {
         toast({
           title: "Import Successful",
-          description: `Imported ${result.imported.members} members, ${result.imported.relationships} relationships, and ${result.imported.stories} stories.`
+          description: `Imported ${result.imported.members} members, ${result.imported.relationships} relationships, ${result.imported.stories} stories, ${result.imported.locations} locations, ${result.imported.artifacts} artifacts, and ${result.imported.storyMembers} story-member connections.`
         });
       } else {
         toast({
@@ -477,7 +747,49 @@ const ImportFamilyData: React.FC<ImportFamilyDataProps> = ({
             title: "Family Reunion 2023",
             content: "We had a wonderful family gathering at the lake house. Everyone came together to celebrate our heritage and create new memories.",
             date: "2023-07-15",
-            authorId: "user_id"
+            location: "Lake House, NY",
+            lat: 40.7128,
+            lng: -74.0060,
+            authorId: "user_id",
+            relatedMemberIds: []
+          }
+        ],
+        locations: [
+          {
+            familyMemberId: "john_smith_id",
+            description: "Childhood home in New York",
+            lat: 40.7128,
+            lng: -74.0060,
+            currentResidence: false
+          }
+        ],
+        media: [
+          {
+            url: "https://example.com/photo.jpg",
+            mediaType: "image",
+            caption: "Family photo from 2023",
+            fileName: "family_photo_2023.jpg",
+            linkedToType: "story",
+            linkedToId: "story_id"
+          }
+        ],
+        artifacts: [
+          {
+            name: "Grandfather's Watch",
+            description: "A gold pocket watch passed down through generations",
+            artifactType: "heirloom",
+            dateCreated: "1920-01-01",
+            dateAcquired: "2020-05-15",
+            condition: "Good",
+            locationStored: "Home safe",
+            mediaIds: []
+          }
+        ],
+        storyMembers: [
+          {
+            storyId: "story_id",
+            familyMemberId: "john_smith_id",
+            role: "protagonist"
           }
         ]
       };
@@ -506,10 +818,10 @@ const ImportFamilyData: React.FC<ImportFamilyDataProps> = ({
       
       // Relationships sheet
       const relationshipsData = [
-        ['from_member', 'to_member', 'relationship_type'],
-        ['John Smith', 'Mary Smith', 'spouse'],
-        ['John Smith', 'David Smith', 'parent'],
-        ['Mary Smith', 'David Smith', 'parent']
+        ['from_member_id', 'from_member_name', 'to_member_id', 'to_member_name', 'relationship_type'],
+        ['', 'John Smith', '', 'Mary Smith', 'spouse'],
+        ['', 'John Smith', '', 'David Smith', 'parent'],
+        ['', 'Mary Smith', '', 'David Smith', 'parent']
       ];
       
       const relationshipsSheet = XLSX.utils.aoa_to_sheet(relationshipsData);
@@ -517,13 +829,53 @@ const ImportFamilyData: React.FC<ImportFamilyDataProps> = ({
       
       // Stories sheet
       const storiesData = [
-        ['story_title', 'story_content', 'story_date', 'author_id'],
-        ['Family Reunion 2023', 'We had a wonderful family gathering at the lake house. Everyone came together to celebrate our heritage and create new memories.', '2023-07-15', 'user_id'],
-        ['Wedding Day', 'The beautiful ceremony brought our families together in celebration of love and commitment.', '2020-06-20', 'user_id']
+        ['story_id', 'story_title', 'story_content', 'story_date', 'location', 'lat', 'lng', 'author_id'],
+        ['', 'Family Reunion 2023', 'We had a wonderful family gathering at the lake house. Everyone came together to celebrate our heritage and create new memories.', '2023-07-15', 'Lake House, NY', '40.7128', '-74.0060', 'user_id'],
+        ['', 'Wedding Day', 'The beautiful ceremony brought our families together in celebration of love and commitment.', '2020-06-20', '', '', '', 'user_id']
       ];
       
       const storiesSheet = XLSX.utils.aoa_to_sheet(storiesData);
       XLSX.utils.book_append_sheet(workbook, storiesSheet, 'Stories');
+      
+      // Locations sheet
+      const locationsData = [
+        ['family_member_id', 'family_member_name', 'description', 'lat', 'lng', 'current_residence'],
+        ['', 'John Smith', 'Childhood home in New York', '40.7128', '-74.0060', 'No'],
+        ['', 'Mary Smith', 'Current residence in Boston', '42.3601', '-71.0589', 'Yes']
+      ];
+      
+      const locationsSheet = XLSX.utils.aoa_to_sheet(locationsData);
+      XLSX.utils.book_append_sheet(workbook, locationsSheet, 'Locations');
+      
+      // Media sheet
+      const mediaData = [
+        ['media_id', 'url', 'media_type', 'caption', 'file_name', 'file_size', 'linked_to_type', 'linked_to_id'],
+        ['', 'https://example.com/photo.jpg', 'image', 'Family photo from 2023', 'family_photo_2023.jpg', '2048000', 'story', ''],
+        ['', 'https://example.com/document.pdf', 'document', 'Birth certificate', 'birth_cert.pdf', '512000', 'artifact', '']
+      ];
+      
+      const mediaSheet = XLSX.utils.aoa_to_sheet(mediaData);
+      XLSX.utils.book_append_sheet(workbook, mediaSheet, 'Media');
+      
+      // Artifacts sheet
+      const artifactsData = [
+        ['artifact_id', 'name', 'description', 'artifact_type', 'date_created', 'date_acquired', 'condition', 'location_stored'],
+        ['', "Grandfather's Watch", 'A gold pocket watch passed down through generations', 'heirloom', '1920-01-01', '2020-05-15', 'Good', 'Home safe'],
+        ['', 'Marriage Certificate', 'Original marriage certificate from 1950', 'certificate', '1950-06-10', '2020-05-15', 'Excellent', 'Filing cabinet']
+      ];
+      
+      const artifactsSheet = XLSX.utils.aoa_to_sheet(artifactsData);
+      XLSX.utils.book_append_sheet(workbook, artifactsSheet, 'Artifacts');
+      
+      // Story Members sheet
+      const storyMembersData = [
+        ['story_id', 'story_title', 'family_member_id', 'family_member_name', 'role'],
+        ['', 'Family Reunion 2023', '', 'John Smith', 'protagonist'],
+        ['', 'Family Reunion 2023', '', 'Mary Smith', 'participant']
+      ];
+      
+      const storyMembersSheet = XLSX.utils.aoa_to_sheet(storyMembersData);
+      XLSX.utils.book_append_sheet(workbook, storyMembersSheet, 'Story Members');
       
       // Generate and download
       XLSX.writeFile(workbook, 'family_data_template.xlsx');
@@ -587,7 +939,9 @@ const ImportFamilyData: React.FC<ImportFamilyDataProps> = ({
                     <CheckCircle className="h-4 w-4" />
                     <AlertDescription>
                       File parsed successfully! Found {importData.familyMembers.length} family members, 
-                      {importData.relationships.length} relationships, and {importData.stories.length} stories.
+                      {importData.relationships.length} relationships, {importData.stories.length} stories, 
+                      {importData.locations?.length || 0} locations, {importData.media?.length || 0} media, 
+                      {importData.artifacts?.length || 0} artifacts, and {importData.storyMembers?.length || 0} story-member connections.
                     </AlertDescription>
                   </Alert>
 
@@ -668,7 +1022,7 @@ const ImportFamilyData: React.FC<ImportFamilyDataProps> = ({
                     </CardHeader>
                     <CardContent>
                       <p className="text-sm text-gray-600 mb-3">
-                        Complete JSON format including members, relationships, and stories.
+                        Complete JSON format including members, relationships, stories, locations, media, artifacts, and story-member connections.
                       </p>
                       <Button 
                         variant="outline" 
@@ -688,7 +1042,7 @@ const ImportFamilyData: React.FC<ImportFamilyDataProps> = ({
             <TabsContent value="preview" className="space-y-4">
               {importData && (
                 <div className="space-y-4">
-                  <div className="flex gap-2">
+                  <div className="flex flex-wrap gap-2">
                     <Button
                       variant={previewMode === 'members' ? 'default' : 'outline'}
                       size="sm"
@@ -713,6 +1067,33 @@ const ImportFamilyData: React.FC<ImportFamilyDataProps> = ({
                       <BookOpen className="mr-2 h-4 w-4" />
                       Stories ({importData.stories.length})
                     </Button>
+                    {(importData.locations && importData.locations.length > 0) && (
+                      <Button
+                        variant={previewMode === 'locations' ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => setPreviewMode('locations')}
+                      >
+                        Locations ({importData.locations.length})
+                      </Button>
+                    )}
+                    {(importData.media && importData.media.length > 0) && (
+                      <Button
+                        variant={previewMode === 'media' ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => setPreviewMode('media')}
+                      >
+                        Media ({importData.media.length})
+                      </Button>
+                    )}
+                    {(importData.artifacts && importData.artifacts.length > 0) && (
+                      <Button
+                        variant={previewMode === 'artifacts' ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => setPreviewMode('artifacts')}
+                      >
+                        Artifacts ({importData.artifacts.length})
+                      </Button>
+                    )}
                   </div>
 
                   <div className="max-h-96 overflow-y-auto border rounded-lg p-4">
@@ -746,6 +1127,48 @@ const ImportFamilyData: React.FC<ImportFamilyDataProps> = ({
                           <div key={index} className="p-2 bg-gray-50 rounded">
                             <h4 className="font-medium">{story.title}</h4>
                             <p className="text-sm text-gray-600">{story.content.substring(0, 100)}...</p>
+                            {story.location && <span className="text-xs text-gray-500">📍 {story.location}</span>}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {previewMode === 'locations' && importData.locations && (
+                      <div className="space-y-2">
+                        {importData.locations.map((loc, index) => (
+                          <div key={index} className="flex items-center gap-3 p-2 bg-gray-50 rounded">
+                            <span className="font-medium">{loc.description}</span>
+                            {loc.familyMemberName && <span className="text-sm text-gray-500">({loc.familyMemberName})</span>}
+                            {loc.lat && loc.lng && <span className="text-xs text-gray-400">📍 {loc.lat}, {loc.lng}</span>}
+                            {loc.currentResidence && <Badge variant="outline">Current</Badge>}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {previewMode === 'media' && importData.media && (
+                      <div className="space-y-2">
+                        {importData.media.map((media, index) => (
+                          <div key={index} className="flex items-center gap-3 p-2 bg-gray-50 rounded">
+                            <Badge variant="outline">{media.mediaType}</Badge>
+                            <span className="text-sm font-medium">{media.fileName || 'Media'}</span>
+                            {media.caption && <span className="text-xs text-gray-500">{media.caption}</span>}
+                            <span className="text-xs text-gray-400">→ {media.linkedToType}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {previewMode === 'artifacts' && importData.artifacts && (
+                      <div className="space-y-2">
+                        {importData.artifacts.map((artifact, index) => (
+                          <div key={index} className="p-2 bg-gray-50 rounded">
+                            <div className="flex items-center gap-2">
+                              <Badge variant="outline">{artifact.artifactType}</Badge>
+                              <span className="font-medium">{artifact.name}</span>
+                            </div>
+                            {artifact.description && <p className="text-sm text-gray-600 mt-1">{artifact.description}</p>}
+                            {artifact.locationStored && <span className="text-xs text-gray-500">📍 {artifact.locationStored}</span>}
                           </div>
                         ))}
                       </div>

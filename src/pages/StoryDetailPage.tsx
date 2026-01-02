@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { ArrowLeft, Calendar, User, Users, Edit, Trash2, Eye, Package, FileText, Image as ImageIcon, BookOpen, Tag, Download, MapPin } from "lucide-react";
+import { ArrowLeft, Calendar, User, Users, Edit, Trash2, Eye, Package, FileText, Image as ImageIcon, BookOpen, Tag, Download, MapPin, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import { storyService } from "@/services/storyService";
 import { getUserProfile } from "@/services/userService";
 import { usePermissions } from "@/hooks/usePermissions";
@@ -19,6 +19,104 @@ import { sanitizeHtml } from "@/utils/sanitize";
 import { getAccessibleStorageUrl } from "@/utils/storageUrl";
 import StoryEditor from "@/components/stories/StoryEditor";
 
+// Media thumbnail component
+const MediaThumbnail: React.FC<{
+  media: any;
+  index: number;
+  imageUrls: Record<string, string>;
+  loadingImages: Set<string>;
+  onImageUrlLoaded: (mediaId: string, url: string) => void;
+  onLoadingChange: (mediaId: string, loading: boolean) => void;
+  onClick: () => void;
+}> = ({ media, imageUrls, loadingImages, onImageUrlLoaded, onLoadingChange, onClick }) => {
+  const mediaId = media.id;
+  const isImage = media.media_type === 'image';
+  const isLoading = loadingImages.has(mediaId);
+  const imageUrl = imageUrls[mediaId] || media.url;
+
+  useEffect(() => {
+    if (isImage && media.url && !imageUrls[mediaId]) {
+      onLoadingChange(mediaId, true);
+      getAccessibleStorageUrl(media.url)
+        .then(url => {
+          if (url) {
+            onImageUrlLoaded(mediaId, url);
+          }
+          onLoadingChange(mediaId, false);
+        })
+        .catch(() => {
+          onLoadingChange(mediaId, false);
+        });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mediaId, media.url, isImage]);
+
+  return (
+    <div
+      className="relative group aspect-square border rounded-lg overflow-hidden cursor-pointer bg-gray-50 hover:shadow-lg transition-all duration-200"
+      onClick={onClick}
+    >
+      {isImage && imageUrl ? (
+        <>
+          {isLoading && (
+            <div className="absolute inset-0 flex items-center justify-center bg-gray-100 z-10">
+              <Loader2 className="h-6 w-6 animate-spin text-heritage-purple" />
+            </div>
+          )}
+          <img
+            src={imageUrl}
+            alt={media.caption || media.file_name || 'Story media'}
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
+            onError={async (e) => {
+              const target = e.currentTarget as HTMLImageElement;
+              if (media.url && imageUrl !== media.url) {
+                try {
+                  const signedUrl = await getAccessibleStorageUrl(media.url);
+                  if (signedUrl && signedUrl !== imageUrl) {
+                    target.src = signedUrl;
+                    onImageUrlLoaded(mediaId, signedUrl);
+                    return;
+                  }
+                } catch (error) {
+                  console.error('Error getting signed URL:', error);
+                }
+              }
+              target.style.display = 'none';
+            }}
+          />
+        </>
+      ) : (
+        <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200">
+          <FileText className="h-12 w-12 text-gray-400 mb-2" />
+          {media.file_name && (
+            <span className="text-xs text-gray-600 px-2 text-center truncate w-full">
+              {media.file_name}
+            </span>
+          )}
+        </div>
+      )}
+      
+      {/* Overlay with caption on hover */}
+      {(media.caption || media.file_name) && (
+        <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-40 transition-all duration-200 flex items-end">
+          <div className="w-full p-2 transform translate-y-full group-hover:translate-y-0 transition-transform duration-200">
+            <p className="text-white text-xs font-medium truncate">
+              {media.caption || media.file_name}
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Image indicator badge */}
+      {isImage && (
+        <div className="absolute top-2 right-2 bg-black bg-opacity-50 rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity">
+          <ImageIcon className="h-3 w-3 text-white" />
+        </div>
+      )}
+    </div>
+  );
+};
+
 const StoryDetailPage = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -28,7 +126,10 @@ const StoryDetailPage = () => {
   const { data: story, isLoading: storyLoading, error: storyError, refetch: refetchStory } = useStory(id || null);
   const [authorName, setAuthorName] = useState<string>("Unknown");
   const [isEditing, setIsEditing] = useState(false);
-  const [selectedMedia, setSelectedMedia] = useState<{ url: string; caption?: string; fileName?: string; media_type: string } | null>(null);
+  const [selectedMedia, setSelectedMedia] = useState<{ url: string; caption?: string; fileName?: string; media_type: string; id?: string } | null>(null);
+  const [selectedMediaIndex, setSelectedMediaIndex] = useState<number>(0);
+  const [imageUrls, setImageUrls] = useState<Record<string, string>>({});
+  const [loadingImages, setLoadingImages] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     const loadAuthorName = async () => {
@@ -283,108 +384,46 @@ const StoryDetailPage = () => {
             <Card className="shadow-sm border-heritage-purple/10">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Eye className="h-5 w-5" />
+                  <ImageIcon className="h-5 w-5" />
                   Media ({story.media.length})
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-                  {story.media.map(media => {
-                    const MediaItem = ({ mediaItem }: { mediaItem: typeof media }) => {
-                      const [imageUrl, setImageUrl] = useState<string | null>(mediaItem.url || null);
-                      const [hasError, setHasError] = useState(false);
-
-                      useEffect(() => {
-                        const loadImageUrl = async () => {
-                          if (!mediaItem.url) {
-                            setHasError(true);
-                            return;
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                  {story.media.map((media, index) => (
+                    <MediaThumbnail
+                      key={media.id}
+                      media={media}
+                      index={index}
+                      imageUrls={imageUrls}
+                      loadingImages={loadingImages}
+                      onImageUrlLoaded={(mediaId, url) => {
+                        setImageUrls(prev => ({ ...prev, [mediaId]: url }));
+                      }}
+                      onLoadingChange={(mediaId, loading) => {
+                        setLoadingImages(prev => {
+                          const next = new Set(prev);
+                          if (loading) {
+                            next.add(mediaId);
+                          } else {
+                            next.delete(mediaId);
                           }
-
-                          // Try to get accessible URL (signed URL for local dev)
-                          try {
-                            const accessibleUrl = await getAccessibleStorageUrl(mediaItem.url);
-                            if (accessibleUrl) {
-                              setImageUrl(accessibleUrl);
-                            } else {
-                              setHasError(true);
-                            }
-                          } catch (error) {
-                            console.error('Error loading media URL:', error);
-                            setHasError(true);
-                          }
-                        };
-
-                        loadImageUrl();
-                      }, [mediaItem.url]);
-
-                      return (
-                        <>
-                          {mediaItem.media_type === 'image' && imageUrl && !hasError ? (
-                            <img
-                              src={imageUrl}
-                              alt={mediaItem.caption || 'Story media'}
-                              className="w-full h-24 object-cover"
-                              onError={async (e) => {
-                                // Try to get signed URL if current URL fails
-                                const target = e.currentTarget as HTMLImageElement;
-                                if (mediaItem.url && mediaItem.url !== imageUrl) {
-                                  try {
-                                    const signedUrl = await getAccessibleStorageUrl(mediaItem.url);
-                                    if (signedUrl && signedUrl !== imageUrl) {
-                                      target.src = signedUrl;
-                                      return;
-                                    }
-                                  } catch (error) {
-                                    console.error('Error getting signed URL:', error);
-                                  }
-                                }
-                                // Fallback to icon if image fails to load
-                                setHasError(true);
-                                const nextElement = target.nextElementSibling as HTMLElement;
-                                target.style.display = 'none';
-                                if (nextElement) nextElement.style.display = 'flex';
-                              }}
-                            />
-                          ) : null}
-                          <div 
-                            className="w-full h-24 flex items-center justify-center bg-gray-100"
-                            style={{ display: mediaItem.media_type === 'image' && imageUrl && !hasError ? 'none' : 'flex' }}
-                          >
-                            <span className="text-lg">
-                              {mediaItem.media_type === 'image' ? '🖼️' : '📎'}
-                            </span>
-                          </div>
-                        </>
-                      );
-                    };
-
-                    return (
-                      <div
-                        key={media.id}
-                        className="relative group border rounded-md overflow-hidden cursor-pointer hover:opacity-90 transition-opacity"
-                        onClick={async () => {
-                          if (media.media_type === 'image' && media.url) {
-                            // Get accessible URL for the dialog
-                            const accessibleUrl = await getAccessibleStorageUrl(media.url);
-                            setSelectedMedia({
-                              url: accessibleUrl || media.url,
-                              caption: media.caption,
-                              fileName: media.file_name,
-                              media_type: media.media_type
-                            });
-                          }
-                        }}
-                      >
-                        <MediaItem mediaItem={media} />
-                        {media.caption && (
-                          <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 text-white text-xs p-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                            {media.caption}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
+                          return next;
+                        });
+                      }}
+                      onClick={async () => {
+                        const accessibleUrl = imageUrls[media.id] || (media.url ? await getAccessibleStorageUrl(media.url) : null);
+                        setSelectedMedia({
+                          id: media.id,
+                          url: accessibleUrl || media.url || '',
+                          caption: media.caption,
+                          fileName: media.file_name,
+                          media_type: media.media_type
+                        });
+                        setSelectedMediaIndex(index);
+                      }}
+                    />
+                  ))}
                 </div>
               </CardContent>
             </Card>
@@ -509,71 +548,235 @@ const StoryDetailPage = () => {
           </>
         )}
 
-        {/* Media Viewer Dialog */}
+        {/* Enhanced Media Viewer Dialog */}
         <Dialog open={!!selectedMedia} onOpenChange={(open) => !open && setSelectedMedia(null)}>
-          <DialogContent className="max-w-4xl max-h-[90vh] overflow-auto">
-            <DialogHeader>
-              <DialogTitle>
-                {selectedMedia?.caption || selectedMedia?.fileName || 'Story Media'}
-              </DialogTitle>
-              {selectedMedia?.caption && selectedMedia?.fileName && (
-                <DialogDescription>
-                  {selectedMedia.fileName}
-                </DialogDescription>
-              )}
-            </DialogHeader>
-            {selectedMedia && (
-              <div className="space-y-4">
-                {selectedMedia.media_type === 'image' ? (
-                  <div className="flex flex-col items-center space-y-4">
-                    <img
-                      src={selectedMedia.url}
-                      alt={selectedMedia.caption || selectedMedia.fileName || 'Story media'}
-                      className="max-w-full max-h-[70vh] object-contain rounded-lg"
-                      onError={async (e) => {
-                        // Try to get signed URL if public URL fails
-                        const signedUrl = await getAccessibleStorageUrl(selectedMedia.url);
-                        if (signedUrl && signedUrl !== selectedMedia.url) {
-                          (e.currentTarget as HTMLImageElement).src = signedUrl;
-                        }
-                      }}
-                    />
-                    <div className="flex gap-2 w-full justify-center">
-                      <Button
-                        variant="outline"
-                        onClick={() => {
-                          if (selectedMedia.url) {
-                            window.open(selectedMedia.url, '_blank');
-                          }
-                        }}
-                      >
-                        <Download className="h-4 w-4 mr-2" />
-                        Download
-                      </Button>
+          <DialogContent className="max-w-6xl max-h-[95vh] overflow-hidden p-0">
+            {selectedMedia && story.media && (
+              <>
+                <DialogHeader className="px-6 pt-6 pb-4 border-b">
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1 min-w-0">
+                      <DialogTitle className="truncate">
+                        {selectedMedia.caption || selectedMedia.fileName || 'Story Media'}
+                      </DialogTitle>
+                      {selectedMedia.fileName && (
+                        <DialogDescription className="truncate">
+                          {selectedMedia.fileName}
+                          {story.media.length > 1 && (
+                            <span className="ml-2 text-muted-foreground">
+                              ({selectedMediaIndex + 1} of {story.media.length})
+                            </span>
+                          )}
+                        </DialogDescription>
+                      )}
                     </div>
-                    {selectedMedia.caption && (
-                      <div className="w-full text-center text-sm text-gray-600">
-                        <p>{selectedMedia.caption}</p>
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <div className="text-center py-8">
-                    <p className="text-muted-foreground mb-4">Preview not available for this media type</p>
                     <Button
-                      variant="outline"
-                      onClick={() => {
-                        if (selectedMedia.url) {
-                          window.open(selectedMedia.url, '_blank');
-                        }
-                      }}
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setSelectedMedia(null)}
+                      className="ml-4"
                     >
-                      <Download className="h-4 w-4 mr-2" />
-                      Download File
+                      <ArrowLeft className="h-4 w-4" />
                     </Button>
                   </div>
+                </DialogHeader>
+
+                <div className="relative flex items-center justify-center bg-black/5 min-h-[60vh] p-6">
+                  {/* Navigation buttons for images */}
+                  {selectedMedia.media_type === 'image' && story.media.length > 1 && (
+                    <>
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        className="absolute left-4 z-10 bg-white/90 hover:bg-white shadow-lg"
+                        onClick={() => {
+                          const prevIndex = selectedMediaIndex > 0 
+                            ? selectedMediaIndex - 1 
+                            : story.media.length - 1;
+                          const prevMedia = story.media[prevIndex];
+                          const prevUrl = imageUrls[prevMedia.id] || prevMedia.url;
+                          setSelectedMedia({
+                            id: prevMedia.id,
+                            url: prevUrl,
+                            caption: prevMedia.caption,
+                            fileName: prevMedia.file_name,
+                            media_type: prevMedia.media_type
+                          });
+                          setSelectedMediaIndex(prevIndex);
+                        }}
+                      >
+                        <ChevronLeft className="h-5 w-5" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        className="absolute right-4 z-10 bg-white/90 hover:bg-white shadow-lg"
+                        onClick={() => {
+                          const nextIndex = selectedMediaIndex < story.media.length - 1 
+                            ? selectedMediaIndex + 1 
+                            : 0;
+                          const nextMedia = story.media[nextIndex];
+                          const nextUrl = imageUrls[nextMedia.id] || nextMedia.url;
+                          setSelectedMedia({
+                            id: nextMedia.id,
+                            url: nextUrl,
+                            caption: nextMedia.caption,
+                            fileName: nextMedia.file_name,
+                            media_type: nextMedia.media_type
+                          });
+                          setSelectedMediaIndex(nextIndex);
+                        }}
+                      >
+                        <ChevronRight className="h-5 w-5" />
+                      </Button>
+                    </>
+                  )}
+
+                  {selectedMedia.media_type === 'image' ? (
+                    <div className="flex flex-col items-center space-y-4 w-full">
+                      <div className="relative w-full flex items-center justify-center">
+                        <img
+                          src={selectedMedia.url}
+                          alt={selectedMedia.caption || selectedMedia.fileName || 'Story media'}
+                          className="max-w-full max-h-[70vh] object-contain rounded-lg shadow-xl"
+                          onError={async (e) => {
+                            const target = e.currentTarget as HTMLImageElement;
+                            const signedUrl = await getAccessibleStorageUrl(selectedMedia.url);
+                            if (signedUrl && signedUrl !== selectedMedia.url) {
+                              target.src = signedUrl;
+                            }
+                          }}
+                        />
+                      </div>
+                      
+                      {selectedMedia.caption && (
+                        <div className="w-full text-center">
+                          <p className="text-sm text-gray-700 bg-white/80 rounded-lg px-4 py-2 inline-block">
+                            {selectedMedia.caption}
+                          </p>
+                        </div>
+                      )}
+
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          onClick={() => {
+                            if (selectedMedia.url) {
+                              window.open(selectedMedia.url, '_blank');
+                            }
+                          }}
+                        >
+                          <Download className="h-4 w-4 mr-2" />
+                          Download
+                        </Button>
+                        <Button
+                          variant="outline"
+                          onClick={() => {
+                            if (selectedMedia.url) {
+                              const link = document.createElement('a');
+                              link.href = selectedMedia.url;
+                              link.download = selectedMedia.fileName || 'media';
+                              document.body.appendChild(link);
+                              link.click();
+                              document.body.removeChild(link);
+                            }
+                          }}
+                        >
+                          <Download className="h-4 w-4 mr-2" />
+                          Save
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-center py-12 w-full">
+                      <div className="flex flex-col items-center space-y-4">
+                        <FileText className="h-16 w-16 text-gray-400" />
+                        <div>
+                          <p className="text-lg font-medium mb-2">
+                            {selectedMedia.fileName || 'File'}
+                          </p>
+                          <p className="text-sm text-muted-foreground mb-4">
+                            Preview not available for this file type
+                          </p>
+                        </div>
+                        <div className="flex gap-2">
+                          <Button
+                            variant="outline"
+                            onClick={() => {
+                              if (selectedMedia.url) {
+                                window.open(selectedMedia.url, '_blank');
+                              }
+                            }}
+                          >
+                            <Download className="h-4 w-4 mr-2" />
+                            Open in New Tab
+                          </Button>
+                          <Button
+                            variant="outline"
+                            onClick={() => {
+                              if (selectedMedia.url) {
+                                const link = document.createElement('a');
+                                link.href = selectedMedia.url;
+                                link.download = selectedMedia.fileName || 'file';
+                                document.body.appendChild(link);
+                                link.click();
+                                document.body.removeChild(link);
+                              }
+                            }}
+                          >
+                            <Download className="h-4 w-4 mr-2" />
+                            Download
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Thumbnail strip for navigation */}
+                {story.media.length > 1 && (
+                  <div className="px-6 py-4 border-t bg-gray-50">
+                    <div className="flex gap-2 overflow-x-auto pb-2">
+                      {story.media.map((media, idx) => {
+                        const thumbUrl = imageUrls[media.id] || media.url;
+                        const isSelected = idx === selectedMediaIndex;
+                        return (
+                          <button
+                            key={media.id}
+                            onClick={() => {
+                              setSelectedMedia({
+                                id: media.id,
+                                url: thumbUrl,
+                                caption: media.caption,
+                                fileName: media.file_name,
+                                media_type: media.media_type
+                              });
+                              setSelectedMediaIndex(idx);
+                            }}
+                            className={`flex-shrink-0 w-16 h-16 rounded-md overflow-hidden border-2 transition-all ${
+                              isSelected 
+                                ? 'border-heritage-purple ring-2 ring-heritage-purple/20' 
+                                : 'border-gray-200 hover:border-gray-300'
+                            }`}
+                          >
+                            {media.media_type === 'image' && thumbUrl ? (
+                              <img
+                                src={thumbUrl}
+                                alt={media.caption || media.file_name || 'Thumbnail'}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center bg-gray-100">
+                                <FileText className="h-6 w-6 text-gray-400" />
+                              </div>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
                 )}
-              </div>
+              </>
             )}
           </DialogContent>
         </Dialog>

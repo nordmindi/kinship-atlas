@@ -237,8 +237,13 @@ const ArtifactManager: React.FC<ArtifactManagerProps> = ({
                     type="button"
                     variant="ghost"
                     size="sm"
-                    onClick={() => handleRemoveArtifact(artifact.id)}
-                    className="ml-2"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      handleRemoveArtifact(artifact.id);
+                    }}
+                    className="ml-2 hover:bg-red-50 hover:text-red-600"
+                    title="Remove artifact"
                   >
                     <X className="h-4 w-4" />
                   </Button>

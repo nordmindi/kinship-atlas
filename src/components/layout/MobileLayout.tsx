@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { X, Menu, Home, Users, Image, Map, Clock, BookOpen, Crown, User, LogOut, History, Upload } from 'lucide-react';
+import { X, Menu, Home, Users, Image, Map, Clock, BookOpen, Crown, User, LogOut, History, Upload, FolderTree } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useAuth } from '@/contexts/AuthContext';
@@ -28,6 +28,7 @@ interface NavItem {
 const navItems: NavItem[] = [
   { icon: Home, label: "Home", href: "/" },
   { icon: Users, label: "Family Tree", href: "/family-tree" },
+  { icon: FolderTree, label: "Family Groups", href: "/family-groups" },
   { icon: Map, label: "Map", href: "/map" },
   { icon: BookOpen, label: "Stories", href: "/stories" },
   { icon: History, label: "Legacy Stories", href: "/legacy-stories" },
