@@ -32,7 +32,8 @@ import {
   Upload,
   RefreshCw,
   Clock,
-  Download
+  Download,
+  BookOpen
 } from 'lucide-react';
 import { getYearRange } from "@/utils/dateUtils";
 import ImageUpload from '@/components/ui/image-upload';
@@ -45,7 +46,7 @@ import FamilyMemberActions from '@/components/family/FamilyMemberActions';
 import { AssignMemberToGroupDialog } from '@/components/family/AssignMemberToGroupDialog';
 import NewFamilyTab from '@/components/family/NewFamilyTab';
 import Timeline from '@/components/stories/Timeline';
-import { useMemberTimeline } from '@/hooks/useTimeline';
+import { useMemberTimeline, useTimelineStats } from '@/hooks/useTimeline';
 
 const FamilyMemberDetailPage = () => {
   const { user, isLoading: authLoading, canWrite } = useAuth();
@@ -78,6 +79,7 @@ const FamilyMemberDetailPage = () => {
 
   // Timeline functionality
   const { timeline, isLoading: timelineLoading, error: timelineError } = useMemberTimeline(id || '');
+  const { stats: timelineStats } = useTimelineStats(id || '');
   const [activeTab, setActiveTab] = useState('profile');
 
   // Handle URL hash for timeline tab
@@ -712,6 +714,60 @@ const FamilyMemberDetailPage = () => {
                   </p>
                 </div>
                 
+                {/* Timeline Stats */}
+                {timelineStats && (timelineStats.totalStories > 0 || timelineStats.totalEvents > 0) && (
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                    <Card>
+                      <CardContent className="p-4">
+                        <div className="flex items-center gap-2">
+                          <BookOpen className="h-5 w-5 text-blue-600" />
+                          <div>
+                            <p className="text-2xl font-bold">{timelineStats.totalStories}</p>
+                            <p className="text-xs text-muted-foreground">Stories</p>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardContent className="p-4">
+                        <div className="flex items-center gap-2">
+                          <Calendar className="h-5 w-5 text-green-600" />
+                          <div>
+                            <p className="text-2xl font-bold">{timelineStats.totalEvents}</p>
+                            <p className="text-xs text-muted-foreground">Events</p>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                    {timelineStats.dateRange.earliest && (
+                      <Card>
+                        <CardContent className="p-4">
+                          <div className="flex items-center gap-2">
+                            <Clock className="h-5 w-5 text-purple-600" />
+                            <div>
+                              <p className="text-sm font-bold">{getYearRange(timelineStats.dateRange.earliest!)}</p>
+                              <p className="text-xs text-muted-foreground">Earliest</p>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    )}
+                    {timelineStats.locations.length > 0 && (
+                      <Card>
+                        <CardContent className="p-4">
+                          <div className="flex items-center gap-2">
+                            <MapPin className="h-5 w-5 text-orange-600" />
+                            <div>
+                              <p className="text-2xl font-bold">{timelineStats.locations.length}</p>
+                              <p className="text-xs text-muted-foreground">Locations</p>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    )}
+                  </div>
+                )}
+                
                 {timelineError && (
                   <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
                     <p className="text-red-800 text-sm">
@@ -723,9 +779,15 @@ const FamilyMemberDetailPage = () => {
                 <Timeline
                   timeline={timeline || []}
                   isLoading={timelineLoading}
+                  familyMembers={[member, ...Object.values(relatedMembers).flat()].filter(Boolean) as FamilyMember[]}
                   onItemClick={(item) => {
-                    console.log('Timeline item clicked:', item);
-                    // You can add navigation to story detail or other actions here
+                    if (item.itemType === 'story') {
+                      navigate(`/story/${item.itemId}`);
+                    } else if (item.itemType === 'event') {
+                      // For events, we could navigate to a future event detail page
+                      // For now, show the member's timeline with focus on this event
+                      navigate(`/family-member/${item.memberId}#timeline`);
+                    }
                   }}
                 />
               </div>

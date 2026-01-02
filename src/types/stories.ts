@@ -13,6 +13,11 @@ export interface FamilyStory {
   relatedMembers: StoryMember[];
   media?: Media[];
   artifacts?: Artifact[];
+  groups?: Array<{
+    id: string;
+    name: string;
+    description?: string;
+  }>;
 }
 
 export interface StoryMember {
@@ -91,6 +96,7 @@ export interface TimelineItem {
   lng?: number;
   description?: string;
   content?: string;
+  groupIds?: string[]; // Groups assigned to stories (for stories only)
 }
 
 export interface CreateStoryRequest {
@@ -106,6 +112,7 @@ export interface CreateStoryRequest {
   }[];
   mediaIds?: string[];
   artifactIds?: string[];
+  groupIds?: string[];
   attrs?: Record<string, any>;
 }
 
@@ -123,6 +130,7 @@ export interface UpdateStoryRequest {
   }[];
   mediaIds?: string[];
   artifactIds?: string[];
+  groupIds?: string[];
   attrs?: Record<string, any>;
 }
 

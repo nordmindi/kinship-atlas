@@ -16,7 +16,7 @@ import {
   ArrowLeft
 } from "lucide-react";
 import { useStories, useCreateStory, useUpdateStory, useDeleteStory } from "@/hooks/useStories";
-import { useMemberTimeline } from "@/hooks/useTimeline";
+import { useFamilyTimeline } from "@/hooks/useTimeline";
 import { useFamilyTree } from "@/contexts/FamilyTreeContext";
 import StoryList from "@/components/stories/StoryList";
 import Timeline from "@/components/stories/Timeline";
@@ -32,8 +32,9 @@ const LegacyStoriesPage = () => {
   const [familyMembers, setFamilyMembers] = useState<FamilyMember[]>([]);
   const [membersLoading, setMembersLoading] = useState<boolean>(true);
   const [activeTab, setActiveTab] = useState("stories");
-  const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
   const [isEditorOpen, setIsEditorOpen] = useState(false);
+  const [selectedGroupIds, setSelectedGroupIds] = useState<string[]>([]);
+  const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>([]);
 
   const {
     data: stories = [],
@@ -60,10 +61,9 @@ const LegacyStoriesPage = () => {
     return result;
   };
 
-  const {
-    timeline,
-    isLoading: timelineLoading
-  } = useMemberTimeline(selectedMemberId || '');
+  // Always use family timeline - filtering will be done in the Timeline component
+  const memberIds = React.useMemo(() => familyMembers.map(m => m.id), [familyMembers]);
+  const { timeline, isLoading: timelineLoading, error: timelineError } = useFamilyTimeline(memberIds);
 
   // Load family members explicitly (root cause: context does not provide members)
   React.useEffect(() => {
@@ -197,11 +197,11 @@ const LegacyStoriesPage = () => {
           </Card>
         </div>
 
-        {/* Member Selection & Actions */}
+        {/* Actions */}
         <Card className="mb-8 shadow-sm border-heritage-purple/10">
           <CardHeader className="pb-4">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-lg">View Timeline for Family Member</CardTitle>
+              <CardTitle className="text-lg">Stories & Timeline</CardTitle>
               <div className="flex gap-2">
                 <Button size="sm" onClick={handleCreateStory}>
                   <Plus className="h-4 w-4 mr-1" /> Add Story
@@ -210,29 +210,9 @@ const LegacyStoriesPage = () => {
             </div>
           </CardHeader>
           <CardContent className="pt-2">
-            {safeMembers.length > 0 ? (
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  variant={selectedMemberId === null ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setSelectedMemberId(null)}
-                >
-                  All Members
-                </Button>
-                {safeMembers.map(member => (
-                  <Button
-                    key={member.id}
-                    variant={selectedMemberId === member.id ? 'default' : 'outline'}
-                    size="sm"
-                    onClick={() => setSelectedMemberId(member.id)}
-                  >
-                    {member.firstName} {member.lastName}
-                  </Button>
-                ))}
-              </div>
-            ) : (
-              <p className="text-sm text-gray-600">No family members yet.</p>
-            )}
+            <p className="text-sm text-muted-foreground">
+              Use the filters in the Timeline tab to filter by family members or groups.
+            </p>
           </CardContent>
         </Card>
 
@@ -265,9 +245,18 @@ const LegacyStoriesPage = () => {
               <Timeline
                 timeline={safeTimeline}
                 isLoading={timelineLoading}
+                familyMembers={safeMembers}
+                selectedGroupIds={selectedGroupIds}
+                onGroupSelectionChange={setSelectedGroupIds}
+                selectedMemberIds={selectedMemberIds}
+                onMemberSelectionChange={setSelectedMemberIds}
                 onItemClick={(item) => {
-                  // Handle timeline item click
-                  console.log('Timeline item clicked:', item);
+                  if (item.itemType === 'story') {
+                    navigate(`/story/${item.itemId}`);
+                  } else if (item.itemType === 'event') {
+                    // Navigate to the member's profile with timeline tab
+                    navigate(`/family-member/${item.memberId}#timeline`);
+                  }
                 }}
               />
             </TabsContent>

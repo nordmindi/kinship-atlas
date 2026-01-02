@@ -43,13 +43,16 @@ import {
   Image as ImageIcon,
   HelpCircle,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  Users,
+  Loader2
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
-import { FamilyMember } from '@/types';
+import { FamilyMember, FamilyGroup } from '@/types';
 import { useFamilyTree } from '@/contexts/FamilyTreeContext';
 import { CreateStoryRequest, UpdateStoryRequest, FamilyStory } from '@/types/stories';
 import { storyService } from '@/services/storyService';
+import { familyGroupService } from '@/services/familyGroupService';
 import LocationPicker from './LocationPicker';
 import ArtifactManager from './ArtifactManager';
 
@@ -92,6 +95,9 @@ const StoryEditor: React.FC<StoryEditorProps> = ({
   const [showWritingTips, setShowWritingTips] = useState(false);
   const [location, setLocation] = useState<{ location?: string; lat?: number; lng?: number }>({});
   const [selectedArtifactIds, setSelectedArtifactIds] = useState<string[]>([]);
+  const [selectedGroupIds, setSelectedGroupIds] = useState<string[]>([]);
+  const [availableGroups, setAvailableGroups] = useState<FamilyGroup[]>([]);
+  const [groupsLoading, setGroupsLoading] = useState(false);
 
   const form = useForm<StoryFormValues>({
     resolver: zodResolver(storySchema),
@@ -121,6 +127,7 @@ const StoryEditor: React.FC<StoryEditorProps> = ({
           lng: existingStory.lng
         });
         setSelectedArtifactIds(existingStory.artifacts?.map(a => a.id) || []);
+        setSelectedGroupIds(existingStory.groups?.map(g => g.id) || []);
         // Set media previews
         if (existingStory.media && existingStory.media.length > 0) {
           setUploadedMedia(existingStory.media.map(m => m.id));
@@ -139,9 +146,13 @@ const StoryEditor: React.FC<StoryEditorProps> = ({
         setSelectedMembers([]);
         setLocation({});
         setSelectedArtifactIds([]);
+        setSelectedGroupIds([]);
         setUploadedMedia([]);
         setUploadedMediaPreview([]);
       }
+      
+      // Load available groups
+      loadGroups();
       // Ensure we have latest members when opening
       const hasMembers = familyMembers && familyMembers.length > 0;
       if (!hasMembers) {
@@ -149,6 +160,23 @@ const StoryEditor: React.FC<StoryEditorProps> = ({
       }
     }
   }, [isOpen, existingStory, form, familyMembers]);
+
+  const loadGroups = async () => {
+    setGroupsLoading(true);
+    try {
+      const groups = await familyGroupService.getAllFamilyGroups();
+      setAvailableGroups(groups);
+    } catch (error) {
+      console.error('Error loading groups:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load family groups",
+        variant: "destructive"
+      });
+    } finally {
+      setGroupsLoading(false);
+    }
+  };
 
   const addMember = (memberId: string) => {
     if (!selectedMembers.find(m => m.familyMemberId === memberId)) {
@@ -233,7 +261,10 @@ const StoryEditor: React.FC<StoryEditorProps> = ({
         mediaIds: uploadedMedia,
         // Always pass artifactIds when updating existing story (even if empty) to allow removal
         // For new stories, only pass if there are artifacts
-        artifactIds: existingStory ? selectedArtifactIds : (selectedArtifactIds.length > 0 ? selectedArtifactIds : undefined)
+        artifactIds: existingStory ? selectedArtifactIds : (selectedArtifactIds.length > 0 ? selectedArtifactIds : undefined),
+        // Always pass groupIds when updating existing story (even if empty) to allow removal
+        // For new stories, only pass if there are groups
+        groupIds: existingStory ? selectedGroupIds : (selectedGroupIds.length > 0 ? selectedGroupIds : undefined)
       };
 
       let result;
@@ -547,6 +578,64 @@ const StoryEditor: React.FC<StoryEditorProps> = ({
               lng={location.lng}
               onLocationChange={setLocation}
             />
+
+            {/* Family Groups Selection */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Users className="h-5 w-5" />
+                  Family Groups (Optional)
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {groupsLoading ? (
+                  <div className="flex items-center justify-center py-4">
+                    <Loader2 className="h-5 w-5 animate-spin text-heritage-purple" />
+                    <span className="ml-2 text-sm text-muted-foreground">Loading groups...</span>
+                  </div>
+                ) : availableGroups.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">
+                    No family groups available. Create groups in the Family Groups page to organize your stories.
+                  </p>
+                ) : (
+                  <div className="space-y-2">
+                    <p className="text-sm text-muted-foreground mb-3">
+                      Select family groups to organize this story. Stories can belong to multiple groups.
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {availableGroups.map(group => {
+                        const isSelected = selectedGroupIds.includes(group.id);
+                        return (
+                          <Badge
+                            key={group.id}
+                            variant={isSelected ? "default" : "outline"}
+                            className={`cursor-pointer px-3 py-1 ${
+                              isSelected 
+                                ? "bg-heritage-purple text-white hover:bg-heritage-purple-medium" 
+                                : "hover:bg-heritage-purple-light"
+                            }`}
+                            onClick={() => {
+                              if (isSelected) {
+                                setSelectedGroupIds(prev => prev.filter(id => id !== group.id));
+                              } else {
+                                setSelectedGroupIds(prev => [...prev, group.id]);
+                              }
+                            }}
+                          >
+                            {group.name}
+                          </Badge>
+                        );
+                      })}
+                    </div>
+                    {selectedGroupIds.length > 0 && (
+                      <p className="text-xs text-muted-foreground mt-3">
+                        {selectedGroupIds.length} {selectedGroupIds.length === 1 ? 'group' : 'groups'} selected
+                      </p>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
 
             {/* Artifact Manager */}
             <ArtifactManager

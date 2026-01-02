@@ -14,6 +14,7 @@ import { useFamilyTree } from "@/contexts/FamilyTreeContext";
 import { useFamilyMembers } from "@/hooks/useFamilyMembers";
 import { useStories } from "@/hooks/useStories";
 import { usePermissions } from "@/hooks/usePermissions";
+import { useFamilyTimeline } from "@/hooks/useTimeline";
 import { FamilyMember, FamilyStory } from "@/types";
 import { getYearRange } from "@/utils/dateUtils";
 import { useStorageUrl } from "@/hooks/useStorageUrl";
@@ -73,8 +74,10 @@ const Index = () => {
   // Use TanStack Query hooks for data fetching
   const { data: familyMembers = [], isLoading: membersLoading, error: membersError } = useFamilyMembers();
   const { data: stories = [], isLoading: storiesLoading, error: storiesError } = useStories();
+  const memberIds = familyMembers.map(m => m.id);
+  const { timeline = [], isLoading: timelineLoading } = useFamilyTimeline(memberIds);
   
-  const isLoading = authLoading || membersLoading || storiesLoading;
+  const isLoading = authLoading || membersLoading || storiesLoading || timelineLoading;
 
   useEffect(() => {
     if (!familyMembers.length) {
@@ -219,6 +222,68 @@ const Index = () => {
                         <BookOpen className="h-12 w-12 text-heritage-purple-light mx-auto mb-3" />
                         <p className="text-muted-foreground">No stories found.</p>
                         <p className="text-sm text-muted-foreground mt-1">Start sharing your family stories!</p>
+                      </div>
+                    )}
+                  </div>
+                </section>
+                
+                {/* Timeline Overview Section */}
+                <section className="bg-white rounded-xl shadow-sm border border-heritage-purple/10 p-6 sm:p-8">
+                  <div className="flex items-center justify-between mb-6">
+                    <h2 className="text-xl font-semibold text-heritage-dark">Recent Timeline</h2>
+                    <Button variant="ghost" size="sm" className="text-heritage-purple hover:bg-heritage-purple-light" onClick={() => navigate('/legacy-stories')}>
+                      View Full Timeline
+                    </Button>
+                  </div>
+                  <div className="space-y-3">
+                    {isLoading ? (
+                      <div className="animate-pulse space-y-3">
+                        <div className="h-16 bg-gray-200 rounded-lg"></div>
+                        <div className="h-16 bg-gray-200 rounded-lg"></div>
+                      </div>
+                    ) : timeline.length > 0 ? (
+                      timeline.slice(0, 5).map((item) => (
+                        <button
+                          key={`${item.itemType}-${item.itemId}`}
+                          type="button"
+                          className="w-full flex items-start gap-3 p-3 border border-gray-200 rounded-lg hover:border-heritage-purple/40 hover:shadow-sm transition-all cursor-pointer text-left bg-transparent"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            if (item.itemType === 'story') {
+                              navigate(`/story/${item.itemId}`);
+                            } else if (item.itemType === 'event') {
+                              navigate(`/family-member/${item.memberId}#timeline`);
+                            }
+                          }}
+                        >
+                          <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
+                            item.itemType === 'story' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'
+                          }`}>
+                            {item.itemType === 'story' ? (
+                              <BookOpen className="h-4 w-4" />
+                            ) : (
+                              <History className="h-4 w-4" />
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <h3 className="font-medium text-heritage-dark truncate">{item.title}</h3>
+                            <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1">
+                              <span>{getYearRange(item.date)}</span>
+                              {item.location && (
+                                <span className="flex items-center gap-1">
+                                  <MapPin className="h-3 w-3" />
+                                  {item.location}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </button>
+                      ))
+                    ) : (
+                      <div className="text-center py-8">
+                        <History className="h-12 w-12 text-heritage-purple-light mx-auto mb-3" />
+                        <p className="text-muted-foreground">No timeline items yet.</p>
+                        <p className="text-sm text-muted-foreground mt-1">Stories and events will appear here.</p>
                       </div>
                     )}
                   </div>

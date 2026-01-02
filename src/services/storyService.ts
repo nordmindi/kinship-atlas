@@ -100,6 +100,22 @@ class StoryService {
         }
       }
 
+      // Add groups if provided
+      if (request.groupIds && request.groupIds.length > 0) {
+        const { error: groupsError } = await (supabase as any)
+          .from('story_groups')
+          .insert(
+            request.groupIds.map(groupId => ({
+              story_id: storyData.id,
+              family_group_id: groupId
+            }))
+          );
+
+        if (groupsError) {
+          console.error('Error adding story groups:', groupsError);
+        }
+      }
+
       // Fetch the complete story
       const completeStory = await this.getStory(storyData.id);
       return { success: true, story: completeStory };
@@ -338,11 +354,44 @@ class StoryService {
         // Continue without artifacts - not critical for story display
       }
 
+      // Fetch groups separately
+      let groups: Array<{ id: string; name: string; description?: string }> = [];
+      try {
+        const { data: storyGroupsData, error: storyGroupsError } = await (supabase as any)
+          .from('story_groups')
+          .select(`
+            family_group_id,
+            family_groups:family_group_id (
+              id,
+              name,
+              description
+            )
+          `)
+          .eq('story_id', storyId);
+
+        if (!storyGroupsError && storyGroupsData) {
+          groups = storyGroupsData
+            .map((sg: any) => {
+              const group = sg.family_groups;
+              if (!group) return null;
+              return {
+                id: group.id,
+                name: group.name,
+                description: group.description || undefined
+              };
+            })
+            .filter((g: any): g is { id: string; name: string; description?: string } => g !== null);
+        }
+      } catch (groupsErr) {
+        console.warn('getStory: Could not fetch groups, continuing without them:', groupsErr);
+      }
+
       console.log('getStory: Successfully fetched story:', data.id);
       const story = this.transformStoryData(data);
-      // Add artifacts to the story
+      // Add artifacts and groups to the story
       if (story) {
         story.artifacts = artifacts;
+        story.groups = groups;
       }
       return story;
     } catch (error) {
@@ -557,6 +606,39 @@ class StoryService {
           }
         } catch (mediaErr) {
           console.error('Error updating story media:', mediaErr);
+        }
+      }
+
+      // Update groups if provided
+      if (request.groupIds !== undefined) {
+        try {
+          // Delete existing groups
+          const { error: deleteGroupsError } = await (supabase as any)
+            .from('story_groups')
+            .delete()
+            .eq('story_id', request.id);
+
+          if (deleteGroupsError) {
+            console.error('Error deleting story groups:', deleteGroupsError);
+          }
+
+          // Add new groups
+          if (request.groupIds.length > 0) {
+            const { error: groupsError } = await (supabase as any)
+              .from('story_groups')
+              .insert(
+                request.groupIds.map(groupId => ({
+                  story_id: request.id,
+                  family_group_id: groupId
+                }))
+              );
+
+            if (groupsError) {
+              console.error('Error updating story groups:', groupsError);
+            }
+          }
+        } catch (groupsErr) {
+          console.error('Error updating story groups:', groupsErr);
         }
       }
 
