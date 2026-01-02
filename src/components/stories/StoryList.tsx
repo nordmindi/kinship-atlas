@@ -19,6 +19,7 @@ import {
 import { FamilyStory } from '@/types/stories';
 import { FamilyMember } from '@/types';
 import { getYearRange } from '@/utils/dateUtils';
+import { sanitizeText, sanitizeHtml } from '@/utils/sanitize';
 import StoryEditor from './StoryEditor';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePermissions } from '@/hooks/usePermissions';
@@ -237,7 +238,7 @@ const StoryList: React.FC<StoryListProps> = ({
               </CardHeader>
               <CardContent>
                 <p className="text-gray-700 mb-4 line-clamp-3">
-                  {story.content}
+                  {sanitizeText(story.content)}
                 </p>
                 
                 {/* Related Members */}
@@ -383,7 +384,10 @@ const StoryList: React.FC<StoryListProps> = ({
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="prose max-w-none">
-                <p className="whitespace-pre-wrap">{selectedStory.content}</p>
+                <div 
+                  className="whitespace-pre-wrap text-gray-700 leading-relaxed"
+                  dangerouslySetInnerHTML={{ __html: sanitizeHtml(selectedStory.content) }}
+                />
               </div>
               
               {selectedStory.relatedMembers.length > 0 && (

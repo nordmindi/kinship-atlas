@@ -24,6 +24,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import LocationInput from '@/components/ui/location-input';
 import { toast } from '@/hooks/use-toast';
 import { ArrowLeft, Save } from 'lucide-react';
 
@@ -265,44 +266,24 @@ const EditFamilyMember: React.FC<EditFamilyMemberProps> = ({ member, onClose, on
               name="locationDescription"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Location Description</FormLabel>
                   <FormControl>
-                    <Input placeholder="City, Country" {...field} />
+                    <LocationInput
+                      description={field.value}
+                      lat={form.watch('lat') ? parseFloat(form.watch('lat')) : undefined}
+                      lng={form.watch('lng') ? parseFloat(form.watch('lng')) : undefined}
+                      onLocationChange={(location) => {
+                        field.onChange(location.description);
+                        form.setValue('lat', location.lat?.toString() || '');
+                        form.setValue('lng', location.lng?.toString() || '');
+                      }}
+                      descriptionLabel="Location Description"
+                      descriptionPlaceholder="e.g., New York City, NY, USA"
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
-            
-            <div className="grid grid-cols-2 gap-4 mt-4">
-              <FormField
-                control={form.control}
-                name="lat"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Latitude</FormLabel>
-                    <FormControl>
-                      <Input placeholder="e.g. 40.7128" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              <FormField
-                control={form.control}
-                name="lng"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Longitude</FormLabel>
-                    <FormControl>
-                      <Input placeholder="e.g. -74.0060" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
           </div>
           
           <div className="pt-6">

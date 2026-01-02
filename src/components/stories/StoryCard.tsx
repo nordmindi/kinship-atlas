@@ -2,6 +2,7 @@
 import { FamilyStory } from "@/types";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { formatDate } from "@/utils/dateUtils";
+import { sanitizeText } from "@/utils/sanitize";
 
 interface StoryCardProps {
   story: FamilyStory;
@@ -29,7 +30,7 @@ const StoryCard: React.FC<StoryCardProps> = ({ story, authorName, onView }) => {
       
       <CardContent className="p-4 pt-2">
         <p className="text-sm line-clamp-3 text-muted-foreground">
-          {story.content}
+          {sanitizeText(story.content)}
         </p>
       </CardContent>
       

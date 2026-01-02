@@ -24,6 +24,7 @@ import {
 import { toast } from '@/hooks/use-toast';
 import { FamilyMember, Relation, FamilyStory } from '@/types';
 import { Artifact } from '@/types/stories';
+import { sanitizeText } from '@/utils/sanitize';
 import { familyMemberService } from '@/services/familyMemberService';
 import { familyRelationshipManager } from '@/services/familyRelationshipManager';
 import { storyService } from '@/services/storyService';
@@ -707,6 +708,7 @@ const ImportFamilyData: React.FC<ImportFamilyDataProps> = ({
       const template = {
         familyMembers: [
           {
+            id: "john_smith_id",
             firstName: "John",
             lastName: "Smith",
             birthDate: "1950-03-15",
@@ -721,6 +723,7 @@ const ImportFamilyData: React.FC<ImportFamilyDataProps> = ({
             }
           },
           {
+            id: "mary_smith_id",
             firstName: "Mary",
             lastName: "Smith",
             birthDate: "1952-07-22",
@@ -807,10 +810,10 @@ const ImportFamilyData: React.FC<ImportFamilyDataProps> = ({
       
       // Family Members sheet
       const membersData = [
-        ['first_name', 'last_name', 'birth_date', 'death_date', 'birth_place', 'bio', 'gender', 'lat', 'lng', 'location_description'],
-        ['John', 'Smith', '1950-03-15', '', 'New York, NY', 'Family patriarch and loving father', 'male', '40.7128', '-74.0060', 'New York City, NY, USA'],
-        ['Mary', 'Smith', '1952-07-22', '', 'Boston, MA', 'Devoted mother and grandmother', 'female', '42.3601', '-71.0589', 'Boston, MA, USA'],
-        ['David', 'Smith', '1975-11-08', '', 'New York, NY', 'Software engineer and family man', 'male', '37.7749', '-122.4194', 'San Francisco, CA, USA']
+        ['id', 'first_name', 'last_name', 'birth_date', 'death_date', 'birth_place', 'bio', 'gender', 'lat', 'lng', 'location_description'],
+        ['john_smith_id', 'John', 'Smith', '1950-03-15', '', 'New York, NY', 'Family patriarch and loving father', 'male', '40.7128', '-74.0060', 'New York City, NY, USA'],
+        ['mary_smith_id', 'Mary', 'Smith', '1952-07-22', '', 'Boston, MA', 'Devoted mother and grandmother', 'female', '42.3601', '-71.0589', 'Boston, MA, USA'],
+        ['david_smith_id', 'David', 'Smith', '1975-11-08', '', 'New York, NY', 'Software engineer and family man', 'male', '37.7749', '-122.4194', 'San Francisco, CA, USA']
       ];
       
       const membersSheet = XLSX.utils.aoa_to_sheet(membersData);
@@ -1126,7 +1129,7 @@ const ImportFamilyData: React.FC<ImportFamilyDataProps> = ({
                         {importData.stories.map((story, index) => (
                           <div key={index} className="p-2 bg-gray-50 rounded">
                             <h4 className="font-medium">{story.title}</h4>
-                            <p className="text-sm text-gray-600">{story.content.substring(0, 100)}...</p>
+                            <p className="text-sm text-gray-600">{sanitizeText(story.content).substring(0, 100)}...</p>
                             {story.location && <span className="text-xs text-gray-500">📍 {story.location}</span>}
                           </div>
                         ))}

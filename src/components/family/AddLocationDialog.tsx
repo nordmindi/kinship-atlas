@@ -6,21 +6,15 @@ import { FamilyMember, GeoLocation } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Input } from '@/components/ui/input';
+import LocationInput from '@/components/ui/location-input';
 import { MapPin, Plus } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 
 const locationSchema = z.object({
   description: z.string().min(1, 'Location description is required').max(100, 'Description is too long'),
-  lat: z.string().min(1, 'Latitude is required').refine((val) => {
-    const num = parseFloat(val);
-    return !isNaN(num) && num >= -90 && num <= 90;
-  }, 'Latitude must be between -90 and 90'),
-  lng: z.string().min(1, 'Longitude is required').refine((val) => {
-    const num = parseFloat(val);
-    return !isNaN(num) && num >= -180 && num <= 180;
-  }, 'Longitude must be between -180 and 180'),
+  lat: z.string().optional(),
+  lng: z.string().optional(),
 });
 
 type LocationFormValues = z.infer<typeof locationSchema>;
@@ -55,8 +49,8 @@ const AddLocationDialog: React.FC<AddLocationDialogProps> = ({
     try {
       const location: GeoLocation = {
         description: values.description.trim(),
-        lat: parseFloat(values.lat),
-        lng: parseFloat(values.lng),
+        lat: values.lat ? parseFloat(values.lat) : undefined,
+        lng: values.lng ? parseFloat(values.lng) : undefined,
       };
 
       // First, remove any existing current residence locations for this member
@@ -71,8 +65,8 @@ const AddLocationDialog: React.FC<AddLocationDialogProps> = ({
         .from('locations')
         .insert({
           family_member_id: member.id,
-          lat: location.lat,
-          lng: location.lng,
+          lat: location.lat || null,
+          lng: location.lng || null,
           description: location.description,
           current_residence: true
         });
@@ -128,53 +122,25 @@ const AddLocationDialog: React.FC<AddLocationDialogProps> = ({
               name="description"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Location Description</FormLabel>
                   <FormControl>
-                    <Input 
-                      placeholder="e.g., New York City, NY, USA" 
-                      {...field} 
+                    <LocationInput
+                      description={field.value}
+                      lat={form.watch('lat') ? parseFloat(form.watch('lat')) : undefined}
+                      lng={form.watch('lng') ? parseFloat(form.watch('lng')) : undefined}
+                      onLocationChange={(location) => {
+                        field.onChange(location.description);
+                        form.setValue('lat', location.lat?.toString() || '');
+                        form.setValue('lng', location.lng?.toString() || '');
+                      }}
+                      descriptionLabel="Location Description"
+                      descriptionPlaceholder="e.g., New York City, NY, USA"
+                      required
                     />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
-
-            <div className="grid grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="lat"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Latitude</FormLabel>
-                    <FormControl>
-                      <Input 
-                        placeholder="e.g., 40.7128" 
-                        {...field} 
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="lng"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Longitude</FormLabel>
-                    <FormControl>
-                      <Input 
-                        placeholder="e.g., -74.0060" 
-                        {...field} 
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
 
             <div className="flex gap-2 pt-4">
               <Button
@@ -206,15 +172,6 @@ const AddLocationDialog: React.FC<AddLocationDialogProps> = ({
           </form>
         </Form>
 
-        <div className="text-xs text-muted-foreground bg-gray-50 p-3 rounded-lg">
-          <p className="font-medium mb-1">💡 Need help finding coordinates?</p>
-          <p>You can find latitude and longitude coordinates using:</p>
-          <ul className="list-disc list-inside mt-1 space-y-1">
-            <li>Google Maps (right-click on location)</li>
-            <li>Online coordinate finder tools</li>
-            <li>GPS apps on your phone</li>
-          </ul>
-        </div>
       </DialogContent>
     </Dialog>
   );

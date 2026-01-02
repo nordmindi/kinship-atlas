@@ -20,6 +20,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
 import { UserPlus, MapPin, Calendar, User, FileText } from 'lucide-react';
+import LocationInput from '@/components/ui/location-input';
 
 const formSchema = z.object({
   firstName: z.string().min(1, 'First name is required').max(50, 'First name is too long'),
@@ -256,44 +257,24 @@ const AddFamilyMemberForm: React.FC<AddFamilyMemberFormProps> = ({
                 name="locationDescription"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Location Description</FormLabel>
                     <FormControl>
-                      <Input placeholder="e.g., New York, NY" {...field} />
+                      <LocationInput
+                        description={field.value}
+                        lat={form.watch('lat') ? parseFloat(form.watch('lat')) : undefined}
+                        lng={form.watch('lng') ? parseFloat(form.watch('lng')) : undefined}
+                        onLocationChange={(location) => {
+                          field.onChange(location.description);
+                          form.setValue('lat', location.lat?.toString() || '');
+                          form.setValue('lng', location.lng?.toString() || '');
+                        }}
+                        descriptionLabel="Location Description"
+                        descriptionPlaceholder="e.g., New York City, NY, USA"
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="lat"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Latitude</FormLabel>
-                      <FormControl>
-                        <Input type="number" step="any" placeholder="40.7128" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="lng"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Longitude</FormLabel>
-                      <FormControl>
-                        <Input type="number" step="any" placeholder="-74.0060" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
             </div>
 
             <Separator />

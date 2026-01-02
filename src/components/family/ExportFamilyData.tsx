@@ -331,6 +331,7 @@ const ExportFamilyData: React.FC<ExportFamilyDataProps> = ({ onClose }) => {
       // Format data for JSON export (matching import format)
       const jsonData = {
         familyMembers: exportData.familyMembers.map(member => ({
+          id: member.id,
           firstName: member.firstName,
           lastName: member.lastName,
           birthDate: member.birthDate || null,
@@ -422,8 +423,9 @@ const ExportFamilyData: React.FC<ExportFamilyDataProps> = ({ onClose }) => {
       
       // Family Members sheet
       const membersData = [
-        ['first_name', 'last_name', 'birth_date', 'death_date', 'birth_place', 'bio', 'gender', 'lat', 'lng', 'location_description'],
+        ['id', 'first_name', 'last_name', 'birth_date', 'death_date', 'birth_place', 'bio', 'gender', 'lat', 'lng', 'location_description'],
         ...exportData.familyMembers.map(member => [
+          member.id,
           member.firstName,
           member.lastName,
           member.birthDate || '',
