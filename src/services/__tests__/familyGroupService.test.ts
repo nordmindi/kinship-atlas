@@ -422,23 +422,26 @@ describe('FamilyGroupService', () => {
         error: null
       })
 
-      const mockMemberCheck = {
-        select: vi.fn().mockReturnThis(),
-        eq: vi.fn().mockReturnThis(),
-        single: vi.fn().mockResolvedValue({
-          data: { id: 'member-1' },
-          error: null
-        })
-      }
+      const mockMemberEq = vi.fn().mockReturnThis()
+      const mockMemberMaybeSingle = vi.fn().mockResolvedValue({
+        data: { id: 'member-1', user_id: 'user-123', created_by: 'user-123' },
+        error: null
+      })
+      const mockMemberSelect = vi.fn().mockReturnValue({
+        eq: mockMemberEq,
+        maybeSingle: mockMemberMaybeSingle
+      })
 
-      const mockGroupCheck = {
-        select: vi.fn().mockReturnThis(),
-        eq: vi.fn().mockReturnThis(),
-        single: vi.fn().mockResolvedValue({
-          data: { id: 'group-1' },
-          error: null
-        })
-      }
+      const mockGroupEq1 = vi.fn().mockReturnThis()
+      const mockGroupEq2 = vi.fn().mockReturnThis()
+      const mockGroupMaybeSingle = vi.fn().mockResolvedValue({
+        data: { id: 'group-1' },
+        error: null
+      })
+      const mockGroupSelect = vi.fn().mockReturnValue({
+        eq: mockGroupEq1,
+        maybeSingle: mockGroupMaybeSingle
+      })
 
       const mockInsert = vi.fn().mockResolvedValue({
         error: null
@@ -446,10 +449,18 @@ describe('FamilyGroupService', () => {
 
       vi.mocked(supabase.from).mockImplementation((table: string) => {
         if (table === 'family_members') {
-          return mockMemberCheck as any
+          return {
+            select: mockMemberSelect,
+            eq: mockMemberEq,
+            maybeSingle: mockMemberMaybeSingle
+          } as any
         }
         if (table === 'family_groups') {
-          return mockGroupCheck as any
+          return {
+            select: mockGroupSelect,
+            eq: mockGroupEq1,
+            maybeSingle: mockGroupMaybeSingle
+          } as any
         }
         if (table === 'family_member_groups') {
           return {
@@ -479,23 +490,25 @@ describe('FamilyGroupService', () => {
         error: null
       })
 
-      const mockMemberCheck = {
-        select: vi.fn().mockReturnThis(),
-        eq: vi.fn().mockReturnThis(),
-        single: vi.fn().mockResolvedValue({
-          data: { id: 'member-1' },
-          error: null
-        })
-      }
+      const mockMemberEq = vi.fn().mockReturnThis()
+      const mockMemberMaybeSingle = vi.fn().mockResolvedValue({
+        data: { id: 'member-1', user_id: 'user-123', created_by: 'user-123' },
+        error: null
+      })
+      const mockMemberSelect = vi.fn().mockReturnValue({
+        eq: mockMemberEq,
+        maybeSingle: mockMemberMaybeSingle
+      })
 
-      const mockGroupCheck = {
-        select: vi.fn().mockReturnThis(),
-        eq: vi.fn().mockReturnThis(),
-        single: vi.fn().mockResolvedValue({
-          data: { id: 'group-1' },
-          error: null
-        })
-      }
+      const mockGroupEq1 = vi.fn().mockReturnThis()
+      const mockGroupMaybeSingle = vi.fn().mockResolvedValue({
+        data: { id: 'group-1' },
+        error: null
+      })
+      const mockGroupSelect = vi.fn().mockReturnValue({
+        eq: mockGroupEq1,
+        maybeSingle: mockGroupMaybeSingle
+      })
 
       const mockInsert = vi.fn().mockResolvedValue({
         error: { code: '23505', message: 'Duplicate key' }
@@ -503,10 +516,18 @@ describe('FamilyGroupService', () => {
 
       vi.mocked(supabase.from).mockImplementation((table: string) => {
         if (table === 'family_members') {
-          return mockMemberCheck as any
+          return {
+            select: mockMemberSelect,
+            eq: mockMemberEq,
+            maybeSingle: mockMemberMaybeSingle
+          } as any
         }
         if (table === 'family_groups') {
-          return mockGroupCheck as any
+          return {
+            select: mockGroupSelect,
+            eq: mockGroupEq1,
+            maybeSingle: mockGroupMaybeSingle
+          } as any
         }
         if (table === 'family_member_groups') {
           return {
@@ -532,17 +553,20 @@ describe('FamilyGroupService', () => {
         error: null
       })
 
-      const mockSelect = vi.fn().mockReturnThis()
       const mockEq = vi.fn().mockReturnThis()
-      const mockSingle = vi.fn().mockResolvedValue({
+      const mockMaybeSingle = vi.fn().mockResolvedValue({
         data: null,
         error: { message: 'Not found' }
+      })
+      const mockSelect = vi.fn().mockReturnValue({
+        eq: mockEq,
+        maybeSingle: mockMaybeSingle
       })
 
       const mockMemberCheck = {
         select: mockSelect,
         eq: mockEq,
-        single: mockSingle
+        maybeSingle: mockMaybeSingle
       }
 
       vi.mocked(supabase.from).mockImplementation((table: string) => {
@@ -568,7 +592,7 @@ describe('FamilyGroupService', () => {
       })
 
       expect(result.success).toBe(false)
-      expect(result.error).toContain('permission')
+      expect(result.error).toContain('Family member not found')
     })
   })
 
@@ -581,14 +605,16 @@ describe('FamilyGroupService', () => {
         error: null
       })
 
-      const mockGroupCheck = {
-        select: vi.fn().mockReturnThis(),
-        eq: vi.fn().mockReturnThis(),
-        single: vi.fn().mockResolvedValue({
-          data: { id: 'group-1' },
-          error: null
-        })
-      }
+      const mockGroupEq1 = vi.fn().mockReturnThis()
+      const mockGroupEq2 = vi.fn().mockReturnThis()
+      const mockGroupMaybeSingle = vi.fn().mockResolvedValue({
+        data: { id: 'group-1' },
+        error: null
+      })
+      const mockGroupSelect = vi.fn().mockReturnValue({
+        eq: mockGroupEq1,
+        maybeSingle: mockGroupMaybeSingle
+      })
 
       const mockEq1 = vi.fn().mockReturnThis()
       const mockEq2 = vi.fn().mockResolvedValue({
@@ -605,7 +631,11 @@ describe('FamilyGroupService', () => {
 
       vi.mocked(supabase.from).mockImplementation((table: string) => {
         if (table === 'family_groups') {
-          return mockGroupCheck as any
+          return {
+            select: mockGroupSelect,
+            eq: mockGroupEq1,
+            maybeSingle: mockGroupMaybeSingle
+          } as any
         }
         if (table === 'family_member_groups') {
           return {
