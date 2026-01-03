@@ -1,5 +1,5 @@
 ﻿
-import React, { memo, useState } from 'react';
+import React, { memo, useState, useMemo, useCallback } from 'react';
 import { Handle, Position } from '@xyflow/react';
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -47,25 +47,65 @@ interface FamilyMemberNodeProps {
     isRoot?: boolean;
     generation?: number;
     isMergeNode?: boolean;
+    hiddenDescendantCount?: number;
+    isCollapsed?: boolean;
   };
   selected: boolean;
   isDragging?: boolean;
   isBeingDragged?: boolean;
-  onEdit?: (memberId: string) => void;
+    onEdit?: (memberId: string) => void;
   onViewProfile?: (memberId: string) => void;
   onAddRelation?: (memberId: string) => void;
   onViewTimeline?: (memberId: string) => void;
+  onToggleCollapse?: (memberId: string) => void;
 }
 
-const FamilyMemberNode = ({ data, selected, isDragging, isBeingDragged, onEdit, onViewProfile, onAddRelation, onViewTimeline }: FamilyMemberNodeProps) => {
+// Extract onToggleCollapse from data if present
+const extractToggleCollapse = (data: FamilyMemberNodeProps['data']): ((memberId: string) => void) | undefined => {
+  return (data as any).onToggleCollapse;
+};
+
+const FamilyMemberNode = ({ data, selected, isDragging, isBeingDragged, onEdit: propOnEdit, onViewProfile: propOnViewProfile, onAddRelation: propOnAddRelation, onViewTimeline: propOnViewTimeline, onToggleCollapse: propToggleCollapse }: FamilyMemberNodeProps) => {
+  // Get callbacks from props first, then fall back to data (React Flow may pass through data)
+  const onEdit = propOnEdit || (data as any).onEdit;
+  const onViewProfile = propOnViewProfile || (data as any).onViewProfile;
+  const onAddRelation = propOnAddRelation || (data as any).onAddRelation;
+  const onViewTimeline = propOnViewTimeline || (data as any).onViewTimeline;
+  const onToggleCollapse = propToggleCollapse || extractToggleCollapse(data);
+  
+  // COMPREHENSIVE DIAGNOSTIC LOGGING
+  if (import.meta.env.DEV) {
+    const hasCallbacks = !!(onEdit || onViewProfile || onViewTimeline || onAddRelation);
+    if (!hasCallbacks) {
+      console.error('❌ FamilyMemberNode: NO CALLBACKS FOUND for node', data.id, {
+        'propOnEdit': !!propOnEdit,
+        'propOnViewProfile': !!propOnViewProfile,
+        'propOnAddRelation': !!propOnAddRelation,
+        'propOnViewTimeline': !!propOnViewTimeline,
+        'data.onEdit': !!(data as any).onEdit,
+        'data.onViewProfile': !!(data as any).onViewProfile,
+        'data.onAddRelation': !!(data as any).onAddRelation,
+        'data.onViewTimeline': !!(data as any).onViewTimeline,
+        'All props received': Object.keys({ data, selected, isDragging, isBeingDragged, propOnEdit, propOnViewProfile, propOnAddRelation, propOnViewTimeline, propToggleCollapse }),
+        'Data keys': Object.keys(data)
+      });
+    } else {
+      console.log('✅ FamilyMemberNode: Callbacks available for node', data.id, {
+        'onEdit': !!onEdit,
+        'onViewProfile': !!onViewProfile,
+        'onAddRelation': !!onAddRelation,
+        'onViewTimeline': !!onViewTimeline
+      });
+    }
+  }
   const [isExpanded, setIsExpanded] = useState(false);
   
+  // Memoize computed values
+  const isDeceased = useMemo(() => !!data.deathDate, [data.deathDate]);
+  const gender = useMemo(() => data.gender || 'other', [data.gender]);
   
-  const isDeceased = !!data.deathDate;
-  const gender = data.gender || 'other';
-  
-  // Format dates for display
-  const formatDate = (dateString?: string) => {
+  // Format dates for display - memoized
+  const formatDate = useCallback((dateString?: string) => {
     if (!dateString) return '';
     const date = new Date(dateString);
     return date.toLocaleDateString('en-US', { 
@@ -73,31 +113,38 @@ const FamilyMemberNode = ({ data, selected, isDragging, isBeingDragged, onEdit, 
       month: 'long', 
       day: 'numeric' 
     });
-  };
+  }, []);
 
-  // Get birth and death years for collapsed view
-  const birthYear = data.birthDate ? new Date(data.birthDate).getFullYear() : null;
-  const deathYear = data.deathDate ? new Date(data.deathDate).getFullYear() : null;
+  // Get birth and death years for collapsed view - memoized
+  const birthYear = useMemo(() => data.birthDate ? new Date(data.birthDate).getFullYear() : null, [data.birthDate]);
+  const deathYear = useMemo(() => data.deathDate ? new Date(data.deathDate).getFullYear() : null, [data.deathDate]);
 
-  // Define status-based styles
-  const nodeStyles = selected
-    ? 'shadow-xl border-2 border-primary ring-4 ring-primary/20'
-    : data.isCurrentUser
-      ? 'shadow-lg border-2 border-primary ring-2 ring-primary/30'
-      : isDragging
-        ? 'shadow-lg border-2 border-blue-500 ring-2 ring-blue-500/30'
-        : isBeingDragged
-          ? 'shadow-lg border-2 border-orange-500 ring-2 ring-orange-500/30 opacity-80'
-          : 'shadow-md border border-border hover:shadow-lg';
+  // Define status-based styles - memoized
+  const nodeStyles = useMemo(() => {
+    if (selected) return 'shadow-xl border-2 border-primary ring-4 ring-primary/20';
+    if (data.isCurrentUser) return 'shadow-lg border-2 border-primary ring-2 ring-primary/30';
+    if (isDragging) return 'shadow-lg border-2 border-blue-500 ring-2 ring-blue-500/30';
+    if (isBeingDragged) return 'shadow-lg border-2 border-orange-500 ring-2 ring-orange-500/30 opacity-80';
+    return 'shadow-md border border-border hover:shadow-lg';
+  }, [selected, data.isCurrentUser, isDragging, isBeingDragged]);
 
-  const handleCardClick = () => {
-    setIsExpanded(!isExpanded);
-  };
+  const handleCardClick = useCallback((e: React.MouseEvent) => {
+    // If Ctrl/Cmd is pressed, don't expand - let React Flow handle multi-select
+    if (e.ctrlKey || e.metaKey) {
+      // Don't stop propagation - let the event bubble up to React Flow for multi-select
+      // We return early so the card doesn't expand
+      return;
+    }
+    
+    // Regular click - toggle expansion
+    e.stopPropagation(); // Prevent React Flow from handling this as a node click
+    setIsExpanded(prev => !prev);
+  }, []);
 
-  const handleCloseExpanded = (e: React.MouseEvent) => {
+  const handleCloseExpanded = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
     setIsExpanded(false);
-  };
+  }, []);
 
   return (
     <div 
@@ -110,6 +157,17 @@ const FamilyMemberNode = ({ data, selected, isDragging, isBeingDragged, onEdit, 
         zIndex: selected ? 10 : 1
       }}
       onClick={handleCardClick}
+      role="button"
+      tabIndex={0}
+      aria-label={`${data.firstName} ${data.lastName}, ${gender === 'male' ? 'male' : gender === 'female' ? 'female' : 'person'}, ${birthYear ? `born ${birthYear}` : 'birth year unknown'}${isDeceased ? ', deceased' : ''}${data.isCurrentUser ? ', current user' : ''}`}
+      aria-expanded={isExpanded}
+      aria-selected={selected}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          handleCardClick();
+        }
+      }}
     >
       {/* Specific connection handles for different relationship types */}
       
@@ -291,8 +349,19 @@ const FamilyMemberNode = ({ data, selected, isDragging, isBeingDragged, onEdit, 
             {birthYear && `b. ${birthYear}`}
           </div>
 
-          {/* Expand indicator */}
-          <ChevronDown className="h-4 w-4 text-gray-400" />
+          {/* Collapse indicator and hidden descendants badge */}
+          <div className="flex items-center gap-1">
+            {data.hiddenDescendantCount && data.hiddenDescendantCount > 0 && (
+              <Badge variant="secondary" className="text-xs px-1.5 py-0">
+                {data.hiddenDescendantCount} hidden
+              </Badge>
+            )}
+            {data.isCollapsed ? (
+              <ChevronUp className="h-4 w-4 text-gray-400" />
+            ) : (
+              <ChevronDown className="h-4 w-4 text-gray-400" />
+            )}
+          </div>
         </div>
       )}
 
@@ -373,8 +442,20 @@ const FamilyMemberNode = ({ data, selected, isDragging, isBeingDragged, onEdit, 
               variant="ghost"
               size="sm"
               onClick={(e) => {
+                console.log('🔵 Edit button clicked for node:', data.id, {
+                  'event': e,
+                  'onEdit exists': !!onEdit,
+                  'onEdit type': typeof onEdit,
+                  'data.id': data.id
+                });
                 e.stopPropagation();
-                onEdit?.(data.id);
+                e.preventDefault();
+                if (onEdit) {
+                  console.log('✅ Calling onEdit for node:', data.id);
+                  onEdit(data.id);
+                } else {
+                  console.error('❌ onEdit callback not available for node:', data.id);
+                }
               }}
               className="h-7 text-xs text-gray-600 hover:text-gray-800 hover:bg-gray-100"
             >
@@ -386,8 +467,20 @@ const FamilyMemberNode = ({ data, selected, isDragging, isBeingDragged, onEdit, 
               variant="ghost"
               size="sm"
               onClick={(e) => {
+                console.log('🔵 View button clicked for node:', data.id, {
+                  'event': e,
+                  'onViewProfile exists': !!onViewProfile,
+                  'onViewProfile type': typeof onViewProfile,
+                  'data.id': data.id
+                });
                 e.stopPropagation();
-                onViewProfile?.(data.id);
+                e.preventDefault();
+                if (onViewProfile) {
+                  console.log('✅ Calling onViewProfile for node:', data.id);
+                  onViewProfile(data.id);
+                } else {
+                  console.error('❌ onViewProfile callback not available for node:', data.id);
+                }
               }}
               className="h-7 text-xs text-gray-600 hover:text-gray-800 hover:bg-gray-100"
             >
@@ -399,8 +492,20 @@ const FamilyMemberNode = ({ data, selected, isDragging, isBeingDragged, onEdit, 
               variant="ghost"
               size="sm"
               onClick={(e) => {
+                console.log('🔵 Timeline button clicked for node:', data.id, {
+                  'event': e,
+                  'onViewTimeline exists': !!onViewTimeline,
+                  'onViewTimeline type': typeof onViewTimeline,
+                  'data.id': data.id
+                });
                 e.stopPropagation();
-                onViewTimeline?.(data.id);
+                e.preventDefault();
+                if (onViewTimeline) {
+                  console.log('✅ Calling onViewTimeline for node:', data.id);
+                  onViewTimeline(data.id);
+                } else {
+                  console.error('❌ onViewTimeline callback not available for node:', data.id);
+                }
               }}
               className="h-7 text-xs text-gray-600 hover:text-gray-800 hover:bg-gray-100"
             >
@@ -413,13 +518,42 @@ const FamilyMemberNode = ({ data, selected, isDragging, isBeingDragged, onEdit, 
               size="sm"
               onClick={(e) => {
                 e.stopPropagation();
-                onAddRelation?.(data.id);
+                e.preventDefault();
+                if (onAddRelation) {
+                  onAddRelation(data.id);
+                } else {
+                  console.warn('onAddRelation callback not available for node:', data.id);
+                }
               }}
               className="h-7 text-xs text-gray-600 hover:text-gray-800 hover:bg-gray-100"
             >
               <Plus className="h-3 w-3 mr-1" />
               Add
             </Button>
+            
+            {data.hiddenDescendantCount && data.hiddenDescendantCount > 0 && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onToggleCollapse?.(data.id);
+                }}
+                className="h-7 text-xs text-gray-600 hover:text-gray-800 hover:bg-gray-100 w-full"
+              >
+                {data.isCollapsed ? (
+                  <>
+                    <ChevronDown className="h-3 w-3 mr-1" />
+                    Expand ({data.hiddenDescendantCount})
+                  </>
+                ) : (
+                  <>
+                    <ChevronUp className="h-3 w-3 mr-1" />
+                    Collapse ({data.hiddenDescendantCount})
+                  </>
+                )}
+              </Button>
+            )}
           </div>
         </div>
       )}
@@ -427,7 +561,22 @@ const FamilyMemberNode = ({ data, selected, isDragging, isBeingDragged, onEdit, 
   );
 };
 
-export default memo(FamilyMemberNode);
+// Enhanced memoization with custom comparison function
+export default memo(FamilyMemberNode, (prevProps, nextProps) => {
+  // Only re-render if these specific props change
+  return (
+    prevProps.data.id === nextProps.data.id &&
+    prevProps.data.firstName === nextProps.data.firstName &&
+    prevProps.data.lastName === nextProps.data.lastName &&
+    prevProps.data.birthDate === nextProps.data.birthDate &&
+    prevProps.data.deathDate === nextProps.data.deathDate &&
+    prevProps.data.avatar === nextProps.data.avatar &&
+    prevProps.data.isCurrentUser === nextProps.data.isCurrentUser &&
+    prevProps.selected === nextProps.selected &&
+    prevProps.isDragging === nextProps.isDragging &&
+    prevProps.isBeingDragged === nextProps.isBeingDragged
+  );
+});
 
 
 

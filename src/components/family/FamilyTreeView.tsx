@@ -35,6 +35,12 @@ const FamilyTreeView: React.FC<FamilyTreeViewProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    if (!currentMemberId || currentMemberId.trim() === '') {
+      setFocusedMember(null);
+      setRelatives({ parents: [], siblings: [], spouses: [], children: [] });
+      return;
+    }
+
     const current = members.find(m => m.id === currentMemberId);
     if (current) {
       setFocusedMember(current);
@@ -84,11 +90,47 @@ const FamilyTreeView: React.FC<FamilyTreeViewProps> = ({
       }
       
       setRelatives({ parents, siblings, spouses, children });
+    } else {
+      setFocusedMember(null);
+      setRelatives({ parents: [], siblings: [], spouses: [], children: [] });
     }
   }, [currentMemberId, members]);
 
   // This function would handle a custom SVG tree visualization in a real app
   // For now we'll use a simpler approach with cards in sections
+
+  // Show all family members when no member is selected
+  if (!focusedMember) {
+    return (
+      <div className="p-4" ref={containerRef}>
+        <div className="space-y-6 max-w-4xl mx-auto">
+          <div className="animate-fade-in">
+            <h2 className="text-lg font-medium text-heritage-dark mb-4">All Family Members</h2>
+            {members.length > 0 ? (
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                {members.map(member => (
+                  <FamilyMemberCard 
+                    key={member.id} 
+                    member={member}
+                    onClick={() => {
+                      onSelectMember(member.id);
+                      navigate(`/family-member/${member.id}`);
+                    }}
+                    onMemberDeleted={onMemberDeleted}
+                    onRelationshipRemoved={onRelationshipRemoved}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <p className="text-muted-foreground">No family members found.</p>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-4" ref={containerRef}>

@@ -1,5 +1,5 @@
 
-import React, { memo } from 'react';
+import React, { memo, useMemo } from 'react';
 import { BaseEdge, EdgeLabelRenderer, getBezierPath, getStraightPath, getSmoothStepPath, Position } from '@xyflow/react';
 
 interface FamilyRelationshipEdgeProps {
@@ -29,8 +29,8 @@ const FamilyRelationshipEdge = ({
   style = {},
   markerEnd,
 }: FamilyRelationshipEdgeProps) => {
-  // Calculate precise path based on relationship type and connection points
-  const calculatePrecisePath = () => {
+  // Memoize path calculation
+  const [edgePath, labelX, labelY] = useMemo(() => {
     // Calculate distance for dynamic curvature
     const distance = Math.sqrt(Math.pow(targetX - sourceX, 2) + Math.pow(targetY - sourceY, 2));
     const dynamicCurvature = Math.min(0.6, Math.max(0.1, distance / 150));
@@ -87,12 +87,10 @@ const FamilyRelationshipEdge = ({
           borderRadius: 20,
         });
     }
-  };
-  
-  const [edgePath, labelX, labelY] = calculatePrecisePath();
+  }, [sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, data?.relationshipType]);
 
-  // Add relationship-specific icon or indicator
-  const getRelationshipIcon = () => {
+  // Memoize relationship icon
+  const relationshipIcon = useMemo(() => {
     switch (data?.relationshipType) {
       case 'spouse':
         return '💕';
@@ -105,10 +103,10 @@ const FamilyRelationshipEdge = ({
       default:
         return '';
     }
-  };
+  }, [data?.relationshipType]);
 
-  // Enhanced styling with smooth transitions and flexible appearance
-  const getEdgeStyle = () => {
+  // Memoize edge style
+  const edgeStyle = useMemo(() => {
     const baseStyle = { 
       ...style,
       strokeWidth: 3,
@@ -158,10 +156,10 @@ const FamilyRelationshipEdge = ({
           strokeOpacity: 0.7
         };
     }
-  };
+  }, [data?.relationshipType, style]);
 
-  // Get relationship label for accessibility and clarity
-  const getRelationshipLabel = () => {
+  // Memoize relationship label
+  const relationshipLabel = useMemo(() => {
     switch (data?.relationshipType) {
       case 'spouse':
         return 'Married to';
@@ -174,7 +172,7 @@ const FamilyRelationshipEdge = ({
       default:
         return 'Related to';
     }
-  };
+  }, [data?.relationshipType]);
 
   return (
     <>
@@ -195,9 +193,20 @@ const FamilyRelationshipEdge = ({
           }
         `}
       </style>
-      <BaseEdge path={edgePath} markerEnd={markerEnd} style={getEdgeStyle()} />
+      <BaseEdge path={edgePath} markerEnd={markerEnd} style={edgeStyle} />
     </>
   );
 };
 
-export default memo(FamilyRelationshipEdge);
+// Enhanced memoization with custom comparison
+export default memo(FamilyRelationshipEdge, (prevProps, nextProps) => {
+  return (
+    prevProps.id === nextProps.id &&
+    prevProps.sourceX === nextProps.sourceX &&
+    prevProps.sourceY === nextProps.sourceY &&
+    prevProps.targetX === nextProps.targetX &&
+    prevProps.targetY === nextProps.targetY &&
+    prevProps.data?.relationshipType === nextProps.data?.relationshipType &&
+    prevProps.markerEnd === nextProps.markerEnd
+  );
+});

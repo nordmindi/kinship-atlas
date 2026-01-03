@@ -28,6 +28,7 @@ import {
   ZoomIn as ZoomInIcon,
   ZoomOut as ZoomOutIcon,
   Maximize as MaximizeIcon,
+  Minimize as MinimizeIcon,
   TreePine as TreePineIcon,
   GitBranch as GenealogyIcon,
   RotateCcw as FlipIcon,
@@ -36,7 +37,11 @@ import {
   UserPlus as DescendantChartIcon,
   ArrowUpDown as PedigreeIcon,
   Network as NetworkIcon,
-  TrendingDown as DescendantIcon
+  TrendingDown as DescendantIcon,
+  ChevronDown as ChevronDownIcon,
+  ChevronUp as ChevronUpIcon,
+  Minus as MinusIcon,
+  Plus as PlusIcon
 } from 'lucide-react';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Button } from '@/components/ui/button';
@@ -45,6 +50,8 @@ import { FamilyMember } from '@/types';
 import { layoutService } from '@/services/layoutService';
 import { familyRelationshipManager } from '@/services/familyRelationshipManager';
 import { toast } from 'sonner';
+import { useTreeCollapse } from './hooks/useTreeCollapse';
+import { useRelationshipPathFinder } from './hooks/useRelationshipPathFinder';
 import './FamilyTree.css';
 
 interface FamilyTreeRendererProps {
@@ -100,10 +107,13 @@ const FamilyTreeRenderer: React.FC<FamilyTreeRendererProps> = ({
   const [reactFlowInstance, setReactFlowInstance] = React.useState<ReactFlowInstance | null>(null);
   const [treeOrientation, setTreeOrientation] = React.useState<'top-down' | 'bottom-up'>('top-down');
   const [treeType, setTreeType] = React.useState<'standard-pedigree' | 'combination-pedigree' | 'descendant-chart'>('standard-pedigree');
+  const [isExpanded, setIsExpanded] = React.useState(false);
   const [draggedNodeId, setDraggedNodeId] = React.useState<string | null>(null);
   const [dragOffset, setDragOffset] = React.useState<{ x: number; y: number } | null>(null);
   const [dragPreview, setDragPreview] = React.useState<{ x: number; y: number; valid: boolean } | null>(null);
   const [collisionNodes, setCollisionNodes] = React.useState<string[]>([]);
+  // Multi-select drag state - stores initial positions of all selected nodes
+  const [selectedNodesInitialPositions, setSelectedNodesInitialPositions] = React.useState<Map<string, { x: number; y: number }>>(new Map());
   const [editingRelationshipId, setEditingRelationshipId] = React.useState<string | null>(null);
   const [isRelationshipDialogOpen, setIsRelationshipDialogOpen] = React.useState(false);
   
@@ -112,12 +122,208 @@ const FamilyTreeRenderer: React.FC<FamilyTreeRendererProps> = ({
   const [connectionStart, setConnectionStart] = React.useState<{nodeId: string, handleId: string, handleType: 'source' | 'target'} | null>(null);
   const [connectionPreview, setConnectionPreview] = React.useState<{x: number, y: number} | null>(null);
   
+  // Box selection state - store in screen coordinates for rendering
+  const [boxSelection, setBoxSelection] = React.useState<{
+    startX: number;
+    startY: number;
+    endX: number;
+    endY: number;
+    isActive: boolean;
+    startScreenX: number;
+    startScreenY: number;
+    endScreenX: number;
+    endScreenY: number;
+  } | null>(null);
+  
   const reactFlowRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   
+  // Mobile touch gesture state
+  const [isMobile, setIsMobile] = useState(false);
+  const touchStartRef = useRef<{ x: number; y: number; distance: number } | null>(null);
+  
+  // CRITICAL FIX: Store callbacks in a ref to preserve them across React Flow updates
+  // React Flow's onNodesChange (via applyNodeChanges) strips custom properties
+  // MUST be initialized BEFORE useNodesState so we can preserve callbacks immediately
+  const callbacksRef = useRef<Map<string, {
+    onEdit?: (memberId: string) => void;
+    onViewProfile?: (memberId: string) => void;
+    onAddRelation?: (memberId: string) => void;
+    onViewTimeline?: (memberId: string) => void;
+  }>>(new Map());
+  
+  // Function to preserve callbacks from nodes
+  const preserveCallbacks = useCallback((nodes: Node[]) => {
+    nodes.forEach(node => {
+      const nodeWithCallbacks = node as FamilyMemberNodeType;
+      // Check both direct props and data for callbacks
+      const onEdit = nodeWithCallbacks.onEdit || (nodeWithCallbacks.data as any)?.onEdit;
+      const onViewProfile = nodeWithCallbacks.onViewProfile || (nodeWithCallbacks.data as any)?.onViewProfile;
+      const onAddRelation = nodeWithCallbacks.onAddRelation || (nodeWithCallbacks.data as any)?.onAddRelation;
+      const onViewTimeline = nodeWithCallbacks.onViewTimeline || (nodeWithCallbacks.data as any)?.onViewTimeline;
+      
+      if (onEdit || onViewProfile || onAddRelation || onViewTimeline) {
+        callbacksRef.current.set(node.id, {
+          onEdit,
+          onViewProfile,
+          onAddRelation,
+          onViewTimeline,
+        });
+        if (import.meta.env.DEV) {
+          console.log('💾 Preserved callbacks for node', node.id, {
+            onEdit: !!onEdit,
+            onViewProfile: !!onViewProfile,
+            onAddRelation: !!onAddRelation,
+            onViewTimeline: !!onViewTimeline
+          });
+        }
+      }
+    });
+  }, []);
+  
+  // Function to restore callbacks to nodes
+  // MUST be defined before useMemo that uses it
+  const restoreCallbacks = useCallback((nodes: Node[]): Node[] => {
+    if (!nodes || nodes.length === 0) return nodes;
+    
+    return nodes.map(node => {
+      const callbacks = callbacksRef.current.get(node.id);
+      if (!callbacks) {
+        // If no callbacks found, try to extract from node itself first
+        const nodeWithCallbacks = node as FamilyMemberNodeType;
+        const onEdit = nodeWithCallbacks.onEdit || (nodeWithCallbacks.data as any)?.onEdit;
+        const onViewProfile = nodeWithCallbacks.onViewProfile || (nodeWithCallbacks.data as any)?.onViewProfile;
+        const onAddRelation = nodeWithCallbacks.onAddRelation || (nodeWithCallbacks.data as any)?.onAddRelation;
+        const onViewTimeline = nodeWithCallbacks.onViewTimeline || (nodeWithCallbacks.data as any)?.onViewTimeline;
+        
+        // If callbacks exist on node but not in ref, preserve them
+        if (onEdit || onViewProfile || onAddRelation || onViewTimeline) {
+          callbacksRef.current.set(node.id, {
+            onEdit,
+            onViewProfile,
+            onAddRelation,
+            onViewTimeline,
+          });
+          // Return node with callbacks
+          return {
+            ...node,
+            onEdit,
+            onViewProfile,
+            onAddRelation,
+            onViewTimeline,
+            data: {
+              ...node.data,
+              onEdit,
+              onViewProfile,
+              onAddRelation,
+              onViewTimeline,
+            }
+          };
+        }
+        
+        // If no callbacks found anywhere, log for debugging
+        if (import.meta.env.DEV) {
+          console.warn('⚠️ No callbacks found in ref for node', node.id, {
+            'refHasNode': callbacksRef.current.has(node.id),
+            'refSize': callbacksRef.current.size,
+            'refKeys': Array.from(callbacksRef.current.keys()).slice(0, 5)
+          });
+        }
+        return node;
+      }
+      
+      const restored = {
+        ...node,
+        ...callbacks, // Restore as direct props
+        data: {
+          ...node.data,
+          ...callbacks, // Also in data as fallback
+        }
+      };
+      
+      if (import.meta.env.DEV) {
+        console.log('✅ Restored callbacks for node', node.id, {
+          onEdit: !!restored.onEdit,
+          onViewProfile: !!restored.onViewProfile,
+          onAddRelation: !!restored.onAddRelation,
+          onViewTimeline: !!restored.onViewTimeline,
+          'dataHasCallbacks': !!(restored.data as any).onEdit
+        });
+      }
+      
+      return restored;
+    });
+  }, []);
+  
+  // CRITICAL: Preserve callbacks from incoming nodes prop IMMEDIATELY
+  // This must happen synchronously before useNodesState processes them
+  // We preserve callbacks here so they're available even if nodes are stripped
+  if (nodes && nodes.length > 0) {
+    nodes.forEach(node => {
+      const nodeWithCallbacks = node as FamilyMemberNodeType;
+      // Check both direct props and data for callbacks
+      const onEdit = nodeWithCallbacks.onEdit || (nodeWithCallbacks.data as any)?.onEdit;
+      const onViewProfile = nodeWithCallbacks.onViewProfile || (nodeWithCallbacks.data as any)?.onViewProfile;
+      const onAddRelation = nodeWithCallbacks.onAddRelation || (nodeWithCallbacks.data as any)?.onAddRelation;
+      const onViewTimeline = nodeWithCallbacks.onViewTimeline || (nodeWithCallbacks.data as any)?.onViewTimeline;
+      
+      if (onEdit || onViewProfile || onAddRelation || onViewTimeline) {
+        callbacksRef.current.set(node.id, {
+          onEdit,
+          onViewProfile,
+          onAddRelation,
+          onViewTimeline,
+        });
+      }
+    });
+  }
+  
+  // CRITICAL: Restore callbacks to nodes before passing to useNodesState
+  // This ensures initial state has callbacks
+  // Call restoreCallbacks directly (it's already defined above)
+  const nodesWithCallbacks = nodes && nodes.length > 0 ? restoreCallbacks(nodes) : nodes;
+  
   // State management for interactive nodes and edges
-  const [nodesState, setNodes, onNodesChange] = useNodesState(nodes);
+  // Use nodesWithCallbacks to ensure initial state has callbacks
+  const [nodesState, setNodes, onNodesChange] = useNodesState(nodesWithCallbacks);
   const [edgesState, setEdges, onEdgesChange] = useEdgesState(edges);
+  
+  // Wrapped onNodesChange that preserves callbacks
+  const onNodesChangeWithCallbacks = useCallback((changes: NodeChange[]) => {
+    // First, preserve callbacks from current state before changes
+    preserveCallbacks(nodesState);
+    
+    // Apply React Flow's changes
+    onNodesChange(changes);
+    
+    // Restore callbacks after changes are applied
+    // Use setTimeout to ensure changes are processed first
+    setTimeout(() => {
+      setNodes((currentNodes) => restoreCallbacks(currentNodes));
+    }, 0);
+  }, [nodesState, onNodesChange, setNodes, preserveCallbacks, restoreCallbacks]);
+  
+  // Collapse/expand functionality
+  const {
+    toggleCollapse,
+    isCollapsed,
+    isHidden,
+    getHiddenDescendantCount,
+    collapseAll,
+    expandAll,
+    getVisibleNodes,
+    getVisibleEdges
+  } = useTreeCollapse(familyMembers, nodesState);
+  
+  // Relationship path finder
+  const {
+    findPath,
+    findAndHighlightPath
+  } = useRelationshipPathFinder(familyMembers, nodesState, edgesState);
+  
+  // State for path highlighting
+  const [highlightedPath, setHighlightedPath] = React.useState<string[]>([]);
+  const [pathStartMember, setPathStartMember] = React.useState<string | null>(null);
   
   // Helper functions to find related family members
   const findChildren = useCallback((memberId: string): string[] => {
@@ -215,8 +421,9 @@ const FamilyTreeRenderer: React.FC<FamilyTreeRendererProps> = ({
     });
     
     // Only move the dragged node, not related ones
-    setNodes((nds) => 
-      nds.map((n) => {
+    // CRITICAL FIX: Preserve callbacks when updating nodes
+    setNodes((nds) => {
+      const updated = nds.map((n) => {
         if (n.id === nodeId) {
           return {
             ...n,
@@ -224,28 +431,151 @@ const FamilyTreeRenderer: React.FC<FamilyTreeRendererProps> = ({
           };
         }
         return n;
-      })
-    );
-  }, [detectCollisions, setNodes]);
+      });
+      return restoreCallbacks(updated);
+    });
+  }, [detectCollisions, setNodes, restoreCallbacks]);
   
   // Update state when props change and apply persistent layout
   useEffect(() => {
     // Apply saved layout positions if available
     const nodesWithLayout = layoutService.applyLayoutToNodes(nodes);
-    setNodes(nodesWithLayout);
-  }, [nodes, setNodes]);
+    
+    // DIAGNOSTIC: Log incoming nodes
+    if (import.meta.env.DEV && nodes.length > 0) {
+      const sampleNode = nodes[0] as FamilyMemberNodeType;
+      console.log('📥 FamilyTreeRenderer: Received nodes prop', {
+        'totalNodes': nodes.length,
+        'sampleNodeId': sampleNode.id,
+        'sampleNodeHasOnEdit': !!(sampleNode as any).onEdit,
+        'sampleNodeHasOnViewProfile': !!(sampleNode as any).onViewProfile,
+        'sampleNodeDataKeys': Object.keys(sampleNode.data || {}),
+        'sampleNodeKeys': Object.keys(sampleNode)
+      });
+    }
+    
+    // Add collapse data and path highlighting to nodes
+    // Preserve all node properties including callbacks (onEdit, onViewProfile, etc.)
+    const nodesWithCollapseData = nodesWithLayout.map(node => {
+      const nodeWithCallbacks = node as FamilyMemberNodeType;
+      const hasCallbacks = !!(nodeWithCallbacks.onEdit || nodeWithCallbacks.onViewProfile || nodeWithCallbacks.onViewTimeline);
+      
+      if (import.meta.env.DEV && !hasCallbacks) {
+        console.warn('⚠️ FamilyTreeRenderer: Node missing callbacks', node.id, {
+          'nodeKeys': Object.keys(node),
+          'nodeDataKeys': Object.keys(node.data || {})
+        });
+      }
+      
+      return {
+        ...node, // Preserve all original node properties including onEdit, onViewProfile, etc.
+        // Explicitly preserve callbacks to ensure they're passed to the component
+        onEdit: nodeWithCallbacks.onEdit,
+        onViewProfile: nodeWithCallbacks.onViewProfile,
+        onAddRelation: nodeWithCallbacks.onAddRelation,
+        onViewTimeline: nodeWithCallbacks.onViewTimeline,
+        data: {
+          ...node.data,
+          // Pass callbacks through data as well (React Flow may not pass direct props reliably)
+          onEdit: nodeWithCallbacks.onEdit,
+          onViewProfile: nodeWithCallbacks.onViewProfile,
+          onAddRelation: nodeWithCallbacks.onAddRelation,
+          onViewTimeline: nodeWithCallbacks.onViewTimeline,
+          isCollapsed: isCollapsed(node.id),
+          hiddenDescendantCount: getHiddenDescendantCount(node.id),
+          onToggleCollapse: () => toggleCollapse(node.id),
+          isPathHighlighted: highlightedPath.includes(node.id),
+          isPathStart: pathStartMember === node.id
+        },
+        style: {
+          ...node.style,
+          // Highlight nodes in the path
+          border: highlightedPath.includes(node.id) 
+            ? '3px solid #9333ea' 
+            : pathStartMember === node.id
+            ? '3px solid #3b82f6'
+            : node.style?.border,
+          boxShadow: highlightedPath.includes(node.id)
+            ? '0 0 20px rgba(147, 51, 234, 0.5)'
+            : pathStartMember === node.id
+            ? '0 0 15px rgba(59, 130, 246, 0.5)'
+            : node.style?.boxShadow
+        }
+      };
+    });
+    
+    const visibleNodes = getVisibleNodes(nodesWithCollapseData);
+    
+    // CRITICAL FIX: Preserve callbacks before setting nodes
+    preserveCallbacks(visibleNodes);
+    
+    // DIAGNOSTIC: Log nodes before setting state
+    if (import.meta.env.DEV && visibleNodes.length > 0) {
+      const sampleNode = visibleNodes[0] as FamilyMemberNodeType;
+      console.log('📤 FamilyTreeRenderer: Setting nodes state', {
+        'totalNodes': visibleNodes.length,
+        'sampleNodeId': sampleNode.id,
+        'sampleNodeHasOnEdit': !!(sampleNode as any).onEdit,
+        'sampleNodeHasOnViewProfile': !!(sampleNode as any).onViewProfile,
+        'sampleNodeDataHasOnEdit': !!(sampleNode.data as any)?.onEdit,
+        'sampleNodeDataHasOnViewProfile': !!(sampleNode.data as any)?.onViewProfile
+      });
+    }
+    
+    // Restore callbacks to nodes before setting state
+    const nodesWithRestoredCallbacks = restoreCallbacks(visibleNodes);
+    setNodes(nodesWithRestoredCallbacks);
+  }, [nodes, setNodes, getVisibleNodes, isCollapsed, getHiddenDescendantCount, highlightedPath, pathStartMember, toggleCollapse, preserveCallbacks, restoreCallbacks]);
+  
+  // DIAGNOSTIC: Monitor nodesState changes
+  useEffect(() => {
+    if (import.meta.env.DEV && nodesState.length > 0) {
+      const sampleNode = nodesState[0] as FamilyMemberNodeType;
+      const hasCallbacks = !!(sampleNode.onEdit || sampleNode.onViewProfile || sampleNode.onViewTimeline);
+      if (!hasCallbacks) {
+        console.error('❌ FamilyTreeRenderer: nodesState missing callbacks!', {
+          'sampleNodeId': sampleNode.id,
+          'sampleNodeKeys': Object.keys(sampleNode),
+          'sampleNodeDataKeys': Object.keys(sampleNode.data || {})
+        });
+      }
+    }
+  }, [nodesState]);
 
   useEffect(() => {
-    setEdges(edges);
-  }, [edges, setEdges]);
+    let visibleEdges = getVisibleEdges(edges);
+    
+    // Highlight edges in the path
+    if (highlightedPath.length > 1) {
+      visibleEdges = visibleEdges.map(edge => {
+        const sourceInPath = highlightedPath.includes(edge.source);
+        const targetInPath = highlightedPath.includes(edge.target);
+        const isPathEdge = sourceInPath && targetInPath && 
+          Math.abs(highlightedPath.indexOf(edge.source) - highlightedPath.indexOf(edge.target)) === 1;
+        
+        return {
+          ...edge,
+          style: {
+            ...edge.style,
+            stroke: isPathEdge ? '#9333ea' : edge.style?.stroke,
+            strokeWidth: isPathEdge ? 5 : edge.style?.strokeWidth,
+            opacity: isPathEdge ? 1 : edge.style?.opacity
+          },
+          animated: isPathEdge
+        };
+      });
+    }
+    
+    setEdges(visibleEdges);
+  }, [edges, setEdges, getVisibleEdges, highlightedPath]);
 
-  // Save layout when nodes change (debounced)
+  // Save layout when nodes change (debounced) - increased debounce for better performance
   useEffect(() => {
     const timeoutId = setTimeout(() => {
       if (nodesState.length > 0) {
         layoutService.saveLayout(nodesState);
       }
-    }, 1000); // Save after 1 second of inactivity
+    }, 2000); // Save after 2 seconds of inactivity for better performance
 
     return () => clearTimeout(timeoutId);
   }, [nodesState]);
@@ -267,6 +597,16 @@ const FamilyTreeRenderer: React.FC<FamilyTreeRendererProps> = ({
     if (reactFlowInstance) {
       reactFlowInstance.fitView({ padding: 0.2 });
     }
+  }, [reactFlowInstance]);
+
+  const handleToggleExpand = useCallback(() => {
+    setIsExpanded(prev => !prev);
+    // Fit view after expanding/collapsing
+    setTimeout(() => {
+      if (reactFlowInstance) {
+        reactFlowInstance.fitView({ padding: 0.2, duration: 300 });
+      }
+    }, 100);
   }, [reactFlowInstance]);
   
   const handleHierarchyLayout = useCallback(() => {
@@ -431,14 +771,15 @@ const FamilyTreeRenderer: React.FC<FamilyTreeRendererProps> = ({
       };
     });
     
-    setNodes(updatedNodes);
+    // CRITICAL FIX: Preserve callbacks when updating nodes
+    setNodes(restoreCallbacks(updatedNodes));
     
     // Fit view after layout
     setTimeout(() => {
       reactFlowInstance.fitView({ padding: 0.2 });
     }, 100);
-  }, [reactFlowInstance, nodesState, familyMembers, setNodes]);
-
+  }, [reactFlowInstance, nodesState, familyMembers, setNodes, restoreCallbacks]);
+  
   const handleGenealogicalLayout = useCallback(() => {
     if (!reactFlowInstance || !familyMembers.length) return;
     
@@ -586,13 +927,14 @@ const FamilyTreeRenderer: React.FC<FamilyTreeRendererProps> = ({
       };
     });
     
-    setNodes(updatedNodes);
+    // CRITICAL FIX: Preserve callbacks when updating nodes
+    setNodes(restoreCallbacks(updatedNodes));
     
     // Fit view after layout
     setTimeout(() => {
       reactFlowInstance.fitView({ padding: 0.2 });
     }, 100);
-  }, [reactFlowInstance, nodesState, familyMembers, setNodes, treeOrientation]);
+  }, [reactFlowInstance, nodesState, familyMembers, setNodes, treeOrientation, restoreCallbacks]);
 
   const handleToggleOrientation = useCallback(() => {
     setTreeOrientation(prev => prev === 'top-down' ? 'bottom-up' : 'top-down');
@@ -700,14 +1042,15 @@ const FamilyTreeRenderer: React.FC<FamilyTreeRendererProps> = ({
       };
     });
     
-    setNodes(updatedNodes);
+    // CRITICAL FIX: Preserve callbacks when updating nodes
+    setNodes(restoreCallbacks(updatedNodes));
     
     // Fit view after layout
     setTimeout(() => {
       reactFlowInstance.fitView({ padding: 0.2 });
     }, 100);
-  }, [reactFlowInstance, nodesState, familyMembers, setNodes]);
-
+  }, [reactFlowInstance, nodesState, familyMembers, setNodes, restoreCallbacks]);
+  
   const handleCombinationPedigreeLayout = useCallback(() => {
     if (!reactFlowInstance || !familyMembers.length) return;
     
@@ -850,14 +1193,15 @@ const FamilyTreeRenderer: React.FC<FamilyTreeRendererProps> = ({
       };
     });
     
-    setNodes(updatedNodes);
+    // CRITICAL FIX: Preserve callbacks when updating nodes
+    setNodes(restoreCallbacks(updatedNodes));
     
     // Fit view after layout
     setTimeout(() => {
       reactFlowInstance.fitView({ padding: 0.2 });
     }, 100);
-  }, [reactFlowInstance, nodesState, familyMembers, setNodes]);
-
+  }, [reactFlowInstance, nodesState, familyMembers, setNodes, restoreCallbacks]);
+  
   const handleDescendantChartLayout = useCallback(() => {
     if (!reactFlowInstance || !familyMembers.length) return;
     
@@ -970,14 +1314,15 @@ const FamilyTreeRenderer: React.FC<FamilyTreeRendererProps> = ({
       };
     });
     
-    setNodes(updatedNodes);
+    // CRITICAL FIX: Preserve callbacks when updating nodes
+    setNodes(restoreCallbacks(updatedNodes));
     
     // Fit view after layout
     setTimeout(() => {
       reactFlowInstance.fitView({ padding: 0.2 });
     }, 100);
-  }, [reactFlowInstance, nodesState, familyMembers, setNodes]);
-
+  }, [reactFlowInstance, nodesState, familyMembers, setNodes, restoreCallbacks]);
+  
   const handleInit = useCallback((instance: ReactFlowInstance) => {
     console.log('ReactFlow initialized:', {
       viewport: instance.getViewport(),
@@ -1109,8 +1454,9 @@ const FamilyTreeRenderer: React.FC<FamilyTreeRendererProps> = ({
     }
     
     // Apply positions to nodes with smooth animation
-    setNodes((nds) => 
-      nds.map((node) => {
+    // CRITICAL FIX: Preserve callbacks when updating nodes
+    setNodes((nds) => {
+      const updated = nds.map((node) => {
         const position = positions.get(node.id);
         if (position) {
           return {
@@ -1123,8 +1469,9 @@ const FamilyTreeRenderer: React.FC<FamilyTreeRendererProps> = ({
           };
         }
         return node;
-      })
-    );
+      });
+      return restoreCallbacks(updated);
+    });
     
     // Fit view to show all nodes
     setTimeout(() => {
@@ -1132,21 +1479,212 @@ const FamilyTreeRenderer: React.FC<FamilyTreeRendererProps> = ({
         reactFlowInstance.fitView({ padding: 0.2 });
       }
     }, 600);
-  }, [familyMembers, setNodes, reactFlowInstance]);
+  }, [familyMembers, setNodes, reactFlowInstance, restoreCallbacks]);
 
   const handleNodeClick = useCallback((event: React.MouseEvent, node: Node) => {
     console.log('Node clicked:', node.id, node.data);
-    onNodeClick(node as FamilyMemberNodeType);
-  }, [onNodeClick]);
+    
+    // If Ctrl/Cmd is pressed, let React Flow handle multi-select
+    // Don't interfere with relationship finder or other click handlers
+    if (event.ctrlKey || event.metaKey) {
+      console.log('Multi-select click detected, letting React Flow handle selection');
+      return;
+    }
+    
+    // Check if the click target is a button or interactive element
+    // If so, don't process as relationship finder click - let the button handle it
+    const target = event.target as HTMLElement;
+    const isButtonClick = target.closest('button') !== null || 
+                         target.closest('[role="button"]') !== null ||
+                         target.tagName === 'BUTTON' ||
+                         target.closest('a') !== null;
+    
+    if (isButtonClick) {
+      // Let the button handle its own click - don't interfere with relationship finder
+      console.log('Button click detected, skipping relationship finder logic');
+      return;
+    }
+    
+    // Handle relationship path finding
+    if (pathStartMember === 'waiting') {
+      // First member selected
+      setPathStartMember(node.id);
+      toast.info('Now click on the second member to find the relationship');
+    } else if (pathStartMember && pathStartMember !== node.id) {
+      // Second member selected - find path
+      const pathResult = findPath(pathStartMember, node.id);
+      if (pathResult) {
+        setHighlightedPath(pathResult.path);
+        toast.success(`Relationship: ${pathResult.relationshipDescription}`);
+      } else {
+        toast.error('No relationship path found between these members');
+      }
+      setPathStartMember(null);
+    } else {
+      // Normal click
+      onNodeClick(node as FamilyMemberNodeType);
+    }
+  }, [onNodeClick, pathStartMember, findPath]);
 
+  // Box selection mouse handlers
+  const boxSelectionStartRef = useRef<{ x: number; y: number } | null>(null);
+  const isBoxSelectingRef = useRef(false);
+  
+  // Handle mouse down on container - start box selection
+  const handleContainerMouseDown = useCallback((event: React.MouseEvent) => {
+    // Only start box selection if clicking on container (not on a node) and not holding Ctrl/Cmd
+    if (event.button !== 0) return; // Only left mouse button
+    if (event.ctrlKey || event.metaKey) return; // Don't interfere with Ctrl+Click
+    
+    // Check if clicking on a node (event target should not be a node)
+    const target = event.target as HTMLElement;
+    if (target.closest('.react-flow__node')) return; // Don't start box selection if clicking on node
+    
+    if (!reactFlowInstance) return;
+    
+    const point = reactFlowInstance.screenToFlowPosition({
+      x: event.clientX,
+      y: event.clientY,
+    });
+    
+    boxSelectionStartRef.current = { x: point.x, y: point.y };
+    isBoxSelectingRef.current = true;
+    
+    setBoxSelection({
+      startX: point.x,
+      startY: point.y,
+      endX: point.x,
+      endY: point.y,
+      isActive: true,
+      startScreenX: event.clientX,
+      startScreenY: event.clientY,
+      endScreenX: event.clientX,
+      endScreenY: event.clientY,
+    });
+  }, [reactFlowInstance]);
+  
+  // Handle mouse move - update box selection
+  const handleContainerMouseMove = useCallback((event: React.MouseEvent) => {
+    if (!isBoxSelectingRef.current || !boxSelectionStartRef.current || !reactFlowInstance) {
+      // Also check existing boxSelection state
+      if (!boxSelection?.isActive) return;
+    }
+    
+    const point = reactFlowInstance.screenToFlowPosition({
+      x: event.clientX,
+      y: event.clientY,
+    });
+    
+    setBoxSelection(prev => {
+      if (!prev) return null;
+      return {
+        ...prev,
+        endX: point.x,
+        endY: point.y,
+        endScreenX: event.clientX,
+        endScreenY: event.clientY,
+      };
+    });
+  }, [reactFlowInstance, boxSelection]);
+  
+  // Handle mouse up - finalize box selection
+  const finalizeBoxSelection = useCallback(() => {
+    if (!isBoxSelectingRef.current || !boxSelection || !boxSelection.isActive || !reactFlowInstance) {
+      isBoxSelectingRef.current = false;
+      boxSelectionStartRef.current = null;
+      setBoxSelection(null);
+      return;
+    }
+    
+    // Calculate selection box bounds
+    const minX = Math.min(boxSelection.startX, boxSelection.endX);
+    const maxX = Math.max(boxSelection.startX, boxSelection.endX);
+    const minY = Math.min(boxSelection.startY, boxSelection.endY);
+    const maxY = Math.max(boxSelection.startY, boxSelection.endY);
+    
+    // Find nodes within the selection box
+    const selectedNodeIds = nodesState
+      .filter(node => {
+        const nodeX = node.position.x;
+        const nodeY = node.position.y;
+        // Approximate node size (180px width, 100px height)
+        // Convert to flow coordinates (account for zoom)
+        const zoom = reactFlowInstance.getZoom();
+        const nodeWidth = 180 / zoom;
+        const nodeHeight = 100 / zoom;
+        
+        // Check if node intersects with selection box
+        return (
+          nodeX + nodeWidth / 2 >= minX &&
+          nodeX - nodeWidth / 2 <= maxX &&
+          nodeY + nodeHeight / 2 >= minY &&
+          nodeY - nodeHeight / 2 <= maxY
+        );
+      })
+      .map(node => node.id);
+    
+    // Update node selection
+    if (selectedNodeIds.length > 0) {
+      setNodes((nds) => {
+        const updated = nds.map((n) => ({
+          ...n,
+          selected: selectedNodeIds.includes(n.id),
+        }));
+        return restoreCallbacks(updated);
+      });
+    } else {
+      // If no nodes selected, deselect all
+      setNodes((nds) => {
+        const updated = nds.map((n) => ({
+          ...n,
+          selected: false,
+        }));
+        return restoreCallbacks(updated);
+      });
+    }
+    
+    // Clear box selection
+    setBoxSelection(null);
+    isBoxSelectingRef.current = false;
+    boxSelectionStartRef.current = null;
+  }, [boxSelection, reactFlowInstance, nodesState, setNodes, restoreCallbacks]);
+  
+  const handleContainerMouseUp = useCallback(() => {
+    finalizeBoxSelection();
+  }, [finalizeBoxSelection]);
+  
+  // Global mouse up handler to catch mouse release outside container
+  useEffect(() => {
+    if (isBoxSelectingRef.current) {
+      const handleGlobalMouseUp = () => {
+        finalizeBoxSelection();
+      };
+      
+      window.addEventListener('mouseup', handleGlobalMouseUp);
+      return () => {
+        window.removeEventListener('mouseup', handleGlobalMouseUp);
+      };
+    }
+  }, [isBoxSelectingRef.current, finalizeBoxSelection]);
+  
   const handlePaneClick = useCallback(() => {
-    // Deselect when clicking on empty space
-  }, []);
+    // Deselect when clicking on empty space (if not box selecting)
+    if (!boxSelection || !boxSelection.isActive) {
+      setNodes((nds) => {
+        const updated = nds.map((n) => ({
+          ...n,
+          selected: false,
+        }));
+        return restoreCallbacks(updated);
+      });
+    }
+  }, [boxSelection, setNodes, restoreCallbacks]);
   
   const handleNodeDoubleClick = useCallback((event: React.MouseEvent, node: Node) => {
-    console.log('Node double-clicked for editing:', node);
-    // TODO: Open edit dialog for the node
-  }, []);
+    console.log('Node double-clicked:', node);
+    // Toggle collapse on double-click
+    toggleCollapse(node.id);
+  }, [toggleCollapse]);
   
   const handleEdgeDoubleClick = useCallback((event: React.MouseEvent, edge: Edge) => {
     console.log('Edge double-clicked for editing:', edge);
@@ -1169,46 +1707,146 @@ const FamilyTreeRenderer: React.FC<FamilyTreeRendererProps> = ({
     console.log('Relationship updated, refreshing tree...');
   }, []);
 
-  // Handle drag start - identify the dragged node
+  // Handle drag start - identify the dragged node and track all selected nodes
   const handleNodeDragStart = useCallback((event: React.MouseEvent, node: Node) => {
     const nodeId = node.id;
     setDraggedNodeId(nodeId);
     
-    // Calculate initial offset
+    // Calculate initial offset for the dragged node
     const nodePosition = node.position;
     setDragOffset({ x: nodePosition.x, y: nodePosition.y });
     
-    console.log('Smart drag started for node:', nodeId);
-  }, []);
+    // Get all currently selected nodes (including the one being dragged)
+    const selectedNodes = nodesState.filter(n => n.selected);
+    
+    // Store initial positions of all selected nodes for multi-drag
+    const initialPositions = new Map<string, { x: number; y: number }>();
+    selectedNodes.forEach(selectedNode => {
+      initialPositions.set(selectedNode.id, {
+        x: selectedNode.position.x,
+        y: selectedNode.position.y
+      });
+    });
+    setSelectedNodesInitialPositions(initialPositions);
+    
+    console.log('Drag started for node:', nodeId, 'with', selectedNodes.length, 'selected nodes');
+  }, [nodesState]);
 
-  // Handle drag - smart individual node movement with collision detection
+  // Handle drag - move all selected nodes together with collision detection
   const handleNodeDrag = useCallback((event: React.MouseEvent, node: Node) => {
-    if (!draggedNodeId) return;
+    if (!draggedNodeId || selectedNodesInitialPositions.size === 0) return;
     
     const nodeId = node.id;
     const newPosition = node.position;
     
-    // Use smart drag behavior
-    handleSmartDrag(nodeId, newPosition);
-  }, [draggedNodeId, handleSmartDrag]);
-
-  // Handle drag end - cleanup and validate final position
-  const handleNodeDragStop = useCallback((event: React.MouseEvent, node: Node) => {
-    console.log('Smart drag ended for node:', node.id);
+    // Get the initial position of the dragged node
+    const draggedNodeInitialPos = selectedNodesInitialPositions.get(nodeId);
+    if (!draggedNodeInitialPos) {
+      // Fallback to single node drag if initial position not found
+      handleSmartDrag(nodeId, newPosition);
+      return;
+    }
     
-    // If there were collisions, snap back to original position
-    if (collisionNodes.length > 0) {
-      setNodes((nds) => 
-        nds.map((n) => {
-          if (n.id === node.id && dragOffset) {
+    // Calculate the delta (how much the dragged node has moved)
+    const deltaX = newPosition.x - draggedNodeInitialPos.x;
+    const deltaY = newPosition.y - draggedNodeInitialPos.y;
+    
+    // Get all selected nodes
+    const selectedNodes = nodesState.filter(n => n.selected || n.id === nodeId);
+    
+    // Calculate new positions for all selected nodes and check for collisions
+    const updatedNodes = nodesState.map((n) => {
+      // Check if this node is selected
+      const isSelected = selectedNodes.some(sn => sn.id === n.id);
+      if (!isSelected) return n;
+      
+      // Get initial position for this node
+      const initialPos = selectedNodesInitialPositions.get(n.id);
+      if (!initialPos) return n;
+      
+      // Calculate new position by applying the same delta
+      const updatedPosition = {
+        x: initialPos.x + deltaX,
+        y: initialPos.y + deltaY
+      };
+      
+      return {
+        ...n,
+        position: updatedPosition
+      };
+    });
+    
+    // Check for collisions with all nodes (including non-selected ones)
+    // We need to check collisions against the updated positions
+    const allCollisions: string[] = [];
+    updatedNodes.forEach((n) => {
+      const isSelected = selectedNodes.some(sn => sn.id === n.id);
+      if (isSelected) {
+        // Check if this selected node collides with any other node
+        // We check against updatedNodes to account for all selected nodes' new positions
+        const nodeWidth = 180;
+        const nodeHeight = 100;
+        const padding = 20;
+        
+        updatedNodes.forEach(otherNode => {
+          if (otherNode.id === n.id) return; // Skip self
+          
+          // Only check collisions with non-selected nodes
+          const isOtherNodeSelected = selectedNodes.some(sn => sn.id === otherNode.id);
+          if (isOtherNodeSelected) return; // Skip other selected nodes (they move together)
+          
+          const distance = Math.sqrt(
+            Math.pow(otherNode.position.x - n.position.x, 2) + 
+            Math.pow(otherNode.position.y - n.position.y, 2)
+          );
+          
+          if (distance < (nodeWidth + nodeHeight) / 2 + padding) {
+            allCollisions.push(otherNode.id);
+          }
+        });
+      }
+    });
+    
+    // Update collision state
+    setCollisionNodes(Array.from(new Set(allCollisions)));
+    
+    // CRITICAL FIX: Preserve callbacks when updating nodes during multi-drag
+    setNodes(restoreCallbacks(updatedNodes));
+    
+    // Update drag preview for the primary dragged node
+    setDragPreview({
+      x: newPosition.x,
+      y: newPosition.y,
+      valid: allCollisions.length === 0
+    });
+  }, [draggedNodeId, selectedNodesInitialPositions, nodesState, setNodes, detectCollisions]);
+
+  // Handle drag end - cleanup and validate final position for all selected nodes
+  const handleNodeDragStop = useCallback((event: React.MouseEvent, node: Node) => {
+    console.log('Drag ended for node:', node.id);
+    
+    // Get all selected nodes
+    const selectedNodes = nodesState.filter(n => n.selected || n.id === node.id);
+    
+    // If there were collisions, snap all selected nodes back to original positions
+    if (collisionNodes.length > 0 && selectedNodesInitialPositions.size > 0) {
+      // CRITICAL FIX: Preserve callbacks when updating nodes
+      setNodes((nds) => {
+        const updated = nds.map((n) => {
+          const isSelected = selectedNodes.some(sn => sn.id === n.id);
+          if (!isSelected) return n;
+          
+          const initialPos = selectedNodesInitialPositions.get(n.id);
+          if (initialPos) {
             return {
               ...n,
-              position: dragOffset
+              position: initialPos
             };
           }
           return n;
-        })
-      );
+        });
+        return restoreCallbacks(updated);
+      });
     }
     
     // Cleanup
@@ -1216,7 +1854,8 @@ const FamilyTreeRenderer: React.FC<FamilyTreeRendererProps> = ({
     setDragOffset(null);
     setDragPreview(null);
     setCollisionNodes([]);
-  }, [collisionNodes, dragOffset, setNodes]);
+    setSelectedNodesInitialPositions(new Map());
+  }, [collisionNodes, selectedNodesInitialPositions, nodesState, setNodes]);
   
   const handleNodeContextMenu = useCallback((event: React.MouseEvent, node: Node) => {
     event.preventDefault();
@@ -1422,6 +2061,55 @@ const FamilyTreeRenderer: React.FC<FamilyTreeRendererProps> = ({
     });
   }, [edges, focusMode, focusMemberId]);
 
+  // Detect mobile device
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768 || 'ontouchstart' in window);
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
+  // Mobile touch handlers for pinch-to-zoom
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    if (e.touches.length === 2) {
+      const touch1 = e.touches[0];
+      const touch2 = e.touches[1];
+      const distance = Math.hypot(
+        touch2.clientX - touch1.clientX,
+        touch2.clientY - touch1.clientY
+      );
+      touchStartRef.current = {
+        x: (touch1.clientX + touch2.clientX) / 2,
+        y: (touch1.clientY + touch2.clientY) / 2,
+        distance
+      };
+    }
+  }, []);
+
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    if (e.touches.length === 2 && touchStartRef.current && reactFlowInstance) {
+      const touch1 = e.touches[0];
+      const touch2 = e.touches[1];
+      const distance = Math.hypot(
+        touch2.clientX - touch1.clientX,
+        touch2.clientY - touch1.clientY
+      );
+      
+      const scale = distance / touchStartRef.current.distance;
+      const currentZoom = reactFlowInstance.getZoom();
+      const newZoom = Math.max(0.5, Math.min(2, currentZoom * scale));
+      
+      reactFlowInstance.setZoom(newZoom);
+      touchStartRef.current.distance = distance;
+    }
+  }, [reactFlowInstance]);
+
+  const handleTouchEnd = useCallback(() => {
+    touchStartRef.current = null;
+  }, []);
+
   // Debug logging
   useEffect(() => {
     console.log('FamilyTreeRenderer render:', {
@@ -1429,13 +2117,128 @@ const FamilyTreeRenderer: React.FC<FamilyTreeRendererProps> = ({
       edgesCount: edges.length,
       hasContainer: !!containerRef.current,
       sampleNode: nodes[0],
-      sampleEdge: edges[0]
+      sampleEdge: edges[0],
+      isMobile
     });
-  }, [nodes, edges]);
+  }, [nodes, edges, isMobile]);
   
-  // Keyboard shortcuts
+  // Selected node for keyboard navigation
+  const [selectedNodeForKeyboard, setSelectedNodeForKeyboard] = useState<string | null>(null);
+
+  // Keyboard shortcuts and navigation
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
+      // Don't handle shortcuts when typing in input fields
+      if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) {
+        return;
+      }
+
+      // Arrow key navigation
+      if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(event.key)) {
+        event.preventDefault();
+        const currentNodes = nodesState;
+        if (currentNodes.length === 0) return;
+
+        const currentIndex = selectedNodeForKeyboard 
+          ? currentNodes.findIndex(n => n.id === selectedNodeForKeyboard)
+          : -1;
+
+        if (currentIndex === -1) {
+          // No selection, select first node
+          setSelectedNodeForKeyboard(currentNodes[0].id);
+          onNodeClick({} as React.MouseEvent, currentNodes[0]);
+          return;
+        }
+
+        let newIndex = currentIndex;
+        const currentPos = currentNodes[currentIndex].position;
+
+        // Find nearest node in the direction of arrow key
+        if (event.key === 'ArrowUp') {
+          const nodesAbove = currentNodes
+            .map((n, i) => ({ node: n, index: i, distance: currentPos.y - n.position.y }))
+            .filter(item => item.distance > 0)
+            .sort((a, b) => {
+              const distA = Math.abs(a.distance);
+              const distB = Math.abs(b.distance);
+              if (Math.abs(distA - distB) < 50) {
+                // If similar Y, prefer closer X
+                return Math.abs(a.node.position.x - currentPos.x) - Math.abs(b.node.position.x - currentPos.x);
+              }
+              return distA - distB;
+            });
+          if (nodesAbove.length > 0) newIndex = nodesAbove[0].index;
+        } else if (event.key === 'ArrowDown') {
+          const nodesBelow = currentNodes
+            .map((n, i) => ({ node: n, index: i, distance: n.position.y - currentPos.y }))
+            .filter(item => item.distance > 0)
+            .sort((a, b) => {
+              const distA = Math.abs(a.distance);
+              const distB = Math.abs(b.distance);
+              if (Math.abs(distA - distB) < 50) {
+                return Math.abs(a.node.position.x - currentPos.x) - Math.abs(b.node.position.x - currentPos.x);
+              }
+              return distA - distB;
+            });
+          if (nodesBelow.length > 0) newIndex = nodesBelow[0].index;
+        } else if (event.key === 'ArrowLeft') {
+          const nodesLeft = currentNodes
+            .map((n, i) => ({ node: n, index: i, distance: currentPos.x - n.position.x }))
+            .filter(item => item.distance > 0)
+            .sort((a, b) => {
+              const distA = Math.abs(a.distance);
+              const distB = Math.abs(b.distance);
+              if (Math.abs(distA - distB) < 50) {
+                return Math.abs(a.node.position.y - currentPos.y) - Math.abs(b.node.position.y - currentPos.y);
+              }
+              return distA - distB;
+            });
+          if (nodesLeft.length > 0) newIndex = nodesLeft[0].index;
+        } else if (event.key === 'ArrowRight') {
+          const nodesRight = currentNodes
+            .map((n, i) => ({ node: n, index: i, distance: n.position.x - currentPos.x }))
+            .filter(item => item.distance > 0)
+            .sort((a, b) => {
+              const distA = Math.abs(a.distance);
+              const distB = Math.abs(b.distance);
+              if (Math.abs(distA - distB) < 50) {
+                return Math.abs(a.node.position.y - currentPos.y) - Math.abs(b.node.position.y - currentPos.y);
+              }
+              return distA - distB;
+            });
+          if (nodesRight.length > 0) newIndex = nodesRight[0].index;
+        }
+
+        if (newIndex !== currentIndex && newIndex >= 0 && newIndex < currentNodes.length) {
+          const newNode = currentNodes[newIndex];
+          setSelectedNodeForKeyboard(newNode.id);
+          onNodeClick({} as React.MouseEvent, newNode);
+          
+          // Center on selected node
+          if (reactFlowInstance) {
+            reactFlowInstance.setCenter(newNode.position.x, newNode.position.y, { zoom: 1.5, duration: 300 });
+          }
+        }
+        return;
+      }
+
+      // Enter to select/view node
+      if (event.key === 'Enter' && selectedNodeForKeyboard) {
+        event.preventDefault();
+        const node = nodesState.find(n => n.id === selectedNodeForKeyboard);
+        if (node) {
+          onNodeClick({} as React.MouseEvent, node);
+        }
+        return;
+      }
+
+      // Escape to deselect
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        setSelectedNodeForKeyboard(null);
+        return;
+      }
+
       // Ctrl/Cmd + T for hierarchy layout
       if ((event.ctrlKey || event.metaKey) && event.key === 't') {
         event.preventDefault();
@@ -1474,72 +2277,465 @@ const FamilyTreeRenderer: React.FC<FamilyTreeRendererProps> = ({
         setTreeType('descendant-chart');
         handleDescendantChartLayout();
       }
+      // Ctrl/Cmd + E for expand/fullscreen
+      if ((event.ctrlKey || event.metaKey) && event.key === 'e') {
+        event.preventDefault();
+        handleToggleExpand();
+      }
+      // Escape to exit fullscreen
+      if (event.key === 'Escape' && isExpanded) {
+        event.preventDefault();
+        setIsExpanded(false);
+      }
+      // Ctrl/Cmd + ? for keyboard shortcuts help
+      if ((event.ctrlKey || event.metaKey) && event.key === '/') {
+        event.preventDefault();
+        toast('Keyboard Shortcuts: Arrow keys to navigate, Enter to select, Escape to deselect/exit fullscreen, Ctrl/Cmd+T for hierarchy, Ctrl/Cmd+G for genealogy, Ctrl/Cmd+F to flip, Ctrl/Cmd+E to expand, Ctrl/Cmd+0 to fit view');
+      }
     };
-    
+
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleHierarchyLayout, handleGenealogicalLayout, handleToggleOrientation, handleFitView, handleStandardPedigreeLayout, handleCombinationPedigreeLayout, handleDescendantChartLayout]);
+  }, [handleHierarchyLayout, handleGenealogicalLayout, handleToggleOrientation, handleFitView, handleStandardPedigreeLayout, handleCombinationPedigreeLayout, handleDescendantChartLayout, nodesState, selectedNodeForKeyboard, reactFlowInstance, onNodeClick, handleToggleExpand, isExpanded]);
 
   return (
-    <div 
-      className={`w-full h-full ${className}`} 
-      ref={containerRef}
-      style={{ 
-        width: '100%',
-        height: '600px',
-        minHeight: '600px',
-        position: 'relative'
-      }}
-    >
-      <ReactFlow
-        nodes={nodesState}
-        edges={edgesState}
-        nodeTypes={nodeTypes}
-        edgeTypes={edgeTypes}
-        onInit={handleInit}
-        onNodeClick={handleNodeClick}
-        onNodeDoubleClick={handleNodeDoubleClick}
-        onNodeContextMenu={handleNodeContextMenu}
-        onNodeDragStart={handleNodeDragStart}
-        onNodeDrag={handleNodeDrag}
-        onNodeDragStop={handleNodeDragStop}
-        onEdgeDoubleClick={handleEdgeDoubleClick}
-        onEdgeContextMenu={handleEdgeContextMenu}
-        onPaneClick={handlePaneClick}
-        onConnectStart={handleConnectStart}
-        onConnect={handleConnect}
-        onConnectEnd={handleConnectEnd}
-        onMouseMove={handleMouseMove}
-        defaultViewport={{ x: 0, y: 0, zoom: 1 }}
-        minZoom={0.2}
-        maxZoom={2}
-        fitView
-        fitViewOptions={{ padding: 0.2 }}
-        nodesDraggable={true}
-        nodesConnectable={true}
-        elementsSelectable={true}
-        selectNodesOnDrag={false}
-        nodesFocusable={true}
-        edgesFocusable={true}
+    <>
+      {isExpanded && (
+        <div 
+          className="fixed inset-0 bg-white z-50 flex flex-col"
+          style={{ 
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            zIndex: 9999
+          }}
+        >
+          {/* Expanded Header */}
+          <div className="bg-white border-b px-4 py-2 flex items-center justify-between shadow-sm">
+            <h2 className="text-lg font-semibold">Family Tree - Full Screen</h2>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleToggleExpand}
+              className="flex items-center gap-2"
+              title="Exit full screen (Esc)"
+            >
+              <MinimizeIcon className="h-4 w-4" />
+              Exit Full Screen
+            </Button>
+          </div>
+          
+          {/* Expanded Tree Container */}
+          <div 
+            className="flex-1 w-full"
+            style={{ 
+              width: '100%',
+              height: 'calc(100vh - 60px)',
+              position: 'relative'
+            }}
+          >
+            <div
+              onTouchStart={handleTouchStart}
+              onTouchMove={handleTouchMove}
+              onTouchEnd={handleTouchEnd}
+              onMouseDown={handleContainerMouseDown}
+              onMouseMove={handleContainerMouseMove}
+              onMouseUp={handleContainerMouseUp}
+              style={{ width: '100%', height: '100%' }}
+            >
+              <ReactFlow
+                nodes={nodesState}
+                edges={edgesState}
+                nodeTypes={nodeTypes}
+                edgeTypes={edgeTypes}
+                onInit={handleInit}
+                onNodeClick={handleNodeClick}
+                onNodeDoubleClick={handleNodeDoubleClick}
+                onNodeContextMenu={handleNodeContextMenu}
+                onNodeDragStart={handleNodeDragStart}
+                onNodeDrag={handleNodeDrag}
+                onNodeDragStop={handleNodeDragStop}
+                onEdgeDoubleClick={handleEdgeDoubleClick}
+                onEdgeContextMenu={handleEdgeContextMenu}
+                onPaneClick={handlePaneClick}
+                onConnectStart={handleConnectStart}
+                onConnect={handleConnect}
+                onConnectEnd={handleConnectEnd}
+                onMouseMove={handleMouseMove}
+                onNodesChange={onNodesChangeWithCallbacks}
+                onEdgesChange={onEdgesChange}
+                defaultViewport={{ x: 0, y: 0, zoom: isMobile ? 0.8 : 1 }}
+                minZoom={isMobile ? 0.3 : 0.5}
+                maxZoom={isMobile ? 2 : 3}
+                panOnScroll={!isMobile}
+                panOnDrag={!boxSelection?.isActive}
+                zoomOnScroll={!isMobile}
+                zoomOnPinch={isMobile}
+                preventScrolling={isMobile}
+                nodesDraggable={true}
+                nodesConnectable={true}
+                elementsSelectable={true}
+                selectNodesOnDrag={false}
+                nodesFocusable={true}
+                edgesFocusable={true}
+                selectionOnDrag={true}
+                snapToGrid={true}
+                snapGrid={[15, 15]}
+                defaultEdgeOptions={{ type: 'smoothstep' }}
+                multiSelectionKeyCode="Meta"
+                deleteKeyCode="Delete"
+                fitViewOptions={{ padding: 0.2 }}
+                style={{ 
+                  background: 'white',
+                  width: '100%',
+                  height: '100%'
+                }}
+                proOptions={{ hideAttribution: true }}
+                className="family-tree"
+              >
+                {/* All the same children as the regular view */}
+                {/* Box Selection Overlay */}
+                {boxSelection && boxSelection.isActive && containerRef.current && (
+                  (() => {
+                    const containerRect = containerRef.current.getBoundingClientRect();
+                    const minX = Math.min(boxSelection.startScreenX, boxSelection.endScreenX) - containerRect.left;
+                    const minY = Math.min(boxSelection.startScreenY, boxSelection.endScreenY) - containerRect.top;
+                    const width = Math.abs(boxSelection.endScreenX - boxSelection.startScreenX);
+                    const height = Math.abs(boxSelection.endScreenY - boxSelection.startScreenY);
+                    
+                    return (
+                      <div
+                        style={{
+                          position: 'absolute',
+                          pointerEvents: 'none',
+                          zIndex: 1000,
+                          border: '2px dashed #3b82f6',
+                          backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                          left: `${minX}px`,
+                          top: `${minY}px`,
+                          width: `${width}px`,
+                          height: `${height}px`,
+                        }}
+                      />
+                    );
+                  })()
+                )}
+                
+                {dragPreview && (
+                  <div
+                    style={{
+                      position: 'absolute',
+                      left: dragPreview.x - 90,
+                      top: dragPreview.y - 50,
+                      width: '180px',
+                      height: '100px',
+                      border: `2px dashed ${dragPreview.valid ? '#10b981' : '#ef4444'}`,
+                      borderRadius: '8px',
+                      backgroundColor: dragPreview.valid ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+                      pointerEvents: 'none',
+                      zIndex: 1000
+                    }}
+                  />
+                )}
+                
+                {collisionNodes.length > 0 && (
+                  <div
+                    style={{
+                      position: 'absolute',
+                      top: 10,
+                      left: '50%',
+                      transform: 'translateX(-50%)',
+                      backgroundColor: '#ef4444',
+                      color: 'white',
+                      padding: '8px 16px',
+                      borderRadius: '8px',
+                      fontSize: '14px',
+                      zIndex: 1000,
+                      boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
+                    }}
+                  >
+                    Warning: Collision detected with {collisionNodes.length} node(s)
+                  </div>
+                )}
+
+                {isConnecting && connectionPreview && (
+                  <div
+                    style={{
+                      position: 'absolute',
+                      left: connectionPreview.x - 5,
+                      top: connectionPreview.y - 5,
+                      width: '10px',
+                      height: '10px',
+                      borderRadius: '50%',
+                      backgroundColor: '#7856FF',
+                      pointerEvents: 'none',
+                      zIndex: 1000,
+                      boxShadow: '0 0 10px rgba(120, 86, 255, 0.5)'
+                    }}
+                  />
+                )}
+
+                <Background />
+                <Controls />
+                
+                {/* All Panels for Expanded View - Same as regular view */}
+                {minimap && (
+                  <MiniMap 
+                    nodeColor={(node) => {
+                      const data = node.data;
+                      if (data?.isCurrentUser) return '#7856FF';
+                      if (data?.gender === 'male') return '#93C5FD';
+                      if (data?.gender === 'female') return '#F9A8D4';
+                      return '#D1D5DB';
+                    }}
+                    maskColor="rgba(240, 240, 240, 0.6)"
+                    style={{ right: 20, bottom: 280 }}
+                    pannable={true}
+                    zoomable={true}
+                  />
+                )}
+                
+                <Panel position="top-right" className="bg-white rounded-lg shadow-lg border p-2 flex flex-col gap-2 max-h-[90vh] overflow-y-auto">
+                  <div className="flex gap-1">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={handleZoomOut}
+                      className="h-8 w-8 p-0"
+                      title="Zoom Out"
+                    >
+                      <ZoomOutIcon className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={handleZoomIn}
+                      className="h-8 w-8 p-0"
+                      title="Zoom In"
+                    >
+                      <ZoomInIcon className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={handleFitView}
+                      className="h-8 w-8 p-0"
+                      title="Fit View - Ctrl/Cmd + 0"
+                    >
+                      <MaximizeIcon className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={handleToggleExpand}
+                      className="h-8 w-8 p-0"
+                      title="Exit Full Screen - Esc"
+                    >
+                      <MinimizeIcon className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  
+                  {/* Layout Buttons */}
+                  <div className="flex flex-col gap-1">
+                    <Button
+                      size="sm"
+                      variant="default"
+                      onClick={handleSmartLayout}
+                      className="h-8 text-xs bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700"
+                      title="Smart Layout"
+                    >
+                      <TreePineIcon className="h-4 w-4 mr-1" />
+                      Smart Layout
+                    </Button>
+                    
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={handleHierarchyLayout}
+                      className="h-8 text-xs border-blue-500 text-blue-600 hover:bg-blue-50"
+                      title="Pyramid Tree"
+                    >
+                      <TreePineIcon className="h-4 w-4 mr-1" />
+                      Pyramid Tree
+                    </Button>
+                    
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={handleGenealogicalLayout}
+                      className="h-8 text-xs border-green-500 text-green-600 hover:bg-green-50"
+                      title="Genealogy Tree"
+                    >
+                      <GenealogyIcon className="h-4 w-4 mr-1" />
+                      Genealogy Tree
+                    </Button>
+                  </div>
+                  
+                  {/* Collapse/Expand Controls */}
+                  <div className="flex flex-col gap-1 mt-2 pt-2 border-t border-gray-200">
+                    <div className="text-xs font-semibold text-gray-600 mb-1">Branch Controls</div>
+                    
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={expandAll}
+                      className="h-8 text-xs border-green-500 text-green-600 hover:bg-green-50"
+                      title="Expand all collapsed branches"
+                    >
+                      <ChevronDownIcon className="h-4 w-4 mr-1" />
+                      Expand All
+                    </Button>
+                    
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={collapseAll}
+                      className="h-8 text-xs border-red-500 text-red-600 hover:bg-red-50"
+                      title="Collapse all branches with descendants"
+                    >
+                      <ChevronUpIcon className="h-4 w-4 mr-1" />
+                      Collapse All
+                    </Button>
+                  </div>
+                </Panel>
+                
+                <Panel position="top-left" className="bg-white p-2 rounded-md shadow-sm">
+                  <ToggleGroup type="single" value={orientation} onValueChange={(val) => {
+                    if (val) setOrientation(val as 'horizontal' | 'vertical');
+                  }}>
+                    <ToggleGroupItem value="vertical" aria-label="Vertical Layout">
+                      <ArrowDownIcon className="h-4 w-4" />
+                    </ToggleGroupItem>
+                    <ToggleGroupItem value="horizontal" aria-label="Horizontal Layout">
+                      <ArrowRightIcon className="h-4 w-4" />
+                    </ToggleGroupItem>
+                  </ToggleGroup>
+                </Panel>
+                
+                {focusMode && (
+                  <Panel position="bottom-center" className="bg-white p-2 rounded-md shadow-sm">
+                    <div className="flex items-center gap-2">
+                      <DotIcon className="h-3 w-3 text-heritage-purple" />
+                      <span className="text-sm">Focus Mode: Showing direct family connections</span>
+                      <Button
+                        variant="ghost" 
+                        size="sm" 
+                        className="ml-2 h-7 px-2"
+                        onClick={() => setFocusMode(false)}
+                      >
+                        <XIcon className="h-4 w-4" />
+                        <span className="ml-1">Exit Focus Mode</span>
+                      </Button>
+                    </div>
+                  </Panel>
+                )}
+              </ReactFlow>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      <div 
+        className={`w-full h-full ${className} ${isExpanded ? 'hidden' : ''}`} 
+        ref={containerRef}
         style={{ 
-          background: 'white',
           width: '100%',
-          height: '100%'
+          height: isExpanded ? '100vh' : '600px',
+          minHeight: isExpanded ? '100vh' : '600px',
+          position: 'relative'
         }}
-        proOptions={{ hideAttribution: true }}
-        className="family-tree"
-        panOnDrag={true}
-        selectionOnDrag={true}
-        panOnScroll={true}
-        zoomOnScroll={true}
-        snapToGrid={true}
-        snapGrid={[15, 15]}
-        defaultEdgeOptions={{ type: 'smoothstep' }}
-        multiSelectionKeyCode="Meta"
-        deleteKeyCode="Delete"
-        onNodesChange={onNodesChange}
-        onEdgesChange={onEdgesChange}
+        role="application"
+        aria-label="Family tree visualization"
+        aria-live="polite"
       >
+      <div
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        onMouseDown={handleContainerMouseDown}
+        onMouseMove={handleContainerMouseMove}
+        onMouseUp={handleContainerMouseUp}
+        style={{ width: '100%', height: '100%' }}
+      >
+        <ReactFlow
+          nodes={nodesState}
+          edges={edgesState}
+          nodeTypes={nodeTypes}
+          edgeTypes={edgeTypes}
+          onInit={handleInit}
+          onNodeClick={handleNodeClick}
+          onNodeDoubleClick={handleNodeDoubleClick}
+          onNodeContextMenu={handleNodeContextMenu}
+          onNodeDragStart={handleNodeDragStart}
+          onNodeDrag={handleNodeDrag}
+          onNodeDragStop={handleNodeDragStop}
+          onEdgeDoubleClick={handleEdgeDoubleClick}
+          onEdgeContextMenu={handleEdgeContextMenu}
+          onPaneClick={handlePaneClick}
+          onConnectStart={handleConnectStart}
+          onConnect={handleConnect}
+          onConnectEnd={handleConnectEnd}
+          onMouseMove={handleMouseMove}
+          onNodesChange={onNodesChange}
+          onEdgesChange={onEdgesChange}
+          defaultViewport={{ x: 0, y: 0, zoom: isMobile ? 0.8 : 1 }}
+          minZoom={isMobile ? 0.3 : 0.5}
+          maxZoom={isMobile ? 2 : 3}
+          panOnScroll={!isMobile}
+          panOnDrag={!boxSelection?.isActive}
+          zoomOnScroll={!isMobile}
+          zoomOnPinch={isMobile}
+          preventScrolling={isMobile}
+          nodesDraggable={true}
+          nodesConnectable={true}
+          elementsSelectable={true}
+          selectNodesOnDrag={false}
+          nodesFocusable={true}
+          edgesFocusable={true}
+          selectionOnDrag={true}
+          snapToGrid={true}
+          snapGrid={[15, 15]}
+          defaultEdgeOptions={{ type: 'smoothstep' }}
+          multiSelectionKeyCode="Meta"
+          deleteKeyCode="Delete"
+          fitViewOptions={{ padding: 0.2 }}
+          style={{ 
+            background: 'white',
+            width: '100%',
+            height: '100%'
+          }}
+          proOptions={{ hideAttribution: true }}
+          className="family-tree"
+        >
+        {/* Box Selection Overlay */}
+        {boxSelection && boxSelection.isActive && containerRef.current && (
+          (() => {
+            const containerRect = containerRef.current.getBoundingClientRect();
+            const minX = Math.min(boxSelection.startScreenX, boxSelection.endScreenX) - containerRect.left;
+            const minY = Math.min(boxSelection.startScreenY, boxSelection.endScreenY) - containerRect.top;
+            const width = Math.abs(boxSelection.endScreenX - boxSelection.startScreenX);
+            const height = Math.abs(boxSelection.endScreenY - boxSelection.startScreenY);
+            
+            return (
+              <div
+                style={{
+                  position: 'absolute',
+                  pointerEvents: 'none',
+                  zIndex: 1000,
+                  border: '2px dashed #3b82f6',
+                  backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                  left: `${minX}px`,
+                  top: `${minY}px`,
+                  width: `${width}px`,
+                  height: `${height}px`,
+                }}
+              />
+            );
+          })()
+        )}
+        
         {/* Drag Preview Overlay */}
         {dragPreview && (
           <div
@@ -1705,6 +2901,19 @@ const FamilyTreeRenderer: React.FC<FamilyTreeRendererProps> = ({
               >
                 <MaximizeIcon className="h-4 w-4" />
               </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleToggleExpand}
+                className="h-8 w-8 p-0"
+                title="Expand to Full Screen - Ctrl/Cmd + E"
+              >
+                {isExpanded ? (
+                  <MinimizeIcon className="h-4 w-4" />
+                ) : (
+                  <MaximizeIcon className="h-4 w-4" />
+                )}
+              </Button>
             </div>
             
             {/* Layout Buttons */}
@@ -1769,6 +2978,92 @@ const FamilyTreeRenderer: React.FC<FamilyTreeRendererProps> = ({
               </Button>
             </div>
             
+            {/* Collapse/Expand Controls */}
+            <div className="flex flex-col gap-1 mt-2 pt-2 border-t border-gray-200">
+              <div className="text-xs font-semibold text-gray-600 mb-1">Branch Controls</div>
+              
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={expandAll}
+                className="h-8 text-xs border-green-500 text-green-600 hover:bg-green-50"
+                title="Expand all collapsed branches"
+              >
+                <ChevronDownIcon className="h-4 w-4 mr-1" />
+                Expand All
+              </Button>
+              
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={collapseAll}
+                className="h-8 text-xs border-red-500 text-red-600 hover:bg-red-50"
+                title="Collapse all branches with descendants"
+              >
+                <ChevronUpIcon className="h-4 w-4 mr-1" />
+                Collapse All
+              </Button>
+            </div>
+            
+            {/* Relationship Path Finder */}
+            <div className="flex flex-col gap-1 mt-2 pt-2 border-t border-gray-200">
+              <div className="text-xs font-semibold text-gray-600 mb-1">Find Relationship</div>
+              <div className="text-xs text-gray-500 mb-2">
+                Click two members to find how they're related
+              </div>
+              {pathStartMember ? (
+                <div className="flex flex-col gap-1">
+                  <div className="text-xs text-blue-600 mb-1">
+                    First member selected. Click another member...
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      setPathStartMember(null);
+                      setHighlightedPath([]);
+                    }}
+                    className="h-7 text-xs"
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              ) : (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    toast.info('Click on the first family member to find relationship');
+                    setPathStartMember('waiting');
+                  }}
+                  className="h-8 text-xs border-purple-500 text-purple-600 hover:bg-purple-50"
+                  title="Find relationship between two members"
+                >
+                  <NetworkIcon className="h-4 w-4 mr-1" />
+                  Find Relationship
+                </Button>
+              )}
+              {highlightedPath.length > 0 && (
+                <div className="mt-2 p-2 bg-purple-50 rounded text-xs">
+                  <div className="font-semibold text-purple-800 mb-1">Relationship Found:</div>
+                  <div className="text-purple-700">
+                    {findPath(highlightedPath[0], highlightedPath[highlightedPath.length - 1])?.relationshipDescription || 'Related'}
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => {
+                      setHighlightedPath([]);
+                      setPathStartMember(null);
+                    }}
+                    className="h-6 text-xs mt-1 w-full"
+                  >
+                    Clear
+                  </Button>
+                </div>
+              )}
+            </div>
+            
             {/* Pedigree Type Buttons */}
             <div className="flex flex-col gap-1 mt-2 pt-2 border-t border-gray-200">
               <div className="text-xs font-semibold text-gray-600 mb-1">Pedigree Types</div>
@@ -1828,7 +3123,9 @@ const FamilyTreeRenderer: React.FC<FamilyTreeRendererProps> = ({
               return '#D1D5DB';
             }}
             maskColor="rgba(240, 240, 240, 0.6)"
-            style={{ right: 20, bottom: 20 }}
+            style={{ right: 20, bottom: 280 }}
+            pannable={true}
+            zoomable={true}
           />
         )}
         
@@ -1863,8 +3160,10 @@ const FamilyTreeRenderer: React.FC<FamilyTreeRendererProps> = ({
           </Panel>
         )}
       </ReactFlow>
+      </div>
       
     </div>
+    </>
   );
 };
 

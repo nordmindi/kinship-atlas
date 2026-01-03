@@ -242,9 +242,9 @@ const Index = () => {
                         <div className="h-16 bg-gray-200 rounded-lg"></div>
                       </div>
                     ) : timeline.length > 0 ? (
-                      timeline.slice(0, 5).map((item) => (
+                      timeline.slice(0, 5).map((item, index) => (
                         <button
-                          key={`${item.itemType}-${item.itemId}`}
+                          key={`${item.itemType || 'unknown'}-${item.itemId || index}-${item.memberId || 'no-member'}`}
                           type="button"
                           className="w-full flex items-start gap-3 p-3 border border-gray-200 rounded-lg hover:border-heritage-purple/40 hover:shadow-sm transition-all cursor-pointer text-left bg-transparent"
                           onClick={(e) => {
@@ -293,7 +293,10 @@ const Index = () => {
                 <section className="bg-white rounded-xl shadow-sm border border-heritage-purple/10 p-6 sm:p-8">
                   <div className="flex items-center justify-between mb-6">
                     <h2 className="text-xl font-semibold text-heritage-dark">Family</h2>
-                    <Button variant="ghost" size="sm" className="text-heritage-purple hover:bg-heritage-purple-light" onClick={() => setActiveTab("tree")}>
+                    <Button variant="ghost" size="sm" className="text-heritage-purple hover:bg-heritage-purple-light" onClick={() => {
+                      setSelectedMemberId("");
+                      setActiveTab("tree");
+                    }}>
                       View All
                     </Button>
                   </div>
