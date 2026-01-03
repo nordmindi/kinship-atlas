@@ -32,8 +32,8 @@ class StoryService {
         return { success: false, error: 'You must be logged in to create stories' };
       }
 
-      // Create the story
-      const { data: storyData, error: storyError } = await supabase
+      // Create the story - use .select() without .single() to handle RLS edge cases
+      const insertResult = await supabase
         .from('family_stories')
         .insert({
           title: request.title,
@@ -44,20 +44,53 @@ class StoryService {
           lng: request.lng || null,
           author_id: user.id
         })
-        .select('id')
-        .single();
+        .select('id');
 
-      if (storyError) {
-        return { success: false, error: 'Failed to create story in database' };
+      if (insertResult.error) {
+        console.error('Error creating story:', insertResult.error);
+        return { 
+          success: false, 
+          error: `Failed to create story in database: ${insertResult.error.message}` 
+        };
       }
 
+      // Handle case where RLS might block the select
+      let storyId: string | null = null;
+      if (insertResult.data && insertResult.data.length > 0) {
+        storyId = insertResult.data[0].id;
+      } else {
+        // If select was blocked by RLS, try to get the story ID by querying for the most recent story by this author
+        // This is a fallback in case RLS blocks the select after insert
+        const { data: recentStories } = await supabase
+          .from('family_stories')
+          .select('id')
+          .eq('author_id', user.id)
+          .order('created_at', { ascending: false })
+          .limit(1);
+        
+        if (recentStories && recentStories.length > 0) {
+          storyId = recentStories[0].id;
+          console.log('Retrieved story ID via fallback query:', storyId);
+        }
+      }
+
+      if (!storyId) {
+        console.error('Story insert may have succeeded but could not retrieve story ID');
+        return { 
+          success: false, 
+          error: 'Story was created but could not be retrieved. Please refresh the page to see your story.' 
+        };
+      }
+
+      const storyData = { id: storyId };
+
       // Add story members
-      if (request.relatedMembers.length > 0) {
+      if (request.relatedMembers && request.relatedMembers.length > 0) {
         const { error: membersError } = await supabase
           .from('story_members')
           .insert(
             request.relatedMembers.map(member => ({
-              story_id: storyData.id,
+              story_id: storyId,
               family_member_id: member.familyMemberId,
               role: member.role
             }))
@@ -74,7 +107,7 @@ class StoryService {
           .from('story_media')
           .insert(
             request.mediaIds.map(mediaId => ({
-              story_id: storyData.id,
+              story_id: storyId,
               media_id: mediaId
             }))
           );
@@ -90,7 +123,7 @@ class StoryService {
           .from('story_artifacts')
           .insert(
             request.artifactIds.map(artifactId => ({
-              story_id: storyData.id,
+              story_id: storyId,
               artifact_id: artifactId
             }))
           );
@@ -106,7 +139,7 @@ class StoryService {
           .from('story_groups')
           .insert(
             request.groupIds.map(groupId => ({
-              story_id: storyData.id,
+              story_id: storyId,
               family_group_id: groupId
             }))
           );
@@ -117,7 +150,34 @@ class StoryService {
       }
 
       // Fetch the complete story
-      const completeStory = await this.getStory(storyData.id);
+      const completeStory = await this.getStory(storyId);
+      if (!completeStory) {
+        console.error('Story was created but could not be fetched. Story ID:', storyData.id);
+        // Return a basic story object with the data we have
+        return {
+          success: true,
+          story: {
+            id: storyId,
+            title: request.title,
+            content: request.content,
+            date: request.date || undefined,
+            authorId: user.id,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            location: request.location,
+            lat: request.lat,
+            lng: request.lng,
+            relatedMembers: request.relatedMembers?.map(m => ({
+              id: '',
+              storyId: storyId,
+              familyMemberId: m.familyMemberId,
+              role: m.role || 'participant'
+            })) || [],
+            media: [],
+            artifacts: []
+          } as FamilyStory
+        };
+      }
       return { success: true, story: completeStory };
     } catch (error) {
       console.error('Error creating story:', error);
@@ -157,7 +217,13 @@ class StoryService {
           )
         `)
         .eq('id', storyId)
-        .single();
+        .maybeSingle();
+
+      // If no data returned, check if it's a permissions/RLS issue
+      if (!data && !error) {
+        console.error('getStory: No data returned and no error. This may be an RLS policy issue. Story ID:', storyId);
+        return null;
+      }
 
       // If error is about missing location columns, retry with explicit columns
       if (error && (error.message?.includes("'location' column") || 
@@ -193,10 +259,15 @@ class StoryService {
             )
           `)
           .eq('id', storyId)
-          .single();
+          .maybeSingle();
         
         if (fallbackError) {
           console.error('Error fetching story (fallback):', fallbackError);
+          return null;
+        }
+        
+        if (!fallbackData) {
+          console.error('Story not found after fallback query. Story ID:', storyId);
           return null;
         }
         // Set location fields to undefined since they don't exist

@@ -99,8 +99,13 @@ const AddStory: React.FC<AddStoryProps> = ({ onClose, onSuccess }) => {
   };
   
   const onSubmit = async (values: FormValues) => {
+    console.log('AddStory onSubmit called with values:', values);
+    console.log('Form validation state:', form.formState);
+    console.log('Form errors:', form.formState.errors);
+    
     try {
       setIsLoading(true);
+      console.log('Starting story creation...');
       
       const storyData: Omit<FamilyStory, 'id' | 'authorId' | 'images'> = {
         title: values.title,
@@ -109,7 +114,9 @@ const AddStory: React.FC<AddStoryProps> = ({ onClose, onSuccess }) => {
         relatedMembers: values.relatedMembers,
       };
       
+      console.log('Calling addFamilyStory with:', { storyData, fileCount: uploadedFiles.length });
       const newStory = await addFamilyStory(storyData, uploadedFiles);
+      console.log('addFamilyStory returned:', newStory);
       
       if (newStory) {
         toast({
@@ -127,16 +134,24 @@ const AddStory: React.FC<AddStoryProps> = ({ onClose, onSuccess }) => {
           // Navigate back to stories or home
           navigate('/');
         }
+      } else {
+        console.error('addFamilyStory returned null');
+        toast({
+          title: "Error",
+          description: "Story creation failed. Please check the console for details.",
+          variant: "destructive"
+        });
       }
     } catch (error) {
       console.error('Error adding story:', error);
       toast({
         title: "Error",
-        description: "Could not add story. Please try again.",
+        description: error instanceof Error ? error.message : "Could not add story. Please try again.",
         variant: "destructive"
       });
     } finally {
       setIsLoading(false);
+      console.log('Story creation process finished');
     }
   };
 
@@ -153,7 +168,23 @@ const AddStory: React.FC<AddStoryProps> = ({ onClose, onSuccess }) => {
       </div>
 
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+        <form 
+          onSubmit={form.handleSubmit(
+            (data) => {
+              console.log('Form validation passed, calling onSubmit with:', data);
+              onSubmit(data);
+            },
+            (errors) => {
+              console.error('Form validation failed:', errors);
+              toast({
+                title: "Validation Error",
+                description: "Please fill in all required fields.",
+                variant: "destructive"
+              });
+            }
+          )} 
+          className="space-y-4"
+        >
           <FormField
             control={form.control}
             name="title"
@@ -311,11 +342,33 @@ const AddStory: React.FC<AddStoryProps> = ({ onClose, onSuccess }) => {
             </div>
           </div>
           
-          <div className="pt-4">
+          <div className="pt-4 space-y-2">
+            {/* Show form errors if any */}
+            {Object.keys(form.formState.errors).length > 0 && (
+              <div className="text-sm text-red-600 bg-red-50 p-2 rounded">
+                <p className="font-medium">Please fix the following errors:</p>
+                <ul className="list-disc list-inside mt-1">
+                  {form.formState.errors.title && (
+                    <li>Title: {form.formState.errors.title.message}</li>
+                  )}
+                  {form.formState.errors.content && (
+                    <li>Content: {form.formState.errors.content.message}</li>
+                  )}
+                </ul>
+              </div>
+            )}
             <Button 
               type="submit" 
               className="w-full bg-heritage-purple hover:bg-heritage-purple-medium"
               disabled={isLoading}
+              onClick={(e) => {
+                // Prevent double submission but allow form validation
+                if (isLoading) {
+                  e.preventDefault();
+                  return;
+                }
+                // Let the form handle submission
+              }}
             >
               {isLoading ? 'Adding...' : 'Add Story'}
             </Button>

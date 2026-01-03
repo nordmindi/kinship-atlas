@@ -539,29 +539,89 @@ export const addFamilyStory = async (
   story: Omit<FamilyStory, 'id' | 'authorId' | 'images'>, 
   imageFiles?: File[]
 ): Promise<FamilyStory | null> => {
+  console.log('addFamilyStory called with:', { story, imageFilesCount: imageFiles?.length || 0 });
   try {
     // Get current user
+    console.log('Getting authenticated user...');
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('Not authenticated');
+    if (!user) {
+      console.error('No authenticated user found');
+      throw new Error('Not authenticated');
+    }
+    console.log('User authenticated:', user.id);
     
-    // Insert story
-    const { data, error } = await supabase
+    // Insert story - use array response to handle RLS edge cases
+    console.log('Inserting story into database...');
+    
+    // Build insert object with location fields if provided
+    const insertData: any = {
+      title: story.title,
+      content: story.content,
+      date: story.date || null,
+      author_id: user.id
+    };
+    
+    // Include location fields if provided
+    if ((story as any).location !== undefined && (story as any).location !== null) {
+      insertData.location = (story as any).location;
+    }
+    if ((story as any).lat !== undefined && (story as any).lat !== null) {
+      insertData.lat = (story as any).lat;
+    }
+    if ((story as any).lng !== undefined && (story as any).lng !== null) {
+      insertData.lng = (story as any).lng;
+    }
+    
+    console.log('Insert data:', insertData);
+    
+    const insertResult = await supabase
       .from('family_stories')
-      .insert({
-        title: story.title,
-        content: story.content,
-        date: story.date,
-        author_id: user.id
-      })
-      .select('id')
-      .single();
+      .insert(insertData)
+      .select('id');
+    
+    console.log('Insert result:', { data: insertResult.data, error: insertResult.error });
       
-    if (error) throw error;
+    if (insertResult.error) {
+      console.error('Error creating story:', insertResult.error);
+      throw insertResult.error;
+    }
+
+    // Handle case where RLS might block the select
+    let storyId: string | null = null;
+    if (insertResult.data && insertResult.data.length > 0) {
+      storyId = insertResult.data[0].id;
+      console.log('Story ID from insert:', storyId);
+    } else {
+      console.log('No data returned from insert, trying fallback query...');
+      // Fallback: query for the most recent story by this author
+      const { data: recentStories, error: fallbackError } = await supabase
+        .from('family_stories')
+        .select('id')
+        .eq('author_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(1);
+      
+      console.log('Fallback query result:', { data: recentStories, error: fallbackError });
+      
+      if (recentStories && recentStories.length > 0) {
+        storyId = recentStories[0].id;
+        console.log('Retrieved story ID via fallback query:', storyId);
+      }
+    }
+
+    if (!storyId) {
+      console.error('Could not retrieve story ID after insert');
+      throw new Error('Story was created but could not retrieve story ID. This may be a permissions issue.');
+    }
+
+    const data = { id: storyId };
+    console.log('Story created with ID:', storyId);
     
     // Link related members
     if (story.relatedMembers && story.relatedMembers.length > 0) {
+      console.log('Linking story members:', story.relatedMembers.length);
       const storyMembers = story.relatedMembers.map((member: any) => ({
-        story_id: data.id,
+        story_id: storyId,
         family_member_id: typeof member === 'string' ? member : member.familyMemberId
       }));
       
@@ -572,6 +632,8 @@ export const addFamilyStory = async (
       if (membersError) {
         console.error('Error linking story members:', membersError);
         // Non-critical, continue
+      } else {
+        console.log('Story members linked successfully');
       }
     }
     
@@ -619,7 +681,7 @@ export const addFamilyStory = async (
           const { error: linkError } = await supabase
             .from('story_media')
             .insert({
-              story_id: data.id,
+              story_id: storyId,
               media_id: mediaData.id
             });
           
@@ -638,7 +700,8 @@ export const addFamilyStory = async (
       }
     }
     
-    // Fetch the complete story to return
+    // Fetch the complete story to return (use maybeSingle to handle RLS gracefully)
+    console.log('Fetching complete story data...');
     const { data: completeStory, error: fetchError } = await supabase
       .from('family_stories')
       .select(`
@@ -648,31 +711,53 @@ export const addFamilyStory = async (
         date,
         author_id,
         created_at,
-        updated_at
+        updated_at,
+        location,
+        lat,
+        lng
       `)
-      .eq('id', data.id)
-      .single();
+      .eq('id', storyId)
+      .maybeSingle();
+    
+    console.log('Complete story fetch result:', { data: completeStory, error: fetchError });
     
     if (fetchError) {
       console.warn('Error fetching complete story:', fetchError);
+      // If we can't fetch the story, return a basic object with what we know
+      const fallbackStory = {
+        id: storyId,
+        title: story.title,
+        content: story.content,
+        authorId: user.id,
+        date: story.date,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        location: (story as any).location,
+        lat: (story as any).lat,
+        lng: (story as any).lng,
+        relatedMembers: story.relatedMembers || [],
+        media: mediaRecords
+      };
+      console.log('Returning fallback story:', fallbackStory);
+      return fallbackStory;
     }
     
-    toast({
-      title: "Success",
-      description: "Your family story has been added."
-    });
-    
-    return {
-      id: data.id,
+    const finalStory = {
+      id: storyId,
       title: story.title,
       content: story.content,
       authorId: user.id,
       date: story.date,
       createdAt: completeStory?.created_at || new Date().toISOString(),
       updatedAt: completeStory?.updated_at || new Date().toISOString(),
+      location: completeStory?.location || (story as any).location,
+      lat: completeStory?.lat || (story as any).lat,
+      lng: completeStory?.lng || (story as any).lng,
       relatedMembers: story.relatedMembers || [],
       media: mediaRecords
     };
+    console.log('Returning final story:', finalStory);
+    return finalStory;
   } catch (error) {
     console.error('Error adding family story:', error);
     toast({

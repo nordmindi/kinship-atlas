@@ -21,30 +21,37 @@ import '@xyflow/react/dist/style.css';
 import FamilyMemberNode from './FamilyMemberNode';
 import FamilyRelationshipEdge from './FamilyRelationshipEdge';
 import { 
-  ArrowRight as ArrowRightIcon, 
-  ArrowDown as ArrowDownIcon, 
   X as XIcon, 
-  Circle as DotIcon,
+  Network as NetworkIcon,
   ZoomIn as ZoomInIcon,
   ZoomOut as ZoomOutIcon,
   Maximize as MaximizeIcon,
   Minimize as MinimizeIcon,
   TreePine as TreePineIcon,
   GitBranch as GenealogyIcon,
-  RotateCcw as FlipIcon,
-  Users as StandardPedigreeIcon,
-  UserCheck as CombinationPedigreeIcon,
-  UserPlus as DescendantChartIcon,
-  ArrowUpDown as PedigreeIcon,
-  Network as NetworkIcon,
-  TrendingDown as DescendantIcon,
   ChevronDown as ChevronDownIcon,
   ChevronUp as ChevronUpIcon,
-  Minus as MinusIcon,
-  Plus as PlusIcon
+  ArrowRight as ArrowRightIcon,
+  ArrowDown as ArrowDownIcon,
+  Circle as DotIcon,
+  ArrowUpDown as PedigreeIcon,
+  TrendingDown as DescendantIcon,
 } from 'lucide-react';
-import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Button } from '@/components/ui/button';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+// Atomic Design Components
+import { TreeControlPanel } from '@/components/molecules/TreeControlPanel';
+import { TreeZoomControls } from '@/components/molecules/TreeZoomControls';
+import { TreeLayoutButtons } from '@/components/molecules/TreeLayoutButtons';
+import { TreeCollapseControls } from '@/components/molecules/TreeCollapseControls';
+import { TreeOrientationToggle } from '@/components/molecules/TreeOrientationToggle';
+import { TreeFocusModeIndicator } from '@/components/molecules/TreeFocusModeIndicator';
+import { TreeBoxSelection } from '@/components/organisms/TreeBoxSelection';
+import { TreeDragPreview } from '@/components/organisms/TreeDragPreview';
+import { TreeCollisionHighlight } from '@/components/organisms/TreeCollisionHighlight';
+import { TreeConnectionPreview } from '@/components/organisms/TreeConnectionPreview';
+import { TreeCollisionWarning } from '@/components/organisms/TreeCollisionWarning';
+import { TreeEdgeMarkers } from '@/components/organisms/TreeEdgeMarkers';
 import { FamilyMemberNode as FamilyMemberNodeType } from './types';
 import { FamilyMember } from '@/types';
 import { layoutService } from '@/services/layoutService';
@@ -2101,7 +2108,7 @@ const FamilyTreeRenderer: React.FC<FamilyTreeRendererProps> = ({
       const currentZoom = reactFlowInstance.getZoom();
       const newZoom = Math.max(0.5, Math.min(2, currentZoom * scale));
       
-      reactFlowInstance.setZoom(newZoom);
+      reactFlowInstance.zoomTo(newZoom);
       touchStartRef.current.distance = distance;
     }
   }, [reactFlowInstance]);
@@ -2146,7 +2153,7 @@ const FamilyTreeRenderer: React.FC<FamilyTreeRendererProps> = ({
         if (currentIndex === -1) {
           // No selection, select first node
           setSelectedNodeForKeyboard(currentNodes[0].id);
-          onNodeClick({} as React.MouseEvent, currentNodes[0]);
+          onNodeClick(currentNodes[0] as FamilyMemberNodeType);
           return;
         }
 
@@ -2212,7 +2219,7 @@ const FamilyTreeRenderer: React.FC<FamilyTreeRendererProps> = ({
         if (newIndex !== currentIndex && newIndex >= 0 && newIndex < currentNodes.length) {
           const newNode = currentNodes[newIndex];
           setSelectedNodeForKeyboard(newNode.id);
-          onNodeClick({} as React.MouseEvent, newNode);
+          onNodeClick(newNode as FamilyMemberNodeType);
           
           // Center on selected node
           if (reactFlowInstance) {
@@ -2227,7 +2234,7 @@ const FamilyTreeRenderer: React.FC<FamilyTreeRendererProps> = ({
         event.preventDefault();
         const node = nodesState.find(n => n.id === selectedNodeForKeyboard);
         if (node) {
-          onNodeClick({} as React.MouseEvent, node);
+          onNodeClick(node as FamilyMemberNodeType);
         }
         return;
       }
@@ -2602,16 +2609,10 @@ const FamilyTreeRenderer: React.FC<FamilyTreeRendererProps> = ({
                 </Panel>
                 
                 <Panel position="top-left" className="bg-white p-2 rounded-md shadow-sm">
-                  <ToggleGroup type="single" value={orientation} onValueChange={(val) => {
-                    if (val) setOrientation(val as 'horizontal' | 'vertical');
-                  }}>
-                    <ToggleGroupItem value="vertical" aria-label="Vertical Layout">
-                      <ArrowDownIcon className="h-4 w-4" />
-                    </ToggleGroupItem>
-                    <ToggleGroupItem value="horizontal" aria-label="Horizontal Layout">
-                      <ArrowRightIcon className="h-4 w-4" />
-                    </ToggleGroupItem>
-                  </ToggleGroup>
+                  <TreeOrientationToggle
+                    orientation={orientation}
+                    onOrientationChange={setOrientation}
+                  />
                 </Panel>
                 
                 {focusMode && (
@@ -2709,136 +2710,13 @@ const FamilyTreeRenderer: React.FC<FamilyTreeRendererProps> = ({
           proOptions={{ hideAttribution: true }}
           className="family-tree"
         >
-        {/* Box Selection Overlay */}
-        {boxSelection && boxSelection.isActive && containerRef.current && (
-          (() => {
-            const containerRect = containerRef.current.getBoundingClientRect();
-            const minX = Math.min(boxSelection.startScreenX, boxSelection.endScreenX) - containerRect.left;
-            const minY = Math.min(boxSelection.startScreenY, boxSelection.endScreenY) - containerRect.top;
-            const width = Math.abs(boxSelection.endScreenX - boxSelection.startScreenX);
-            const height = Math.abs(boxSelection.endScreenY - boxSelection.startScreenY);
-            
-            return (
-              <div
-                style={{
-                  position: 'absolute',
-                  pointerEvents: 'none',
-                  zIndex: 1000,
-                  border: '2px dashed #3b82f6',
-                  backgroundColor: 'rgba(59, 130, 246, 0.1)',
-                  left: `${minX}px`,
-                  top: `${minY}px`,
-                  width: `${width}px`,
-                  height: `${height}px`,
-                }}
-              />
-            );
-          })()
-        )}
-        
-        {/* Drag Preview Overlay */}
-        {dragPreview && (
-          <div
-            style={{
-              position: 'absolute',
-              left: dragPreview.x - 90,
-              top: dragPreview.y - 50,
-              width: '180px',
-              height: '100px',
-              border: `2px dashed ${dragPreview.valid ? '#10b981' : '#ef4444'}`,
-              borderRadius: '8px',
-              backgroundColor: dragPreview.valid ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)',
-              pointerEvents: 'none',
-              zIndex: 1000,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: '12px',
-              fontWeight: 'bold',
-              color: dragPreview.valid ? '#10b981' : '#ef4444'
-            }}
-          >
-            {dragPreview.valid ? '✓ Valid Position' : '✗ Collision Detected'}
-          </div>
-        )}
-        
-        {/* Collision Highlight Overlay */}
-        {collisionNodes.length > 0 && (
-          <>
-            {collisionNodes.map(nodeId => {
-              const node = nodesState.find(n => n.id === nodeId);
-              if (!node) return null;
-              
-              return (
-                <div
-                  key={`collision-${nodeId}`}
-                  style={{
-                    position: 'absolute',
-                    left: node.position.x - 90,
-                    top: node.position.y - 50,
-                    width: '180px',
-                    height: '100px',
-                    border: '2px solid #ef4444',
-                    borderRadius: '8px',
-                    backgroundColor: 'rgba(239, 68, 68, 0.2)',
-                    pointerEvents: 'none',
-                    zIndex: 999,
-                    animation: 'pulse 1s infinite'
-                  }}
-                />
-              );
-            })}
-          </>
-        )}
-        {/* SVG Markers for arrows */}
-        <svg>
-          <defs>
-            <marker
-              id="arrow-parent"
-              markerWidth="10"
-              markerHeight="10"
-              refX="9"
-              refY="3"
-              orient="auto"
-              markerUnits="strokeWidth"
-            >
-              <path d="M0,0 L0,6 L9,3 z" fill="#16a34a" />
-            </marker>
-            <marker
-              id="arrow-child"
-              markerWidth="10"
-              markerHeight="10"
-              refX="9"
-              refY="3"
-              orient="auto"
-              markerUnits="strokeWidth"
-            >
-              <path d="M0,0 L0,6 L9,3 z" fill="#dc2626" />
-            </marker>
-            <marker
-              id="arrow-spouse"
-              markerWidth="10"
-              markerHeight="10"
-              refX="9"
-              refY="3"
-              orient="auto"
-              markerUnits="strokeWidth"
-            >
-              <path d="M0,0 L0,6 L9,3 z" fill="#dc2626" />
-            </marker>
-            <marker
-              id="arrow-default"
-              markerWidth="10"
-              markerHeight="10"
-              refX="9"
-              refY="3"
-              orient="auto"
-              markerUnits="strokeWidth"
-            >
-              <path d="M0,0 L0,6 L9,3 z" fill="#6b7280" />
-            </marker>
-          </defs>
-        </svg>
+        {/* Atomic Design Overlays */}
+        <TreeBoxSelection boxSelection={boxSelection} containerRef={containerRef} />
+        <TreeDragPreview dragPreview={dragPreview} />
+        <TreeCollisionHighlight collisionNodes={collisionNodes} nodes={nodesState} />
+        <TreeConnectionPreview isConnecting={isConnecting} connectionPreview={connectionPreview} />
+        <TreeCollisionWarning collisionCount={collisionNodes.length} />
+        <TreeEdgeMarkers />
         
         <Background gap={16} size={1} color="#f0f0f0" />
         <Controls showInteractive={true} />
@@ -2869,141 +2747,52 @@ const FamilyTreeRenderer: React.FC<FamilyTreeRendererProps> = ({
           </svg>
         )}
         
-        {/* Custom Control Panel */}
-        <Panel position="top-right" className="flex flex-col gap-2">
-          <div className="bg-white rounded-lg shadow-lg border p-2 flex flex-col gap-2">
-            {/* Zoom Controls */}
-            <div className="flex gap-1">
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={handleZoomOut}
-                className="h-8 w-8 p-0"
-                title="Zoom Out"
-              >
-                <ZoomOutIcon className="h-4 w-4" />
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={handleZoomIn}
-                className="h-8 w-8 p-0"
-                title="Zoom In"
-              >
-                <ZoomInIcon className="h-4 w-4" />
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={handleFitView}
-                className="h-8 w-8 p-0"
-                title="Fit View - Ctrl/Cmd + 0"
-              >
-                <MaximizeIcon className="h-4 w-4" />
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={handleToggleExpand}
-                className="h-8 w-8 p-0"
-                title="Expand to Full Screen - Ctrl/Cmd + E"
-              >
-                {isExpanded ? (
-                  <MinimizeIcon className="h-4 w-4" />
-                ) : (
-                  <MaximizeIcon className="h-4 w-4" />
-                )}
-              </Button>
-            </div>
+                {/* Custom Control Panel - Using Atomic Design Components */}
+        <TreeControlPanel position="top-right">
+          <TreeZoomControls
+            onZoomIn={handleZoomIn}
+            onZoomOut={handleZoomOut}
+            onFitView={handleFitView}
+            onToggleExpand={handleToggleExpand}
+            isExpanded={isExpanded}
+          />
+          
+          <TreeLayoutButtons
+            onSmartLayout={handleSmartLayout}
+            onHierarchyLayout={handleHierarchyLayout}
+            onGenealogicalLayout={handleGenealogicalLayout}
+          />
+          
+          <TreeCollapseControls
+            onExpandAll={expandAll}
+            onCollapseAll={collapseAll}
+          />
+          
+          {/* Additional Controls */}
+          <div className="flex flex-col gap-2 mt-2 pt-2 border-t border-gray-200">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                layoutService.clearLayout();
+                window.location.reload();
+              }}
+              className="h-8 text-xs border-orange-500 text-orange-600 hover:bg-orange-50"
+              title="Clear saved layout and reset to default"
+            >
+              <XIcon className="h-4 w-4 mr-1" />
+              Clear Layout
+            </Button>
             
-            {/* Layout Buttons */}
-            <div className="flex flex-col gap-1">
-              <Button
-                size="sm"
-                variant="default"
-                onClick={handleSmartLayout}
-                className="h-8 text-xs bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700"
-                title="Smart Layout - Intelligently arrange nodes with collision avoidance"
-              >
-                <TreePineIcon className="h-4 w-4 mr-1" />
-                Smart Layout
-              </Button>
-              
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => {
-                  layoutService.clearLayout();
-                  // Trigger a re-render to apply default layout
-                  window.location.reload();
-                }}
-                className="h-8 text-xs border-orange-500 text-orange-600 hover:bg-orange-50"
-                title="Clear saved layout and reset to default"
-              >
-                <XIcon className="h-4 w-4 mr-1" />
-                Clear Layout
-              </Button>
-              
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={handleHierarchyLayout}
-                className="h-8 text-xs border-blue-500 text-blue-600 hover:bg-blue-50"
-                title="Organize as Family Tree (Oldest → Youngest) - Ctrl/Cmd + T"
-              >
-                <TreePineIcon className="h-4 w-4 mr-1" />
-                Pyramid Tree
-              </Button>
-              
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={handleGenealogicalLayout}
-                className="h-8 text-xs border-green-500 text-green-600 hover:bg-green-50"
-                title="Traditional Genealogical Tree Layout - Ctrl/Cmd + G"
-              >
-                <GenealogyIcon className="h-4 w-4 mr-1" />
-                Genealogy Tree
-              </Button>
-              
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={handleToggleOrientation}
-                className="h-8 text-xs border-orange-500 text-orange-600 hover:bg-orange-50"
-                title={`Flip Tree Orientation (Currently: ${treeOrientation === 'top-down' ? 'Top-Down' : 'Bottom-Up'}) - Ctrl/Cmd + F`}
-              >
-                <FlipIcon className="h-4 w-4 mr-1" />
-                {treeOrientation === 'top-down' ? 'Flip to Bottom-Up' : 'Flip to Top-Down'}
-              </Button>
-            </div>
-            
-            {/* Collapse/Expand Controls */}
-            <div className="flex flex-col gap-1 mt-2 pt-2 border-t border-gray-200">
-              <div className="text-xs font-semibold text-gray-600 mb-1">Branch Controls</div>
-              
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={expandAll}
-                className="h-8 text-xs border-green-500 text-green-600 hover:bg-green-50"
-                title="Expand all collapsed branches"
-              >
-                <ChevronDownIcon className="h-4 w-4 mr-1" />
-                Expand All
-              </Button>
-              
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={collapseAll}
-                className="h-8 text-xs border-red-500 text-red-600 hover:bg-red-50"
-                title="Collapse all branches with descendants"
-              >
-                <ChevronUpIcon className="h-4 w-4 mr-1" />
-                Collapse All
-              </Button>
-            </div>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleToggleOrientation}
+              className="h-8 text-xs border-orange-500 text-orange-600 hover:bg-orange-50"
+              title={`Flip Tree Orientation (Currently: ${treeOrientation === 'top-down' ? 'Top-Down' : 'Bottom-Up'}) - Ctrl/Cmd + F`}
+            >
+              {treeOrientation === 'top-down' ? 'Flip to Bottom-Up' : 'Flip to Top-Down'}
+            </Button>
             
             {/* Relationship Path Finder */}
             <div className="flex flex-col gap-1 mt-2 pt-2 border-t border-gray-200">
@@ -3111,7 +2900,7 @@ const FamilyTreeRenderer: React.FC<FamilyTreeRendererProps> = ({
               </Button>
             </div>
           </div>
-        </Panel>
+        </TreeControlPanel>
         
         {minimap && (
           <MiniMap 
@@ -3130,33 +2919,15 @@ const FamilyTreeRenderer: React.FC<FamilyTreeRendererProps> = ({
         )}
         
         <Panel position="top-left" className="bg-white p-2 rounded-md shadow-sm">
-          <ToggleGroup type="single" value={orientation} onValueChange={(val) => {
-            if (val) setOrientation(val as 'horizontal' | 'vertical');
-          }}>
-            <ToggleGroupItem value="vertical" aria-label="Vertical Layout">
-              <ArrowDownIcon className="h-4 w-4" />
-            </ToggleGroupItem>
-            <ToggleGroupItem value="horizontal" aria-label="Horizontal Layout">
-              <ArrowRightIcon className="h-4 w-4" />
-            </ToggleGroupItem>
-          </ToggleGroup>
+          <TreeOrientationToggle
+            orientation={orientation}
+            onOrientationChange={setOrientation}
+          />
         </Panel>
         
         {focusMode && (
           <Panel position="bottom-center" className="bg-white p-2 rounded-md shadow-sm">
-            <div className="flex items-center gap-2">
-              <DotIcon className="h-3 w-3 text-heritage-purple" />
-              <span className="text-sm">Focus Mode: Showing direct family connections</span>
-              <Button
-                variant="ghost" 
-                size="sm" 
-                className="ml-2 h-7 px-2"
-                onClick={() => setFocusMode(false)}
-              >
-                <XIcon className="h-4 w-4" />
-                <span className="ml-1">Exit Focus Mode</span>
-              </Button>
-            </div>
+            <TreeFocusModeIndicator onExit={() => setFocusMode(false)} />
           </Panel>
         )}
       </ReactFlow>
