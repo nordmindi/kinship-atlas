@@ -1,8 +1,23 @@
 
 import { FamilyMember } from '@/types';
 
+// Cache for generation calculations
+interface GenerationCache {
+  rootMemberId: string;
+  memberIds: string[];
+  result: {
+    generations: Map<number, string[]>, 
+    memberGenerations: Map<string, number>,
+    processed: Set<string>
+  };
+  timestamp: number;
+}
+
+let generationCache: GenerationCache | null = null;
+const CACHE_TTL = 5000; // 5 seconds cache
+
 /**
- * Builds family generations based on relationships
+ * Builds family generations based on relationships with caching
  */
 export const buildGenerations = (
   rootMember: FamilyMember,
@@ -12,6 +27,28 @@ export const buildGenerations = (
   memberGenerations: Map<string, number>,
   processed: Set<string>
 } => {
+  // Check cache validity
+  const currentMemberIds = Array.from(memberMap.keys()).sort();
+  const now = Date.now();
+  
+  if (
+    generationCache &&
+    generationCache.rootMemberId === rootMember.id &&
+    JSON.stringify(generationCache.memberIds) === JSON.stringify(currentMemberIds) &&
+    (now - generationCache.timestamp) < CACHE_TTL
+  ) {
+    // Return cached result (need to recreate Maps and Sets as they're not JSON serializable)
+    const cached = generationCache.result;
+    const generations = new Map<number, string[]>();
+    const memberGenerations = new Map<string, number>();
+    const processed = new Set<string>();
+    
+    cached.generations.forEach((ids, gen) => generations.set(gen, [...ids]));
+    cached.memberGenerations.forEach((gen, id) => memberGenerations.set(id, gen));
+    cached.processed.forEach(id => processed.add(id));
+    
+    return { generations, memberGenerations, processed };
+  }
   const generations = new Map<number, string[]>();
   const memberGenerations = new Map<string, number>();
   const processed = new Set<string>();
@@ -99,5 +136,24 @@ export const buildGenerations = (
   // Start building generations from the root
   buildMemberGenerations(rootMember.id, 0);
   
+  // Cache the result
+  generationCache = {
+    rootMemberId: rootMember.id,
+    memberIds: currentMemberIds,
+    result: {
+      generations: new Map(generations),
+      memberGenerations: new Map(memberGenerations),
+      processed: new Set(processed)
+    },
+    timestamp: now
+  };
+  
   return { generations, memberGenerations, processed };
+};
+
+/**
+ * Clear the generation cache (useful when members are added/removed)
+ */
+export const clearGenerationCache = (): void => {
+  generationCache = null;
 };

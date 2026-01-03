@@ -1,30 +1,32 @@
 import React, { useState, useCallback } from 'react';
-import { useDropzone } from 'react-dropzone';
 import * as XLSX from 'xlsx';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-// import { Progress } from '@/components/ui/progress';
-import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   Upload, 
-  FileText, 
-  FileSpreadsheet, 
   CheckCircle, 
-  AlertCircle, 
+  X,
+  Play,
+  FileSpreadsheet,
   Download,
+  FileText,
   Users,
   Link,
   BookOpen,
-  X,
-  Eye,
-  Play
+  Image,
+  Package
 } from 'lucide-react';
+// Atomic Design Components
+import { FileDropzone } from '@/components/molecules/FileDropzone';
+import { ImportProgressBar } from '@/components/molecules/ImportProgressBar';
+import { TemplateDownloadCard } from '@/components/molecules/TemplateDownloadCard';
+import { ImportDataPreview } from '@/components/organisms/ImportDataPreview';
+import { ImportResultDisplay } from '@/components/organisms/ImportResultDisplay';
 import { toast } from '@/hooks/use-toast';
 import { FamilyMember, Relation, FamilyStory } from '@/types';
 import { Artifact } from '@/types/stories';
-import { sanitizeText } from '@/utils/sanitize';
 import { familyMemberService } from '@/services/familyMemberService';
 import { familyRelationshipManager } from '@/services/familyRelationshipManager';
 import { storyService } from '@/services/storyService';
@@ -365,16 +367,10 @@ const ImportFamilyData: React.FC<ImportFamilyDataProps> = ({
     }
   }, [parseExcelFile, parseJsonFile]);
 
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({
-    onDrop,
-    accept: {
-      'application/json': ['.json'],
-      'text/csv': ['.csv'],
-      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'],
-      'application/vnd.ms-excel': ['.xls']
-    },
-    multiple: false
-  });
+  // File upload handler
+  const handleFileAccepted = useCallback(async (file: File) => {
+    await onDrop([file]);
+  }, [onDrop]);
 
   // Check for duplicates within import data
   const checkImportDuplicates = useCallback((data: ImportData): { duplicates: string[]; warnings: string[] } => {
@@ -908,33 +904,7 @@ const ImportFamilyData: React.FC<ImportFamilyDataProps> = ({
             </TabsList>
 
             <TabsContent value="upload" className="space-y-4">
-              <div
-                {...getRootProps()}
-                className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${
-                  isDragActive 
-                    ? 'border-heritage-purple bg-heritage-purple-light' 
-                    : 'border-gray-300 hover:border-heritage-purple'
-                }`}
-              >
-                <input {...getInputProps()} />
-                <Upload className="h-12 w-12 mx-auto mb-4 text-gray-400" />
-                <h3 className="text-lg font-medium mb-2">
-                  {isDragActive ? 'Drop your file here' : 'Upload Family Data'}
-                </h3>
-                <p className="text-gray-600 mb-4">
-                  Drag and drop your file here, or click to select
-                </p>
-                <div className="flex items-center justify-center gap-4 text-sm text-gray-500">
-                  <div className="flex items-center gap-1">
-                    <FileText className="h-4 w-4" />
-                    JSON
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <FileSpreadsheet className="h-4 w-4" />
-                    Excel/CSV
-                  </div>
-                </div>
-              </div>
+              <FileDropzone onFileAccepted={handleFileAccepted} />
 
               {importData && (
                 <div className="space-y-4">
@@ -968,18 +938,7 @@ const ImportFamilyData: React.FC<ImportFamilyDataProps> = ({
                   </div>
 
                   {isImporting && (
-                    <div className="space-y-2">
-                      <div className="flex justify-between text-sm">
-                        <span>Importing data...</span>
-                        <span>{Math.round(importProgress)}%</span>
-                      </div>
-                      <div className="w-full bg-gray-200 rounded-full h-2">
-                        <div 
-                          className="bg-heritage-purple h-2 rounded-full transition-all duration-300" 
-                          style={{ width: `${importProgress}%` }}
-                        ></div>
-                      </div>
-                    </div>
+                    <ImportProgressBar progress={importProgress} />
                   )}
                 </div>
               )}
@@ -1100,117 +1059,22 @@ const ImportFamilyData: React.FC<ImportFamilyDataProps> = ({
                   </div>
 
                   <div className="max-h-96 overflow-y-auto border rounded-lg p-4">
-                    {previewMode === 'members' && (
-                      <div className="space-y-2">
-                        {importData.familyMembers.map((member, index) => (
-                          <div key={index} className="flex items-center gap-3 p-2 bg-gray-50 rounded">
-                            <Badge variant="outline">{member.gender}</Badge>
-                            <span className="font-medium">{member.firstName} {member.lastName}</span>
-                            {member.birthDate && <span className="text-sm text-gray-500">Born: {member.birthDate}</span>}
-                            {member.currentLocation && <span className="text-sm text-gray-500">📍 {member.currentLocation.description}</span>}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-
-                    {previewMode === 'relationships' && (
-                      <div className="space-y-2">
-                        {importData.relationships.map((rel, index) => (
-                          <div key={index} className="flex items-center gap-3 p-2 bg-gray-50 rounded">
-                            <Badge variant="outline">{rel.type}</Badge>
-                            <span className="text-sm">Relationship between members</span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-
-                    {previewMode === 'stories' && (
-                      <div className="space-y-2">
-                        {importData.stories.map((story, index) => (
-                          <div key={index} className="p-2 bg-gray-50 rounded">
-                            <h4 className="font-medium">{story.title}</h4>
-                            <p className="text-sm text-gray-600">{sanitizeText(story.content).substring(0, 100)}...</p>
-                            {story.location && <span className="text-xs text-gray-500">📍 {story.location}</span>}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-
-                    {previewMode === 'locations' && importData.locations && (
-                      <div className="space-y-2">
-                        {importData.locations.map((loc, index) => (
-                          <div key={index} className="flex items-center gap-3 p-2 bg-gray-50 rounded">
-                            <span className="font-medium">{loc.description}</span>
-                            {loc.familyMemberName && <span className="text-sm text-gray-500">({loc.familyMemberName})</span>}
-                            {loc.lat && loc.lng && <span className="text-xs text-gray-400">📍 {loc.lat}, {loc.lng}</span>}
-                            {loc.currentResidence && <Badge variant="outline">Current</Badge>}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-
-                    {previewMode === 'media' && importData.media && (
-                      <div className="space-y-2">
-                        {importData.media.map((media, index) => (
-                          <div key={index} className="flex items-center gap-3 p-2 bg-gray-50 rounded">
-                            <Badge variant="outline">{media.mediaType}</Badge>
-                            <span className="text-sm font-medium">{media.fileName || 'Media'}</span>
-                            {media.caption && <span className="text-xs text-gray-500">{media.caption}</span>}
-                            <span className="text-xs text-gray-400">→ {media.linkedToType}</span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-
-                    {previewMode === 'artifacts' && importData.artifacts && (
-                      <div className="space-y-2">
-                        {importData.artifacts.map((artifact, index) => (
-                          <div key={index} className="p-2 bg-gray-50 rounded">
-                            <div className="flex items-center gap-2">
-                              <Badge variant="outline">{artifact.artifactType}</Badge>
-                              <span className="font-medium">{artifact.name}</span>
-                            </div>
-                            {artifact.description && <p className="text-sm text-gray-600 mt-1">{artifact.description}</p>}
-                            {artifact.locationStored && <span className="text-xs text-gray-500">📍 {artifact.locationStored}</span>}
-                          </div>
-                        ))}
-                      </div>
-                    )}
+                    <ImportDataPreview
+                      mode={previewMode}
+                      members={importData.familyMembers}
+                      relationships={importData.relationships}
+                      stories={importData.stories}
+                      locations={importData.locations}
+                      media={importData.media}
+                      artifacts={importData.artifacts}
+                    />
                   </div>
                 </div>
               )}
             </TabsContent>
           </Tabs>
 
-          {importResult && (
-            <div className="mt-6 space-y-4">
-              <Alert variant={importResult.success ? "default" : "destructive"}>
-                {importResult.success ? (
-                  <CheckCircle className="h-4 w-4" />
-                ) : (
-                  <AlertCircle className="h-4 w-4" />
-                )}
-                <AlertDescription>
-                  Import completed! {importResult.imported.members} members, {importResult.imported.relationships} relationships, 
-                  and {importResult.imported.stories} stories imported.
-                  {importResult.errors.length > 0 && ` ${importResult.errors.length} errors occurred.`}
-                </AlertDescription>
-              </Alert>
-
-              {importResult.errors.length > 0 && (
-                <div className="space-y-2">
-                  <h4 className="font-medium text-red-600">Errors:</h4>
-                  <div className="max-h-32 overflow-y-auto space-y-1">
-                    {importResult.errors.map((error, index) => (
-                      <div key={index} className="text-sm text-red-600 bg-red-50 p-2 rounded">
-                        {error}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
+          {importResult && <ImportResultDisplay result={importResult} />}
         </CardContent>
       </Card>
     </div>

@@ -1,22 +1,19 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { storyService } from '../storyService'
 import { supabase } from '@/integrations/supabase/client'
 
-vi.mock('@/integrations/supabase/client', () => ({
-  supabase: {
-    auth: {
-      getUser: vi.fn(),
-      getSession: vi.fn()
-    },
-    from: vi.fn(),
-    storage: {
-      from: vi.fn(() => ({
-        upload: vi.fn(),
-        getPublicUrl: vi.fn(() => ({ data: { publicUrl: 'https://example.com/file.jpg' } }))
-      }))
-    }
-  }
+// Mock userService BEFORE importing storyService
+vi.mock('../userService', () => ({
+  isCurrentUserAdmin: vi.fn(() => Promise.resolve(false)),
+  getUserProfile: vi.fn(),
+  updateUserProfile: vi.fn(),
+  getAllUsers: vi.fn(),
+  updateUserRole: vi.fn(),
+  canUserEditFamilyMember: vi.fn(),
+  getUserBranchMembers: vi.fn()
 }))
+
+// Import storyService after mocking userService
+import { storyService } from '../storyService'
 
 describe('StoryService', () => {
   beforeEach(() => {
@@ -33,48 +30,58 @@ describe('StoryService', () => {
         error: null
       })
 
-      const mockInsert = vi.fn().mockReturnThis()
-      const mockSelect = vi.fn().mockReturnThis()
-      const mockSingle = vi.fn().mockResolvedValue({
-        data: { id: 'story-123' },
+      // Mock insert().select('id') which returns an array
+      const mockSelect = vi.fn().mockResolvedValue({
+        data: [{ id: 'story-123' }],
         error: null
       })
-
-      const mockStorySelect = vi.fn().mockReturnThis()
-      const mockStoryEq = vi.fn().mockReturnThis()
-      const mockStorySingle = vi.fn().mockResolvedValue({
-        data: {
-          id: 'story-123',
-          title: 'Test Story',
-          content: 'Test content',
-          date: '2024-01-01',
-          author_id: 'user-123',
-          created_at: '2024-01-01T00:00:00Z',
-          updated_at: '2024-01-01T00:00:00Z',
-          attrs: null,
-          location: null,
-          lat: null,
-          lng: null,
-          story_members: [],
-          story_media: [],
-          story_artifacts: []
-        },
-        error: null
+      const mockInsert = vi.fn().mockReturnValue({
+        select: mockSelect
       })
 
       vi.mocked(supabase.from).mockImplementation((table: string) => {
         if (table === 'family_stories') {
           return {
             insert: mockInsert,
-            select: mockSelect,
-            single: mockSingle,
-            eq: mockStoryEq,
-            order: vi.fn().mockReturnThis()
+            select: vi.fn().mockReturnThis(),
+            eq: vi.fn().mockReturnThis(),
+            order: vi.fn().mockReturnThis(),
+            limit: vi.fn().mockResolvedValue({
+              data: [{ id: 'story-123' }],
+              error: null
+            }),
+            maybeSingle: vi.fn().mockResolvedValue({
+              data: {
+                id: 'story-123',
+                title: 'Test Story',
+                content: 'Test content',
+                date: '2024-01-01',
+                author_id: 'user-123',
+                created_at: '2024-01-01T00:00:00Z',
+                updated_at: '2024-01-01T00:00:00Z',
+                attrs: null,
+                location: 'New York, USA',
+                lat: 40.7128,
+                lng: -74.0060,
+                story_members: [],
+                story_media: []
+              },
+              error: null
+            })
           } as any
         }
         if (table === 'story_members' || table === 'story_media' || table === 'story_artifacts') {
           return {
             insert: vi.fn().mockResolvedValue({ error: null })
+          } as any
+        }
+        if (table === 'story_artifacts') {
+          return {
+            select: vi.fn().mockReturnThis(),
+            eq: vi.fn().mockResolvedValue({
+              data: [],
+              error: null
+            })
           } as any
         }
         return {} as any
@@ -144,17 +151,17 @@ describe('StoryService', () => {
         error: null
       })
 
-      const mockInsert = vi.fn().mockReturnThis()
-      const mockSelect = vi.fn().mockReturnThis()
-      const mockSingle = vi.fn().mockResolvedValue({
+      // Mock insert().select('id') to return an error
+      const mockSelect = vi.fn().mockResolvedValue({
         data: null,
         error: { message: 'Database error' }
       })
+      const mockInsert = vi.fn().mockReturnValue({
+        select: mockSelect
+      })
 
       vi.mocked(supabase.from).mockReturnValue({
-        insert: mockInsert,
-        select: mockSelect,
-        single: mockSingle
+        insert: mockInsert
       } as any)
 
       const result = await storyService.createStory({
@@ -184,22 +191,26 @@ describe('StoryService', () => {
         lat: 40.7128,
         lng: -74.0060,
         story_members: [],
-        story_media: [],
-        story_artifacts: []
+        story_media: []
       }
 
-      const mockSelect = vi.fn().mockReturnThis()
       const mockEq = vi.fn().mockReturnThis()
-      const mockSingle = vi.fn().mockResolvedValue({
+      const mockMaybeSingle = vi.fn().mockResolvedValue({
         data: mockStory,
         error: null
       })
+      const mockSelect = vi.fn().mockReturnValue({
+        eq: mockEq,
+        maybeSingle: mockMaybeSingle
+      })
 
       // Mock story_artifacts query (separate query for artifacts)
-      const mockStoryArtifactsSelect = vi.fn().mockReturnThis()
       const mockStoryArtifactsEq = vi.fn().mockResolvedValue({
         data: [],
         error: null
+      })
+      const mockStoryArtifactsSelect = vi.fn().mockReturnValue({
+        eq: mockStoryArtifactsEq
       })
 
       vi.mocked(supabase.from).mockImplementation((table: string) => {
@@ -207,13 +218,40 @@ describe('StoryService', () => {
           return {
             select: mockSelect,
             eq: mockEq,
-            single: mockSingle
+            maybeSingle: mockMaybeSingle
           } as any
         }
         if (table === 'story_artifacts') {
           return {
             select: mockStoryArtifactsSelect,
             eq: mockStoryArtifactsEq
+          } as any
+        }
+        if (table === 'artifacts') {
+          return {
+            select: vi.fn().mockReturnThis(),
+            in: vi.fn().mockResolvedValue({
+              data: [],
+              error: null
+            })
+          } as any
+        }
+        if (table === 'artifact_media') {
+          return {
+            select: vi.fn().mockReturnThis(),
+            in: vi.fn().mockResolvedValue({
+              data: [],
+              error: null
+            })
+          } as any
+        }
+        if (table === 'story_groups') {
+          return {
+            select: vi.fn().mockReturnThis(),
+            eq: vi.fn().mockResolvedValue({
+              data: [],
+              error: null
+            })
           } as any
         }
         return {} as any
@@ -230,18 +268,23 @@ describe('StoryService', () => {
     })
 
     it('should return null on error', async () => {
-      const mockSelect = vi.fn().mockReturnThis()
       const mockEq = vi.fn().mockReturnThis()
-      const mockSingle = vi.fn().mockResolvedValue({
+      const mockMaybeSingle = vi.fn().mockResolvedValue({
         data: null,
         error: { message: 'Not found', code: 'PGRST116' }
       })
+      const mockSelect = vi.fn().mockReturnValue({
+        eq: mockEq,
+        maybeSingle: mockMaybeSingle
+      })
 
       // Mock story_artifacts query (separate query for artifacts)
-      const mockStoryArtifactsSelect = vi.fn().mockReturnThis()
       const mockStoryArtifactsEq = vi.fn().mockResolvedValue({
         data: [],
         error: null
+      })
+      const mockStoryArtifactsSelect = vi.fn().mockReturnValue({
+        eq: mockStoryArtifactsEq
       })
 
       vi.mocked(supabase.from).mockImplementation((table: string) => {
@@ -249,7 +292,7 @@ describe('StoryService', () => {
           return {
             select: mockSelect,
             eq: mockEq,
-            single: mockSingle
+            maybeSingle: mockMaybeSingle
           } as any
         }
         if (table === 'story_artifacts') {
@@ -264,7 +307,7 @@ describe('StoryService', () => {
       const result = await storyService.getStory('story-123')
 
       expect(result).toBeNull()
-      expect(mockSingle).toHaveBeenCalled()
+      expect(mockMaybeSingle).toHaveBeenCalled()
       expect(mockEq).toHaveBeenCalledWith('id', 'story-123')
     })
   })

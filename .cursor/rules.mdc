@@ -50,7 +50,7 @@ areas:
   - name: "Admin/Platform"
     layout: "AdminLayout wraps pages in DashboardShell (shell owns header + nav)"
     routes: ["/admin/*"]
-    allowedRoles: ["platform_admin","owner"]
+    allowedRoles: ["platform_admin","editor", "viewer"]
 
 rules:
   - "Never Mix Layouts: Pages must not import Sidebar, Header, or DashboardShell directly; layouts own navigation."
