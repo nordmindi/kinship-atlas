@@ -212,7 +212,9 @@ const ImportFamilyData: React.FC<ImportFamilyDataProps> = ({
               location: rowData.location || undefined,
               lat: rowData.lat ? parseFloat(rowData.lat) : undefined,
               lng: rowData.lng ? parseFloat(rowData.lng) : undefined,
-              authorId: rowData.author_id || undefined,
+              authorId: rowData.author_id || '',
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
               relatedMembers: []
             };
             stories.push(story);
@@ -422,13 +424,21 @@ const ImportFamilyData: React.FC<ImportFamilyDataProps> = ({
                         (importData.storyMembers?.length || 0);
       let processedItems = 0;
       
-      // Create a map of member names to IDs for later reference
+      // Create maps for ID translation
       const memberNameToId: Record<string, string> = {};
+      const oldMemberIdToNewId: Record<string, string> = {}; // Map old JSON IDs to new database IDs
       const storyTitleToId: Record<string, string> = {};
+      const oldStoryIdToNewId: Record<string, string> = {}; // Map old JSON story IDs to new database IDs
 
       // Import family members
+      // Get current user for duplicate checking
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      const currentUserIdForMembers = currentUser?.id;
+
       for (const member of importData.familyMembers) {
         try {
+          const oldMemberId = member.id; // Store the old ID from JSON before creating new member
+          
           console.log('🔍 Importing member:', {
             firstName: member.firstName,
             lastName: member.lastName,
@@ -441,6 +451,7 @@ const ImportFamilyData: React.FC<ImportFamilyDataProps> = ({
             location: member.currentLocation
           });
 
+          // Try to create the member first
           const response = await familyMemberService.createFamilyMember({
             firstName: member.firstName,
             lastName: member.lastName,
@@ -454,16 +465,63 @@ const ImportFamilyData: React.FC<ImportFamilyDataProps> = ({
 
           console.log('🔍 Import response:', response);
 
+          let newMemberId: string;
           if (response.success) {
+            newMemberId = response.member!.id;
             result.imported.members++;
-            // Update the member ID for relationship creation
-            member.id = response.member!.id;
-            // Store in name-to-ID map
-            const nameKey = `${member.firstName} ${member.lastName}`;
-            memberNameToId[nameKey] = response.member!.id;
           } else {
             console.log('❌ Import failed for', member.firstName, member.lastName, ':', response.error);
-            result.errors.push(`Failed to import ${member.firstName} ${member.lastName}: ${response.error}`);
+            // Check if error is about duplicate
+            if (response.error?.includes('already exists') && currentUserIdForMembers) {
+              // Try to find the existing member
+              // @ts-expect-error - TypeScript has issues with conditional Supabase query chaining
+              let findResult: any;
+              if (member.birthDate) {
+                // @ts-expect-error - TypeScript has issues with conditional Supabase query chaining
+                findResult = await supabase
+                  .from('family_members')
+                  .select('id')
+                  .eq('created_by', currentUserIdForMembers)
+                  .ilike('first_name', member.firstName.trim())
+                  .ilike('last_name', member.lastName.trim())
+                  .eq('birth_date', member.birthDate)
+                  .limit(1);
+              } else {
+                // @ts-expect-error - TypeScript has issues with conditional Supabase query chaining
+                findResult = await supabase
+                  .from('family_members')
+                  .select('id')
+                  .eq('created_by', currentUserIdForMembers)
+                  .ilike('first_name', member.firstName.trim())
+                  .ilike('last_name', member.lastName.trim())
+                  .limit(1);
+              }
+              
+              if (findResult.data && findResult.data.length > 0) {
+                newMemberId = findResult.data[0].id;
+                result.warnings.push(`Member ${member.firstName} ${member.lastName} already exists, using existing member`);
+              } else {
+                result.errors.push(`Failed to import ${member.firstName} ${member.lastName}: ${response.error}`);
+                processedItems++;
+                setImportProgress((processedItems / totalItems) * 100);
+                continue;
+              }
+            } else {
+              result.errors.push(`Failed to import ${member.firstName} ${member.lastName}: ${response.error}`);
+              processedItems++;
+              setImportProgress((processedItems / totalItems) * 100);
+              continue;
+            }
+          }
+
+          // Update the member ID for relationship creation
+          member.id = newMemberId;
+          // Store in name-to-ID map
+          const nameKey = `${member.firstName} ${member.lastName}`;
+          memberNameToId[nameKey] = newMemberId;
+          // Map old ID to new ID if old ID exists
+          if (oldMemberId) {
+            oldMemberIdToNewId[oldMemberId] = newMemberId;
           }
         } catch (error) {
           result.errors.push(`Error importing ${member.firstName} ${member.lastName}: ${error}`);
@@ -474,18 +532,85 @@ const ImportFamilyData: React.FC<ImportFamilyDataProps> = ({
       }
 
       // Import relationships
+      // Track processed relationships to avoid duplicates
+      const processedRelationships = new Set<string>();
+      
       for (const relationship of importData.relationships) {
         try {
+          // Handle both JSON format (fromMemberId/toMemberId) and Relation format (personId/id)
+          let fromMemberId: string | undefined;
+          let toMemberId: string | undefined;
+          let relationshipType: 'parent' | 'child' | 'spouse' | 'sibling';
+
+          // Check if it's JSON format (fromMemberId/toMemberId)
+          if ('fromMemberId' in relationship && 'toMemberId' in relationship) {
+            const jsonRel = relationship as any;
+            fromMemberId = oldMemberIdToNewId[jsonRel.fromMemberId] || jsonRel.fromMemberId;
+            toMemberId = oldMemberIdToNewId[jsonRel.toMemberId] || jsonRel.toMemberId;
+            relationshipType = jsonRel.relationshipType || jsonRel.type;
+          } else {
+            // It's Relation format (personId/id)
+            fromMemberId = oldMemberIdToNewId[relationship.personId] || relationship.personId;
+            toMemberId = oldMemberIdToNewId[relationship.id] || relationship.id;
+            relationshipType = relationship.type;
+          }
+
+          // Skip if we can't find both members
+          if (!fromMemberId || !toMemberId) {
+            result.errors.push(`Failed to import relationship: Could not find both family members`);
+            processedItems++;
+            setImportProgress((processedItems / totalItems) * 100);
+            continue;
+          }
+
+          // Create a unique key for this relationship (normalize direction for parent-child)
+          // For parent-child relationships, we normalize to always use the parent as fromMemberId
+          // For spouse and sibling, we use a sorted key to avoid duplicates
+          let relationshipKey: string;
+          if (relationshipType === 'parent' || relationshipType === 'child') {
+            // Normalize parent-child: always use parent as from, child as to
+            const normalizedType = relationshipType === 'parent' ? 'parent' : 'child';
+            const parentId = normalizedType === 'parent' ? fromMemberId : toMemberId;
+            const childId = normalizedType === 'parent' ? toMemberId : fromMemberId;
+            relationshipKey = `${parentId}-parent-${childId}`;
+          } else {
+            // For spouse and sibling, use sorted IDs to avoid duplicates
+            const sortedIds = [fromMemberId, toMemberId].sort();
+            relationshipKey = `${sortedIds[0]}-${relationshipType}-${sortedIds[1]}`;
+          }
+
+          // Skip if we've already processed this relationship
+          if (processedRelationships.has(relationshipKey)) {
+            // Silently skip duplicate relationships (they're likely bidirectional entries)
+            processedItems++;
+            setImportProgress((processedItems / totalItems) * 100);
+            continue;
+          }
+
           const response = await familyRelationshipManager.createRelationship({
-            fromMemberId: relationship.personId,
-            toMemberId: relationship.id,
-            relationshipType: relationship.type
+            fromMemberId,
+            toMemberId,
+            relationshipType
           });
 
           if (response.success) {
             result.imported.relationships++;
+            processedRelationships.add(relationshipKey);
+            // Also add the reverse key for parent-child relationships (since DB creates reciprocal)
+            if (relationshipType === 'parent') {
+              processedRelationships.add(`${toMemberId}-child-${fromMemberId}`);
+            } else if (relationshipType === 'child') {
+              processedRelationships.add(`${toMemberId}-parent-${fromMemberId}`);
+            }
           } else {
-            result.errors.push(`Failed to import relationship: ${response.error}`);
+            // Check if it's a duplicate relationship error
+            if (response.error?.includes('Relationship already exists')) {
+              // Treat as warning, not error, since it's likely a bidirectional entry
+              result.warnings.push(`Skipped duplicate relationship: ${response.error}`);
+              processedRelationships.add(relationshipKey);
+            } else {
+              result.errors.push(`Failed to import relationship: ${response.error}`);
+            }
           }
         } catch (error) {
           result.errors.push(`Error importing relationship: ${error}`);
@@ -496,8 +621,24 @@ const ImportFamilyData: React.FC<ImportFamilyDataProps> = ({
       }
 
       // Import stories
+      // Get current user ID for author_id (always use current user for RLS compliance)
+      const { data: { user } } = await supabase.auth.getUser();
+      const currentUserId = user?.id;
+
+      if (!currentUserId) {
+        result.errors.push('Cannot import stories: User not authenticated');
+        setIsImporting(false);
+        return;
+      }
+
       for (const story of importData.stories) {
         try {
+          const oldStoryId = story.id; // Store the old ID from JSON before creating new story
+          
+          // Always use current user ID for author_id to ensure RLS compliance
+          // (stories from export may have different author IDs)
+          const authorId = currentUserId;
+          
           const { data: storyData, error } = await supabase
             .from('family_stories')
             .insert({
@@ -507,14 +648,19 @@ const ImportFamilyData: React.FC<ImportFamilyDataProps> = ({
               location: story.location,
               lat: story.lat,
               lng: story.lng,
-              author_id: story.authorId
+              author_id: authorId
             })
             .select('id')
             .single();
 
           if (!error && storyData) {
             result.imported.stories++;
-            storyTitleToId[story.title] = storyData.id;
+            const newStoryId = storyData.id;
+            storyTitleToId[story.title] = newStoryId;
+            // Map old story ID to new ID if old ID exists
+            if (oldStoryId) {
+              oldStoryIdToNewId[oldStoryId] = newStoryId;
+            }
           } else {
             result.errors.push(`Failed to import story "${story.title}": ${error?.message || 'Unknown error'}`);
           }
@@ -531,6 +677,11 @@ const ImportFamilyData: React.FC<ImportFamilyDataProps> = ({
         for (const location of importData.locations) {
           try {
             let memberId = location.familyMemberId;
+            
+            // Map old member ID to new ID if it exists in the map
+            if (memberId && oldMemberIdToNewId[memberId]) {
+              memberId = oldMemberIdToNewId[memberId];
+            }
             
             // If we have a name but no ID, try to find the member
             if (!memberId && location.familyMemberName) {
@@ -623,13 +774,58 @@ const ImportFamilyData: React.FC<ImportFamilyDataProps> = ({
             let storyId = storyMember.storyId;
             let memberId = storyMember.familyMemberId;
             
-            // Try to find by title if ID not provided
-            if (!storyId && storyMember.storyTitle) {
+            // First, try to map old story ID to new ID if it exists in the map
+            if (storyId && oldStoryIdToNewId[storyId]) {
+              storyId = oldStoryIdToNewId[storyId];
+            } else if (storyId) {
+              // If we have a storyId but it's not in the map, it might be an old ID
+              // Try to find by title instead to get the correct new ID
+              if (storyMember.storyTitle) {
+                const mappedId = storyTitleToId[storyMember.storyTitle];
+                if (mappedId) {
+                  storyId = mappedId;
+                } else {
+                  // Story ID doesn't exist in our maps, skip this connection
+                  result.warnings.push(`Skipping story-member connection - story ID "${storyId}" not found in imported stories`);
+                  processedItems++;
+                  setImportProgress((processedItems / totalItems) * 100);
+                  continue;
+                }
+              } else {
+                // We have an ID but no title and it's not in the map - likely an old ID
+                result.warnings.push(`Skipping story-member connection - story ID "${storyId}" not found in imported stories`);
+                processedItems++;
+                setImportProgress((processedItems / totalItems) * 100);
+                continue;
+              }
+            } else if (storyMember.storyTitle) {
+              // No storyId provided, try to find by title
               storyId = storyTitleToId[storyMember.storyTitle];
             }
             
-            // Try to find member by name if ID not provided
-            if (!memberId && storyMember.familyMemberName) {
+            // Map old member ID to new ID if it exists in the map
+            if (memberId && oldMemberIdToNewId[memberId]) {
+              memberId = oldMemberIdToNewId[memberId];
+            } else if (memberId) {
+              // Member ID provided but not in map - might be an old ID, try name lookup
+              if (storyMember.familyMemberName) {
+                const mappedId = memberNameToId[storyMember.familyMemberName];
+                if (mappedId) {
+                  memberId = mappedId;
+                } else {
+                  result.warnings.push(`Skipping story-member connection - member ID "${memberId}" not found in imported members`);
+                  processedItems++;
+                  setImportProgress((processedItems / totalItems) * 100);
+                  continue;
+                }
+              } else {
+                result.warnings.push(`Skipping story-member connection - member ID "${memberId}" not found in imported members`);
+                processedItems++;
+                setImportProgress((processedItems / totalItems) * 100);
+                continue;
+              }
+            } else if (storyMember.familyMemberName) {
+              // No memberId provided, try to find by name
               memberId = memberNameToId[storyMember.familyMemberName];
             }
             
@@ -645,7 +841,7 @@ const ImportFamilyData: React.FC<ImportFamilyDataProps> = ({
               .insert({
                 story_id: storyId,
                 family_member_id: memberId,
-                role: storyMember.role
+                role: storyMember.role || 'participant'
               });
 
             if (!error) {
