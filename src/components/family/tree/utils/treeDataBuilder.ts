@@ -96,6 +96,53 @@ export const buildTreeEdges = (
   // Map all members by ID for easy access
   members.forEach(member => memberMap.set(member.id, member));
   
+  // First pass: Build a map of children to their parents for merge detection
+  const childToParents = new Map<string, string[]>();
+  memberMap.forEach((member, memberId) => {
+    member.relations.forEach(relation => {
+      if (relation.type === 'parent' || relation.type === 'child') {
+        const parentId = relation.type === 'child' ? memberId : relation.personId;
+        const childId = relation.type === 'child' ? relation.personId : memberId;
+        
+        if (memberGenerations.has(parentId) && memberGenerations.has(childId)) {
+          if (!childToParents.has(childId)) {
+            childToParents.set(childId, []);
+          }
+          const parents = childToParents.get(childId)!;
+          if (!parents.includes(parentId)) {
+            parents.push(parentId);
+          }
+        }
+      }
+    });
+  });
+  
+  // Helper function to check if two parents are spouses
+  const areSpouses = (parent1Id: string, parent2Id: string): boolean => {
+    const parent1 = memberMap.get(parent1Id);
+    const parent2 = memberMap.get(parent2Id);
+    if (!parent1 || !parent2) return false;
+    
+    return parent1.relations.some(rel => rel.type === 'spouse' && rel.personId === parent2Id) ||
+           parent2.relations.some(rel => rel.type === 'spouse' && rel.personId === parent1Id);
+  };
+  
+  // Build a map of spouse pairs to their common children
+  const spousePairToChildren = new Map<string, string[]>();
+  childToParents.forEach((parents, childId) => {
+    if (parents.length === 2 && areSpouses(parents[0], parents[1])) {
+      // Create a consistent key for the spouse pair
+      const spousePairKey = parents[0] < parents[1] 
+        ? `${parents[0]}-${parents[1]}` 
+        : `${parents[1]}-${parents[0]}`;
+      
+      if (!spousePairToChildren.has(spousePairKey)) {
+        spousePairToChildren.set(spousePairKey, []);
+      }
+      spousePairToChildren.get(spousePairKey)!.push(childId);
+    }
+  });
+  
   memberMap.forEach((member, memberId) => {
     member.relations.forEach(relation => {
       // Create a consistent edge ID regardless of direction
@@ -197,6 +244,33 @@ export const buildTreeEdges = (
             targetHandle = 'parent-target';
         }
         
+        // Check if this is a parent-child edge that should merge with another parent
+        let mergeInfo: { hasMerge: boolean; otherParentId?: string; childId: string; allChildrenIds?: string[] } | undefined;
+        if (relationshipType === 'parent') {
+          const parents = childToParents.get(edgeTarget);
+          if (parents && parents.length === 2) {
+            const areSpousesResult = areSpouses(parents[0], parents[1]);
+            if (areSpousesResult) {
+              // This child has two parents who are spouses - mark for merging
+              const otherParentId = parents.find(p => p !== edgeSource);
+              if (otherParentId) {
+                // Find all children of this spouse pair
+                const spousePairKey = edgeSource < otherParentId 
+                  ? `${edgeSource}-${otherParentId}` 
+                  : `${otherParentId}-${edgeSource}`;
+                const allChildren = spousePairToChildren.get(spousePairKey) || [];
+                
+                mergeInfo = {
+                  hasMerge: true,
+                  otherParentId,
+                  childId: edgeTarget,
+                  allChildrenIds: allChildren
+                };
+              }
+            }
+          }
+        }
+        
         // Create edge with proper type and handles
         const relationshipEdge: FamilyRelationshipEdge = {
           id: `e-${edgeId}`,
@@ -209,7 +283,8 @@ export const buildTreeEdges = (
           style: edgeStyle,
           markerEnd,
           data: {
-            relationshipType: relationshipType as 'parent' | 'child' | 'spouse' | 'sibling'
+            relationshipType: relationshipType as 'parent' | 'child' | 'spouse' | 'sibling',
+            mergeInfo
           }
         };
         

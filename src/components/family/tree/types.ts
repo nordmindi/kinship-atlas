@@ -52,6 +52,13 @@ export interface FamilyMemberNode extends ReactFlowNode {
 export interface FamilyRelationshipEdge extends Edge {
   data?: {
     relationshipType: 'parent' | 'child' | 'spouse' | 'sibling';
+    mergeInfo?: {
+      // For parent-child edges: indicates this edge should merge with another parent's edge
+      hasMerge: boolean;
+      otherParentId?: string; // The ID of the other parent (spouse) who shares this child
+      childId: string; // The child ID for merge point calculation
+      allChildrenIds?: string[]; // All children of this spouse pair (for calculating branch line)
+    };
   };
 }
 

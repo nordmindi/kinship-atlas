@@ -293,6 +293,78 @@ describe('FamilyTreeView', () => {
 
       expect(screen.getByTestId('react-flow')).toBeInTheDocument()
     })
+
+    it('should handle merged connectors for spouse pairs with common children', () => {
+      const membersWithChildren: FamilyMember[] = [
+        {
+          id: 'member-1',
+          firstName: 'John',
+          lastName: 'Smith',
+          gender: 'male',
+          birthDate: '1950-01-01',
+          relations: [
+            {
+              id: 'rel-1',
+              type: 'spouse',
+              personId: 'member-2',
+            },
+            {
+              id: 'rel-2',
+              type: 'parent',
+              personId: 'member-3',
+            }
+          ]
+        },
+        {
+          id: 'member-2',
+          firstName: 'Mary',
+          lastName: 'Smith',
+          gender: 'female',
+          birthDate: '1952-01-01',
+          relations: [
+            {
+              id: 'rel-1',
+              type: 'spouse',
+              personId: 'member-1',
+            },
+            {
+              id: 'rel-3',
+              type: 'parent',
+              personId: 'member-3',
+            }
+          ]
+        },
+        {
+          id: 'member-3',
+          firstName: 'Alice',
+          lastName: 'Smith',
+          gender: 'female',
+          birthDate: '1980-01-01',
+          relations: [
+            {
+              id: 'rel-2',
+              type: 'child',
+              personId: 'member-1',
+            },
+            {
+              id: 'rel-3',
+              type: 'child',
+              personId: 'member-2',
+            }
+          ]
+        }
+      ]
+
+      render(
+        <FamilyTreeView 
+          members={membersWithChildren}
+          onSelectMember={vi.fn()}
+          currentUserId="user-1"
+        />
+      )
+
+      expect(screen.getByTestId('react-flow')).toBeInTheDocument()
+    })
   })
 
   describe('Error Handling', () => {
