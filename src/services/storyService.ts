@@ -546,6 +546,12 @@ class StoryService {
     }
   }
 
+  /**
+   * Update an existing story
+   * IMPORTANT: This function should NOT create any timeline events.
+   * Only new stories (createStory) should appear in the timeline.
+   * Story updates should not add new events to the timeline.
+   */
   async updateStory(request: UpdateStoryRequest): Promise<{ success: boolean; story?: FamilyStory; error?: string }> {
     try {
       let { data: { user } } = await supabase.auth.getUser();

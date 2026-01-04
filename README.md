@@ -19,9 +19,11 @@ A comprehensive genealogy platform where users can create family members, build 
   - Visual family tree with React Flow integration
   - Interactive navigation with zoom, pan, and node selection
   - Color-coded relationship edges (marriage, parent-child, siblings)
+  - **Merged connectors** for spouse pairs with common children (classic family tree pattern)
   - Generation-based automatic layout
   - Focus mode for highlighting direct connections
   - Legend and minimap for better navigation
+  - Drag-to-connect interface for creating relationships
 
 - **📸 Media Management**
   - Drag-and-drop file upload with progress tracking
@@ -42,12 +44,35 @@ A comprehensive genealogy platform where users can create family members, build 
   - Attach media to stories
   - Link stories to family members
   - Rich text content with image support
+  - Story categories (Biography, Migration, Heritage, Memories, Historical)
+  - Location tracking for stories
+  - Artifacts system (documents, heirlooms, photos, letters, certificates)
+
+- **📁 Albums & Organization**
+  - Create albums to organize media
+  - Organize by family groups, family members, or story categories
+  - Cover images for albums
+  - Album-media relationships
+
+- **👨‍👩‍👧‍👦 Family Groups**
+  - Organize family members into groups (e.g., "Mother's Side", "Father's Side")
+  - Group-based media and story organization
+  - Flexible grouping system
+
+- **📥 Data Import/Export**
+  - Import family data from Excel (.xlsx, .xls) files
+  - Import from JSON files
+  - Import family members, relationships, and stories
+  - Preview data before importing
+  - Progress tracking during import
+  - Template files for easy data preparation
 
 - **🔐 Authentication & Security**
   - Supabase authentication with email/password
   - Row-level security (RLS) for data protection
   - User-specific data isolation
   - Secure file upload and storage
+  - **Role-based access control** (Admin, Editor, Viewer)
   - **XSS protection** with DOMPurify
   - **Audit logging** for all data changes
   - **Soft deletes** to prevent data loss
@@ -227,6 +252,7 @@ src/
 ### Family Tree Visualization
 - **Interactive Nodes**: Click to view member details, drag to reorganize
 - **Relationship Lines**: Color-coded edges showing different relationship types
+- **Merged Connectors**: When two spouses have common children, parent lines merge into a single horizontal line before branching to children (classic family tree pattern)
 - **Generation Layout**: Automatic positioning based on family generations
 - **Focus Mode**: Highlight direct family connections for complex trees
 - **Mobile Responsive**: Touch-friendly navigation on mobile devices
@@ -242,10 +268,18 @@ src/
 - **Real-time Updates**: Changes sync across all connected clients
 - **Data Validation**: Comprehensive form validation with error handling
 - **Relationship Integrity**: Automatic reciprocal relationship management
+- **Data Import**: Import family data from Excel or JSON files
 - **Backup & Recovery**: Automated backups and data export capabilities
 - **Audit Logging**: Complete history of all data changes
 - **Soft Deletes**: Prevent accidental data loss with recoverable deletions
 - **Health Monitoring**: Automated health checks and integrity verification
+
+### Family Tree Connectors
+- **Merged Connectors**: Automatic merging of parent lines for spouse pairs with common children
+- **Classic Family Tree Pattern**: Traditional family tree appearance with merged lines
+- **Line Snapping**: Parallel lines automatically snap together for clean appearance
+- **Branch Lines**: Horizontal branch lines spanning all children
+- **Visual Clarity**: Clear individual connections to each child
 
 ## 🔧 Development
 
@@ -336,9 +370,31 @@ This project is part of the Lovable platform. See Lovable's terms of service for
 
 This project follows the development guidelines outlined in `.cursorrules`. Please review the architecture and coding standards before contributing.
 
+## 📚 Documentation
+
+Comprehensive documentation is available in the `docs/` directory:
+
+### Getting Started
+- **[Local Development Guide](./docs/LOCAL_DEVELOPMENT.md)** - Setting up your development environment
+- **[Features Summary](./docs/FEATURES_SUMMARY.md)** - Complete overview of all implemented features
+
+### Core Systems
+- **[Family System Redesign](./docs/FAMILY_SYSTEM_REDESIGN.md)** - Family relationship management system
+- **[Family Tree Connector Improvements](./docs/FAMILY_TREE_CONNECTOR_IMPROVEMENTS.md)** - Merged connector system
+- **[Family Data Import System](./docs/FAMILY_DATA_IMPORT_SYSTEM.md)** - Importing family data
+
+### Database & Migrations
+- **[Database Migrations](./docs/DATABASE_MIGRATIONS.md)** - Migration system and workflow
+- **[Migration Summary](./docs/MIGRATION_SUMMARY.md)** - Complete list of all migrations
+
+### Development & Operations
+- **[CI/CD Pipeline](./docs/CI_CD_PIPELINE.md)** - Continuous integration and deployment
+- **[Testing Guide](./docs/TESTING_GUIDE.md)** - Testing strategies and best practices
+- **[Security Implementation](./docs/SECURITY_AND_ROBUSTNESS.md)** - Security features and best practices
+
 ## 📞 Support
 
 For support and questions:
-- Check the Lovable documentation
+- Check the documentation in the `docs/` directory
 - Review the project's `.cursorrules` for development guidelines
 - Open an issue in the repository

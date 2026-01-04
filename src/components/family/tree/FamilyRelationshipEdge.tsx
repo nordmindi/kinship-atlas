@@ -1,6 +1,6 @@
 
 import React, { memo, useMemo } from 'react';
-import { BaseEdge, EdgeLabelRenderer, getBezierPath, getStraightPath, getSmoothStepPath, Position } from '@xyflow/react';
+import { BaseEdge, EdgeLabelRenderer, getBezierPath, getStraightPath, getSmoothStepPath, Position, useReactFlow } from '@xyflow/react';
 
 interface FamilyRelationshipEdgeProps {
   id: string;
@@ -12,9 +12,17 @@ interface FamilyRelationshipEdgeProps {
   targetPosition: Position;
   data?: {
     relationshipType: 'parent' | 'child' | 'spouse' | 'sibling';
+    mergeInfo?: {
+      hasMerge: boolean;
+      otherParentId?: string;
+      childId: string;
+      allChildrenIds?: string[]; // All children of this spouse pair
+    };
   };
   style?: React.CSSProperties;
   markerEnd?: string;
+  source: string;
+  target: string;
 }
 
 const FamilyRelationshipEdge = ({
@@ -28,7 +36,11 @@ const FamilyRelationshipEdge = ({
   data,
   style = {},
   markerEnd,
+  source,
+  target,
 }: FamilyRelationshipEdgeProps) => {
+  const { getNode } = useReactFlow();
+  
   // Memoize path calculation
   const [edgePath, labelX, labelY] = useMemo(() => {
     // Calculate distance for dynamic curvature
@@ -38,7 +50,103 @@ const FamilyRelationshipEdge = ({
     // Use different path types based on relationship with precise connection points
     switch (data?.relationshipType) {
       case 'parent':
-        // Parent-child: straight line from parent's bottom to child's top
+        // Check if this edge should merge with another parent's edge
+        if (data?.mergeInfo?.hasMerge && data.mergeInfo.otherParentId && data.mergeInfo.allChildrenIds) {
+          const otherParentNode = getNode(data.mergeInfo.otherParentId);
+          if (otherParentNode) {
+            // Get current parent's node to ensure we have accurate position
+            const currentParentNode = getNode(source);
+            if (!currentParentNode) return getStraightPath({ sourceX, sourceY, targetX, targetY });
+            
+            // Get both parent handle positions (bottom center of each node)
+            const currentParentHandleX = sourceX;
+            const currentParentHandleY = sourceY;
+            const otherParentHandleX = otherParentNode.position.x + (otherParentNode.width || 200) / 2;
+            const otherParentHandleY = otherParentNode.position.y + (otherParentNode.height || 100);
+            
+            // Determine which parent is left and which is right
+            const leftParentX = Math.min(currentParentHandleX, otherParentHandleX);
+            const rightParentX = Math.max(currentParentHandleX, otherParentHandleX);
+            const leftParentY = currentParentHandleX < otherParentHandleX ? currentParentHandleY : otherParentHandleY;
+            const rightParentY = currentParentHandleX < otherParentHandleX ? otherParentHandleY : currentParentHandleY;
+            
+            const childX = targetX;
+            const childY = targetY;
+            
+            // Get all children nodes to calculate branch line
+            const allChildrenNodes = data.mergeInfo.allChildrenIds
+              .map(childId => getNode(childId))
+              .filter(node => node !== undefined) as any[];
+            
+            if (allChildrenNodes.length > 0) {
+              // Calculate the branch line: horizontal line that spans all children
+              // Use the actual child handle positions (top center of each child node)
+              const childHandles = allChildrenNodes.map(node => ({
+                x: node.position.x + (node.width || 200) / 2,
+                y: node.position.y // Top of node where handle is
+              }));
+              
+              const minChildX = Math.min(...childHandles.map(h => h.x));
+              const maxChildX = Math.max(...childHandles.map(h => h.x));
+              const branchX = (minChildX + maxChildX) / 2; // Center of branch line
+              
+              // Calculate Y positions:
+              // - Merge Y: where parent lines meet (about 25-30% down from parents)
+              // - Branch Y: horizontal line above children (about 85% down, just above children)
+              const avgParentY = Math.max(leftParentY, rightParentY);
+              const minChildY = Math.min(...childHandles.map(h => h.y));
+              const mergeY = avgParentY + (minChildY - avgParentY) * 0.25; // 25% down
+              const branchY = minChildY - 20; // Just above the topmost child
+              
+              // Merge point: centered between parents horizontally
+              // CRITICAL: Both parent edges must use the exact same mergeX and mergeY
+              // to create a single shared horizontal merge line
+              const mergeX = (leftParentX + rightParentX) / 2;
+              
+              // Determine if this edge is from the left or right parent
+              const isLeftParent = currentParentHandleX < otherParentHandleX;
+              const currentParentX = isLeftParent ? leftParentX : rightParentX;
+              const currentParentY = isLeftParent ? leftParentY : rightParentY;
+              
+              // CRITICAL: Use shared coordinates for all common segments to ensure lines snap together
+              // All edges must use the exact same coordinates for:
+              // 1. Merge point (mergeX, mergeY) - shared horizontal line
+              // 2. Vertical segment from merge to branch (sharedVerticalX) - shared vertical line
+              // 3. Branch line (sharedBranchY) - shared horizontal line
+              // 4. Drop segment (sharedDropY) - shared vertical line for all children
+              
+              // Shared vertical line from merge to branch - all edges use same X
+              const sharedVerticalX = mergeX;
+              
+              // Shared branch line - all edges use same Y
+              const sharedBranchY = branchY;
+              
+              // Shared drop Y - all children use the same drop distance for clean vertical segments
+              const sharedDropY = branchY + 15;
+              
+              // Create path following the classic family tree pattern:
+              // For the LEFT parent:
+              //   1. Down from parent to merge Y
+              //   2. Horizontal RIGHT to merge X (where lines meet)
+              // For the RIGHT parent:
+              //   1. Down from parent to merge Y
+              //   2. Horizontal LEFT to merge X (where lines meet)
+              // Both meet at mergeX, mergeY creating a single shared horizontal line
+              // Then from merge point (same for ALL edges, using sharedVerticalX):
+              //   3. Down to branch Y (using sharedBranchY - all edges use same Y)
+              //   4. Horizontal to branch X
+              //   5. Down (short drop, using sharedDropY - all edges use same Y)
+              //   6. Horizontal to child X
+              //   7. Up/down to child Y
+              
+              // All shared segments use identical coordinates, so parallel lines snap together
+              const pathString = `M ${currentParentX} ${currentParentY} L ${currentParentX} ${mergeY} L ${mergeX} ${mergeY} L ${sharedVerticalX} ${sharedBranchY} L ${branchX} ${sharedBranchY} L ${branchX} ${sharedDropY} L ${childX} ${sharedDropY} L ${childX} ${childY}`;
+              return [pathString, branchX, (sharedDropY + childY) / 2];
+            }
+          }
+        }
+        
+        // Parent-child: straight line from parent's bottom to child's top (default)
         return getStraightPath({
           sourceX,
           sourceY,
@@ -87,7 +195,7 @@ const FamilyRelationshipEdge = ({
           borderRadius: 20,
         });
     }
-  }, [sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, data?.relationshipType]);
+  }, [sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, data?.relationshipType, data?.mergeInfo, getNode, source, id]);
 
   // Memoize relationship icon
   const relationshipIcon = useMemo(() => {
@@ -207,6 +315,8 @@ export default memo(FamilyRelationshipEdge, (prevProps, nextProps) => {
     prevProps.targetX === nextProps.targetX &&
     prevProps.targetY === nextProps.targetY &&
     prevProps.data?.relationshipType === nextProps.data?.relationshipType &&
+    prevProps.data?.mergeInfo?.hasMerge === nextProps.data?.mergeInfo?.hasMerge &&
+    prevProps.data?.mergeInfo?.otherParentId === nextProps.data?.mergeInfo?.otherParentId &&
     prevProps.markerEnd === nextProps.markerEnd
   );
 });
