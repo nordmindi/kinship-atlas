@@ -137,16 +137,18 @@ describe('usePermissions', () => {
 
       vi.mocked(canUserEditFamilyMember).mockResolvedValue(true)
 
-      const { result } = renderHook(() => usePermissions())
+      const { result, rerender } = renderHook(() => usePermissions())
 
       // First call - this should call the service and cache the result
       const canEdit1 = await result.current.canEditFamilyMember('member-123')
       expect(canEdit1).toBe(true)
       expect(canUserEditFamilyMember).toHaveBeenCalledTimes(1)
 
-      // Wait a bit for React state to update (cache to be set)
-      // The cache is set synchronously after await, but React state updates are batched
-      await new Promise(resolve => setTimeout(resolve, 0))
+      // Wait for React to process state updates and re-render
+      await waitFor(() => {
+        // Force a re-render to ensure state is updated
+        rerender()
+      })
 
       // Second call should use cache - should not call the service again
       const canEdit2 = await result.current.canEditFamilyMember('member-123')

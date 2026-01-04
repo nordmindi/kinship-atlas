@@ -72,6 +72,8 @@ export const useCreateStory = () => {
 
 /**
  * Hook to update an existing story
+ * IMPORTANT: Story updates should NOT create timeline events.
+ * Only new stories should add events to the timeline.
  */
 export const useUpdateStory = () => {
   const queryClient = useQueryClient();
@@ -89,6 +91,8 @@ export const useUpdateStory = () => {
         queryClient.invalidateQueries({ queryKey: queryKeys.stories.lists() });
         
         // Invalidate member stories if members changed
+        // NOTE: We do NOT invalidate timeline queries here to prevent
+        // updated stories from appearing as new timeline events
         if (result.story.relatedMembers && result.story.relatedMembers.length > 0) {
           result.story.relatedMembers.forEach(member => {
             queryClient.invalidateQueries({ 
