@@ -218,13 +218,46 @@ SELECT * FROM cleanup_orphaned_locations();
 
 ## Current Migrations
 
-Key migrations in the system:
+📖 **For a complete migration summary, see [Migration Summary](./MIGRATION_SUMMARY.md)**
 
-1. **20240101000000_initial_schema.sql**: Creates core tables and RLS policies
-2. **20240101000001_storage_setup.sql**: Sets up storage buckets and policies
-3. **20251011124921_add_user_roles_and_branch_tracking.sql**: Adds user roles and branch tracking
-4. **20250120000000_create_migration_tracking.sql**: Creates migration tracking system
-5. **20250120000001_ensure_data_integrity.sql**: Ensures all constraints and indexes are properly set up
+### Migration Categories
+
+#### Core Schema
+- **20240101000000_initial_schema.sql**: Initial database schema with core tables and RLS policies
+
+#### Stories System
+- **20250113000000_add_legacy_stories_schema.sql**: Family stories system
+- **20250124000000_add_story_location_and_artifacts.sql**: Story locations and artifacts
+- **20250124000001_add_story_artifacts.sql**: Additional artifact features
+- **20250127000000_prevent_events_on_story_update.sql**: Prevent duplicate timeline events
+
+#### User Management & Security
+- **20250123000000_update_roles_to_admin_editor_viewer.sql**: Role-based access control
+- **20250126000000_fix_story_rls_for_creators.sql**: Story creator permissions
+- **20250126000001_fix_story_insert_policy_for_editors.sql**: Editor story permissions
+
+#### Family Organization
+- **20250125000000_add_family_groups.sql**: Family groups system
+- **20250125000001_fix_locations_rls_for_family_groups.sql**: Location access for groups
+- **20250125000002_fix_family_member_groups_rls.sql**: Member-group RLS fixes
+- **20250125000003_fix_locations_rls_for_family_groups_access.sql**: Additional location fixes
+- **20250125000004_add_story_groups.sql**: Story grouping by family groups
+
+#### Media & Albums
+- **20250128000000_add_albums_system.sql**: Albums system for media organization
+
+### Migration Files Location
+
+All migration files are stored in:
+- **Primary location**: `supabase/migrations/`
+- **Documentation copies**: `docs/migrations/` (for reference)
+
+### Migration Tracking
+
+The system uses a `schema_migrations` table to track applied migrations:
+- Version tracking
+- Execution logging
+- Checksum verification (optional)
 
 ## Environment-Specific Notes
 
