@@ -420,6 +420,12 @@ describe('ImportFamilyData', () => {
     it('should import family members successfully', async () => {
       const user = userEvent.setup()
       
+      // Mock user for auth
+      vi.mocked(supabase.auth.getUser).mockResolvedValue({
+        data: { user: { id: 'test-user-id' } },
+        error: null
+      })
+      
       // Mock successful family member creation
       vi.mocked(familyMemberService.createFamilyMember).mockResolvedValue({
         success: true,
@@ -529,6 +535,12 @@ describe('ImportFamilyData', () => {
 
     it('should handle import errors gracefully', async () => {
       const user = userEvent.setup()
+      
+      // Mock user for auth
+      vi.mocked(supabase.auth.getUser).mockResolvedValue({
+        data: { user: { id: 'test-user-id' } },
+        error: null
+      })
       
       // Mock failed family member creation
       vi.mocked(familyMemberService.createFamilyMember).mockResolvedValue({

@@ -14,7 +14,8 @@ export const TreeLayoutButtons: React.FC<TreeLayoutButtonsProps> = ({
   onGenealogicalLayout,
 }) => {
   return (
-    <div className="flex flex-col gap-1">
+    <div className="flex flex-col gap-1 border-t border-gray-200 pt-2 mt-1">
+      <div className="text-xs font-semibold text-gray-600 mb-1">Layout Options</div>
       <Button
         size="sm"
         variant="default"
@@ -30,11 +31,11 @@ export const TreeLayoutButtons: React.FC<TreeLayoutButtonsProps> = ({
         size="sm"
         variant="outline"
         onClick={onHierarchyLayout}
-        className="h-8 text-xs border-blue-500 text-blue-600 hover:bg-blue-50"
-        title="Pyramid Tree"
+        className="h-8 text-xs border-blue-500 text-blue-600 hover:bg-blue-50 font-medium"
+        title="Hierarchy Layout - Parents on top, children below, spouses side by side"
       >
         <TreePine className="h-4 w-4 mr-1" />
-        Pyramid Tree
+        Hierarchy Layout
       </Button>
       
       <Button

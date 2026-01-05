@@ -19,8 +19,10 @@ import {
 import { toast } from '@/hooks/use-toast';
 import { FamilyMember, Relation, FamilyStory } from '@/types';
 import { Artifact, Media } from '@/types/stories';
+import { Album, StoryCategory } from '@/types/albums';
 import { familyMemberService } from '@/services/familyMemberService';
 import { storyService } from '@/services/storyService';
+import { albumService } from '@/services/albumService';
 import { supabase } from '@/integrations/supabase/client';
 
 interface Location {
@@ -65,6 +67,32 @@ interface ExportData {
     familyMemberId: string;
     familyMemberName: string;
     role: string;
+  }>;
+  albums: Album[];
+  storyCategories: StoryCategory[];
+  albumMedia: Array<{
+    albumId: string;
+    albumName: string;
+    mediaId: string;
+    displayOrder: number;
+  }>;
+  albumFamilyGroups: Array<{
+    albumId: string;
+    albumName: string;
+    familyGroupId: string;
+    familyGroupName: string;
+  }>;
+  albumFamilyMembers: Array<{
+    albumId: string;
+    albumName: string;
+    familyMemberId: string;
+    familyMemberName: string;
+  }>;
+  albumStoryCategories: Array<{
+    albumId: string;
+    albumName: string;
+    storyCategoryId: string;
+    storyCategoryName: string;
   }>;
 }
 
@@ -291,6 +319,117 @@ const ExportFamilyData: React.FC<ExportFamilyDataProps> = ({ onClose }) => {
         role: sm.role
       }));
 
+      // Fetch all albums with relationships
+      const albums = await albumService.getAllAlbums();
+
+      // Fetch story categories
+      const { data: storyCategoriesData, error: categoriesError } = await (supabase
+        .from('story_categories' as any)
+        .select('*')
+        .order('name', { ascending: true }) as any);
+
+      if (categoriesError) {
+        console.error('Error fetching story categories:', categoriesError);
+      }
+
+      // Fetch album-media relationships
+      const { data: albumMediaData, error: albumMediaError } = await (supabase
+        .from('album_media' as any)
+        .select(`
+          album_id,
+          media_id,
+          display_order,
+          albums!inner(name)
+        `) as any);
+
+      if (albumMediaError) {
+        console.error('Error fetching album-media links:', albumMediaError);
+      }
+
+      // Format album-media relationships
+      const formattedAlbumMedia = (albumMediaData || []).map((am: any) => ({
+        albumId: am.album_id,
+        albumName: am.albums?.name || 'Unknown Album',
+        mediaId: am.media_id,
+        displayOrder: am.display_order || 0
+      }));
+
+      // Fetch album-family group relationships
+      const { data: albumFamilyGroupsData, error: albumFamilyGroupsError } = await (supabase
+        .from('album_family_groups' as any)
+        .select(`
+          album_id,
+          family_group_id,
+          albums!inner(name),
+          family_groups!inner(name)
+        `) as any);
+
+      if (albumFamilyGroupsError) {
+        console.error('Error fetching album-family group links:', albumFamilyGroupsError);
+      }
+
+      // Format album-family group relationships
+      const formattedAlbumFamilyGroups = (albumFamilyGroupsData || []).map((afg: any) => ({
+        albumId: afg.album_id,
+        albumName: afg.albums?.name || 'Unknown Album',
+        familyGroupId: afg.family_group_id,
+        familyGroupName: afg.family_groups?.name || 'Unknown Group'
+      }));
+
+      // Fetch album-family member relationships
+      const { data: albumFamilyMembersData, error: albumFamilyMembersError } = await (supabase
+        .from('album_family_members' as any)
+        .select(`
+          album_id,
+          family_member_id,
+          albums!inner(name),
+          family_members!inner(first_name, last_name)
+        `) as any);
+
+      if (albumFamilyMembersError) {
+        console.error('Error fetching album-family member links:', albumFamilyMembersError);
+      }
+
+      // Format album-family member relationships
+      const formattedAlbumFamilyMembers = (albumFamilyMembersData || []).map((afm: any) => ({
+        albumId: afm.album_id,
+        albumName: afm.albums?.name || 'Unknown Album',
+        familyMemberId: afm.family_member_id,
+        familyMemberName: afm.family_members
+          ? `${afm.family_members.first_name} ${afm.family_members.last_name}`
+          : 'Unknown'
+      }));
+
+      // Fetch album-story category relationships
+      const { data: albumStoryCategoriesData, error: albumStoryCategoriesError } = await (supabase
+        .from('album_story_categories' as any)
+        .select(`
+          album_id,
+          story_category_id,
+          albums!inner(name),
+          story_categories!inner(name)
+        `) as any);
+
+      if (albumStoryCategoriesError) {
+        console.error('Error fetching album-story category links:', albumStoryCategoriesError);
+      }
+
+      // Format album-story category relationships
+      const formattedAlbumStoryCategories = (albumStoryCategoriesData || []).map((asc: any) => ({
+        albumId: asc.album_id,
+        albumName: asc.albums?.name || 'Unknown Album',
+        storyCategoryId: asc.story_category_id,
+        storyCategoryName: asc.story_categories?.name || 'Unknown Category'
+      }));
+
+      // Format story categories
+      const formattedStoryCategories: StoryCategory[] = (storyCategoriesData || []).map((cat: any) => ({
+        id: cat.id,
+        name: cat.name,
+        description: cat.description || undefined,
+        createdAt: cat.created_at || new Date().toISOString()
+      }));
+
       setExportData({
         familyMembers: members,
         relationships: formattedRelations,
@@ -298,12 +437,18 @@ const ExportFamilyData: React.FC<ExportFamilyDataProps> = ({ onClose }) => {
         locations: formattedLocations,
         media: mediaReferences,
         artifacts: artifacts,
-        storyMembers: formattedStoryMembers
+        storyMembers: formattedStoryMembers,
+        albums: albums,
+        storyCategories: formattedStoryCategories,
+        albumMedia: formattedAlbumMedia,
+        albumFamilyGroups: formattedAlbumFamilyGroups,
+        albumFamilyMembers: formattedAlbumFamilyMembers,
+        albumStoryCategories: formattedAlbumStoryCategories
       });
 
       toast({
         title: "Data Loaded",
-        description: `Found ${members.length} members, ${formattedRelations.length} relationships, ${stories.length} stories, ${formattedLocations.length} locations, ${mediaReferences.length} media references, ${artifacts.length} artifacts, and ${formattedStoryMembers.length} story-member connections.`
+        description: `Found ${members.length} members, ${formattedRelations.length} relationships, ${stories.length} stories, ${formattedLocations.length} locations, ${mediaReferences.length} media references, ${artifacts.length} artifacts, ${formattedStoryMembers.length} story-member connections, ${albums.length} albums, ${formattedStoryCategories.length} story categories, ${formattedAlbumMedia.length} album-media links, ${formattedAlbumFamilyGroups.length} album-family group links, ${formattedAlbumFamilyMembers.length} album-family member links, and ${formattedAlbumStoryCategories.length} album-story category links.`
       });
     } catch (error) {
       console.error('Error fetching export data:', error);
@@ -347,6 +492,7 @@ const ExportFamilyData: React.FC<ExportFamilyDataProps> = ({ onClose }) => {
           relationshipType: rel.relationshipType
         })),
         stories: exportData.stories.map(story => ({
+          id: story.id,
           title: story.title,
           content: story.content,
           date: story.date || null,
@@ -354,6 +500,7 @@ const ExportFamilyData: React.FC<ExportFamilyDataProps> = ({ onClose }) => {
           lat: story.lat || null,
           lng: story.lng || null,
           authorId: story.authorId || null,
+          category: (story as any).category || null,
           relatedMemberIds: story.relatedMembers?.map(rm => rm.familyMemberId) || []
         })),
         locations: exportData.locations.map(loc => ({
@@ -386,6 +533,34 @@ const ExportFamilyData: React.FC<ExportFamilyDataProps> = ({ onClose }) => {
           storyId: sm.storyId,
           familyMemberId: sm.familyMemberId,
           role: sm.role
+        })),
+        albums: exportData.albums.map(album => ({
+          id: album.id,
+          name: album.name,
+          description: album.description || null,
+          coverMediaId: album.coverMediaId || null
+        })),
+        storyCategories: exportData.storyCategories.map(cat => ({
+          id: cat.id,
+          name: cat.name,
+          description: cat.description || null
+        })),
+        albumMedia: exportData.albumMedia.map(am => ({
+          albumId: am.albumId,
+          mediaId: am.mediaId,
+          displayOrder: am.displayOrder
+        })),
+        albumFamilyGroups: exportData.albumFamilyGroups.map(afg => ({
+          albumId: afg.albumId,
+          familyGroupId: afg.familyGroupId
+        })),
+        albumFamilyMembers: exportData.albumFamilyMembers.map(afm => ({
+          albumId: afm.albumId,
+          familyMemberId: afm.familyMemberId
+        })),
+        albumStoryCategories: exportData.albumStoryCategories.map(asc => ({
+          albumId: asc.albumId,
+          storyCategoryId: asc.storyCategoryId
         }))
       };
 
@@ -459,7 +634,7 @@ const ExportFamilyData: React.FC<ExportFamilyDataProps> = ({ onClose }) => {
       
       // Stories sheet
       const storiesData = [
-        ['story_id', 'story_title', 'story_content', 'story_date', 'location', 'lat', 'lng', 'author_id'],
+        ['story_id', 'story_title', 'story_content', 'story_date', 'location', 'lat', 'lng', 'author_id', 'category'],
         ...exportData.stories.map(story => [
           story.id,
           story.title,
@@ -468,7 +643,8 @@ const ExportFamilyData: React.FC<ExportFamilyDataProps> = ({ onClose }) => {
           story.location || '',
           story.lat || '',
           story.lng || '',
-          story.authorId || ''
+          story.authorId || '',
+          (story as any).category || ''
         ])
       ];
       
@@ -542,6 +718,89 @@ const ExportFamilyData: React.FC<ExportFamilyDataProps> = ({ onClose }) => {
       const storyMembersSheet = XLSX.utils.aoa_to_sheet(storyMembersData);
       XLSX.utils.book_append_sheet(workbook, storyMembersSheet, 'Story Members');
       
+      // Albums sheet
+      const albumsData = [
+        ['album_id', 'name', 'description', 'cover_media_id'],
+        ...exportData.albums.map(album => [
+          album.id,
+          album.name,
+          album.description || '',
+          album.coverMediaId || ''
+        ])
+      ];
+      
+      const albumsSheet = XLSX.utils.aoa_to_sheet(albumsData);
+      XLSX.utils.book_append_sheet(workbook, albumsSheet, 'Albums');
+      
+      // Story Categories sheet
+      const storyCategoriesData = [
+        ['category_id', 'name', 'description'],
+        ...exportData.storyCategories.map(cat => [
+          cat.id,
+          cat.name,
+          cat.description || ''
+        ])
+      ];
+      
+      const storyCategoriesSheet = XLSX.utils.aoa_to_sheet(storyCategoriesData);
+      XLSX.utils.book_append_sheet(workbook, storyCategoriesSheet, 'Story Categories');
+      
+      // Album-Media sheet
+      const albumMediaData = [
+        ['album_id', 'album_name', 'media_id', 'display_order'],
+        ...exportData.albumMedia.map(am => [
+          am.albumId,
+          am.albumName,
+          am.mediaId,
+          am.displayOrder
+        ])
+      ];
+      
+      const albumMediaSheet = XLSX.utils.aoa_to_sheet(albumMediaData);
+      XLSX.utils.book_append_sheet(workbook, albumMediaSheet, 'Album Media');
+      
+      // Album-Family Groups sheet
+      const albumFamilyGroupsData = [
+        ['album_id', 'album_name', 'family_group_id', 'family_group_name'],
+        ...exportData.albumFamilyGroups.map(afg => [
+          afg.albumId,
+          afg.albumName,
+          afg.familyGroupId,
+          afg.familyGroupName
+        ])
+      ];
+      
+      const albumFamilyGroupsSheet = XLSX.utils.aoa_to_sheet(albumFamilyGroupsData);
+      XLSX.utils.book_append_sheet(workbook, albumFamilyGroupsSheet, 'Album Family Groups');
+      
+      // Album-Family Members sheet
+      const albumFamilyMembersData = [
+        ['album_id', 'album_name', 'family_member_id', 'family_member_name'],
+        ...exportData.albumFamilyMembers.map(afm => [
+          afm.albumId,
+          afm.albumName,
+          afm.familyMemberId,
+          afm.familyMemberName
+        ])
+      ];
+      
+      const albumFamilyMembersSheet = XLSX.utils.aoa_to_sheet(albumFamilyMembersData);
+      XLSX.utils.book_append_sheet(workbook, albumFamilyMembersSheet, 'Album Family Members');
+      
+      // Album-Story Categories sheet
+      const albumStoryCategoriesData = [
+        ['album_id', 'album_name', 'story_category_id', 'story_category_name'],
+        ...exportData.albumStoryCategories.map(asc => [
+          asc.albumId,
+          asc.albumName,
+          asc.storyCategoryId,
+          asc.storyCategoryName
+        ])
+      ];
+      
+      const albumStoryCategoriesSheet = XLSX.utils.aoa_to_sheet(albumStoryCategoriesData);
+      XLSX.utils.book_append_sheet(workbook, albumStoryCategoriesSheet, 'Album Categories');
+      
       // Generate and download
       const fileName = `family_data_export_${new Date().toISOString().split('T')[0]}.xlsx`;
       XLSX.writeFile(workbook, fileName);
@@ -590,7 +849,10 @@ const ExportFamilyData: React.FC<ExportFamilyDataProps> = ({ onClose }) => {
                   Ready to export {exportData.familyMembers.length} family members, 
                   {exportData.relationships.length} relationships, {exportData.stories.length} stories, 
                   {exportData.locations.length} locations, {exportData.media.length} media references, 
-                  {exportData.artifacts.length} artifacts, and {exportData.storyMembers.length} story-member connections.
+                  {exportData.artifacts.length} artifacts, {exportData.storyMembers.length} story-member connections,
+                  {exportData.albums.length} albums, {exportData.storyCategories.length} story categories,
+                  {exportData.albumMedia.length} album-media links, {exportData.albumFamilyGroups.length} album-family group links,
+                  {exportData.albumFamilyMembers.length} album-family member links, and {exportData.albumStoryCategories.length} album-story category links.
                 </AlertDescription>
               </Alert>
 
@@ -753,6 +1015,44 @@ const ExportFamilyData: React.FC<ExportFamilyDataProps> = ({ onClose }) => {
                       <span className="font-medium">Story Connections</span>
                     </div>
                     <p className="text-2xl font-bold text-heritage-purple">{exportData.storyMembers.length}</p>
+                  </div>
+
+                  <div className="border rounded-lg p-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="font-medium">Albums</span>
+                    </div>
+                    <p className="text-2xl font-bold text-heritage-purple">{exportData.albums.length}</p>
+                    <div className="mt-2 max-h-32 overflow-y-auto space-y-1">
+                      {exportData.albums.slice(0, 5).map((album, index) => (
+                        <div key={index} className="text-sm text-gray-600 truncate">
+                          {album.name}
+                        </div>
+                      ))}
+                      {exportData.albums.length > 5 && (
+                        <div className="text-xs text-gray-400">
+                          +{exportData.albums.length - 5} more
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="border rounded-lg p-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="font-medium">Story Categories</span>
+                    </div>
+                    <p className="text-2xl font-bold text-heritage-purple">{exportData.storyCategories.length}</p>
+                    <div className="mt-2 max-h-32 overflow-y-auto space-y-1">
+                      {exportData.storyCategories.slice(0, 5).map((cat, index) => (
+                        <div key={index} className="text-sm text-gray-600 truncate">
+                          {cat.name}
+                        </div>
+                      ))}
+                      {exportData.storyCategories.length > 5 && (
+                        <div className="text-xs text-gray-400">
+                          +{exportData.storyCategories.length - 5} more
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>

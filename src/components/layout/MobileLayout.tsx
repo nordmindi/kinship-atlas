@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { X, Menu, Home, Users, Image, Map, Clock, BookOpen, Crown, User, LogOut, History, Upload, FolderTree } from 'lucide-react';
+import { X, Menu, Home, Users, Image, Map, Clock, BookOpen, Crown, User, LogOut, History, Upload, Download, FolderTree } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useAuth } from '@/contexts/AuthContext';
@@ -173,7 +173,7 @@ const MobileLayout: React.FC<MobileLayoutProps> = ({
             </a>
           ))}
 
-          {/* Excel/Family data import link (sidebar only) */}
+          {/* Excel/Family data import/export links (sidebar only) */}
           <a
             href="/import-family-data"
             className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-heritage-purple-light text-heritage-dark hover:text-heritage-purple transition-colors"
@@ -181,6 +181,15 @@ const MobileLayout: React.FC<MobileLayoutProps> = ({
           >
             <Upload size={18} />
             <span>Import Family Data</span>
+          </a>
+          
+          <a
+            href="/export-family-data"
+            className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-heritage-purple-light text-heritage-dark hover:text-heritage-purple transition-colors"
+            onClick={() => setIsDrawerOpen(false)}
+          >
+            <Download size={18} />
+            <span>Export Family Data</span>
           </a>
           
           {isAdmin && (

@@ -51,79 +51,107 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   useEffect(() => {
+    let isMounted = true;
+    let subscription: { unsubscribe: () => void } | null = null;
+    
     // Initialize auth state from current session
     const initializeAuth = async () => {
-      setIsLoading(true);
-      
-      // Auto-login for development only (disabled in production)
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session && import.meta.env.DEV) {
-        // Only attempt auto-login in development mode
-        try {
-          const { data, error } = await supabase.auth.signInWithPassword({
-            email: 'test@kinship-atlas.com',
-            password: 'testpassword123'
-          });
-          if (error) {
-            // Silently fail in development - user can manually log in
-            if (error.message.includes('Invalid login credentials')) {
-              // Try to create the test user if it doesn't exist
-              await supabase.auth.signUp({
-                email: 'test@kinship-atlas.com',
-                password: 'testpassword123'
-              });
-              // Retry login after user creation
-              await supabase.auth.signInWithPassword({
-                email: 'test@kinship-atlas.com',
-                password: 'testpassword123'
-              });
+      try {
+        setIsLoading(true);
+        
+        // Auto-login for development only (disabled in production)
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session && import.meta.env.DEV) {
+          // Only attempt auto-login in development mode
+          try {
+            const { data, error } = await supabase.auth.signInWithPassword({
+              email: 'test@kinship-atlas.com',
+              password: 'testpassword123'
+            });
+            if (error) {
+              // Silently fail in development - user can manually log in
+              if (error.message.includes('Invalid login credentials')) {
+                // Try to create the test user if it doesn't exist
+                await supabase.auth.signUp({
+                  email: 'test@kinship-atlas.com',
+                  password: 'testpassword123'
+                });
+                // Retry login after user creation
+                await supabase.auth.signInWithPassword({
+                  email: 'test@kinship-atlas.com',
+                  password: 'testpassword123'
+                });
+              }
             }
+          } catch (err) {
+            // Silently handle errors in development
           }
-        } catch (err) {
-          // Silently handle errors in development
         }
-      }
-      
-      const { data } = await supabase.auth.getSession();
-      setSession(data.session);
-      setUser(data.session?.user || null);
-      
-      // Load user profile if user exists
-      if (data.session?.user?.id) {
-        await loadUserProfile(data.session.user.id);
-      }
-      
-          // Set up auth state listener
-      const { data: { subscription } } = supabase.auth.onAuthStateChange(
-        async (event, newSession) => {
-          setSession(newSession);
-          setUser(newSession?.user || null);
-          
-          // Handle session expiration
-          if (event === 'SIGNED_OUT' || event === 'TOKEN_REFRESHED') {
-            if (event === 'SIGNED_OUT') {
+        
+        const { data } = await supabase.auth.getSession();
+        if (!isMounted) return;
+        
+        setSession(data.session);
+        setUser(data.session?.user || null);
+        
+        // Load user profile if user exists
+        if (data.session?.user?.id) {
+          await loadUserProfile(data.session.user.id);
+        }
+        
+        if (!isMounted) return;
+        
+        // Set up auth state listener
+        const { data: { subscription: authSubscription } } = supabase.auth.onAuthStateChange(
+          async (event, newSession) => {
+            // Don't process auth state changes if component is unmounted
+            if (!isMounted) return;
+            
+            setSession(newSession);
+            setUser(newSession?.user || null);
+            
+            // Handle session expiration
+            if (event === 'SIGNED_OUT' || event === 'TOKEN_REFRESHED') {
+              if (event === 'SIGNED_OUT') {
+                setUserProfile(null);
+              }
+              // For TOKEN_REFRESHED, we don't need to reload the profile
+              // unless the user ID changed, which shouldn't happen
+              // Skip reloading profile on token refresh to prevent unnecessary loading
+              if (event === 'TOKEN_REFRESHED') {
+                return;
+              }
+            }
+            
+            // Load user profile for new session (but not on token refresh)
+            if (newSession?.user?.id) {
+              await loadUserProfile(newSession.user.id);
+            } else {
               setUserProfile(null);
             }
           }
-          
-          // Load user profile for new session
-          if (newSession?.user?.id) {
-            await loadUserProfile(newSession.user.id);
-          } else {
-            setUserProfile(null);
-          }
+        );
+        
+        subscription = authSubscription;
+      } catch (error) {
+        console.error('Error initializing auth:', error);
+      } finally {
+        // Always set loading to false, even if there was an error
+        if (isMounted) {
+          setIsLoading(false);
         }
-      );
-      
-      setIsLoading(false);
-      
-      // Clean up subscription
-      return () => {
-        subscription.unsubscribe();
-      };
+      }
     };
     
     initializeAuth();
+    
+    // Clean up subscription on unmount
+    return () => {
+      isMounted = false;
+      if (subscription) {
+        subscription.unsubscribe();
+      }
+    };
   }, []);
 
   const signIn = async (email: string, password: string) => {

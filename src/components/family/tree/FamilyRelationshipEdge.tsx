@@ -88,7 +88,6 @@ const FamilyRelationshipEdge = ({
               
               const minChildX = Math.min(...childHandles.map(h => h.x));
               const maxChildX = Math.max(...childHandles.map(h => h.x));
-              const branchX = (minChildX + maxChildX) / 2; // Center of branch line
               
               // Calculate Y positions:
               // - Merge Y: where parent lines meet (about 25-30% down from parents)
@@ -112,17 +111,15 @@ const FamilyRelationshipEdge = ({
               // All edges must use the exact same coordinates for:
               // 1. Merge point (mergeX, mergeY) - shared horizontal line
               // 2. Vertical segment from merge to branch (sharedVerticalX) - shared vertical line
-              // 3. Branch line (sharedBranchY) - shared horizontal line
-              // 4. Drop segment (sharedDropY) - shared vertical line for all children
+              // 3. Branch line Y (sharedBranchY) - shared horizontal line spanning minChildX to maxChildX
               
               // Shared vertical line from merge to branch - all edges use same X
               const sharedVerticalX = mergeX;
               
               // Shared branch line - all edges use same Y
+              // The horizontal branch line spans from minChildX to maxChildX
+              // Each edge contributes a segment from mergeX to its childX, creating a continuous line
               const sharedBranchY = branchY;
-              
-              // Shared drop Y - all children use the same drop distance for clean vertical segments
-              const sharedDropY = branchY + 15;
               
               // Create path following the classic family tree pattern:
               // For the LEFT parent:
@@ -134,14 +131,16 @@ const FamilyRelationshipEdge = ({
               // Both meet at mergeX, mergeY creating a single shared horizontal line
               // Then from merge point (same for ALL edges, using sharedVerticalX):
               //   3. Down to branch Y (using sharedBranchY - all edges use same Y)
-              //   4. Horizontal to branch X
-              //   5. Down (short drop, using sharedDropY - all edges use same Y)
-              //   6. Horizontal to child X
-              //   7. Up/down to child Y
+              //   4. Horizontal to child's X position on the branch line
+              //   5. Down to child Y
               
-              // All shared segments use identical coordinates, so parallel lines snap together
-              const pathString = `M ${currentParentX} ${currentParentY} L ${currentParentX} ${mergeY} L ${mergeX} ${mergeY} L ${sharedVerticalX} ${sharedBranchY} L ${branchX} ${sharedBranchY} L ${branchX} ${sharedDropY} L ${childX} ${sharedDropY} L ${childX} ${childY}`;
-              return [pathString, branchX, (sharedDropY + childY) / 2];
+              // The path goes: parent -> mergeY -> mergeX -> branchY -> childX -> childY
+              // All edges share the same mergeX, mergeY, and sharedBranchY
+              // The horizontal branch line is created by all edges using the same branchY
+              // and connecting horizontally to their respective childX positions
+              // This creates a single horizontal branch line that spans from minChildX to maxChildX
+              const pathString = `M ${currentParentX} ${currentParentY} L ${currentParentX} ${mergeY} L ${mergeX} ${mergeY} L ${sharedVerticalX} ${sharedBranchY} L ${childX} ${sharedBranchY} L ${childX} ${childY}`;
+              return [pathString, childX, (sharedBranchY + childY) / 2];
             }
           }
         }

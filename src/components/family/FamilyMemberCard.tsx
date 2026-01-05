@@ -104,6 +104,14 @@ const FamilyMemberCard: React.FC<FamilyMemberCardProps> = ({
               </p>
             )}
             
+            {/* Location - shown even when not detailed */}
+            {member.currentLocation && (
+              <div className="flex items-center justify-center text-xs text-muted-foreground gap-1 mt-1">
+                <MapPin size={10} />
+                <span className="line-clamp-1">{member.currentLocation.description}</span>
+              </div>
+            )}
+            
             {/* Permission and Branch Indicators */}
             <div className="flex justify-center items-center gap-2 mt-2">
               <PermissionIndicator

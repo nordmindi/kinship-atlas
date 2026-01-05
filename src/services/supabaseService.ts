@@ -87,6 +87,9 @@ export const getFamilyMembers = async (): Promise<FamilyMember[]> => {
         bio,
         avatar_url,
         gender,
+        created_by,
+        branch_root,
+        is_root_member,
         locations(id, lat, lng, description, current_residence)
       `;
     
@@ -774,6 +777,8 @@ export const addFamilyStory = async (
  * In local development, we use signed URLs. In production, we can use public URLs.
  */
 const getStorageUrl = async (filePath: string, retries: number = 2): Promise<string | null> => {
+  console.log('🔗 getStorageUrl called for:', filePath);
+  
   for (let attempt = 0; attempt <= retries; attempt++) {
     try {
       if (attempt > 0) {
@@ -783,9 +788,18 @@ const getStorageUrl = async (filePath: string, retries: number = 2): Promise<str
       }
       
       // Try signed URL first (works in both local and production)
+      console.log(`🔐 Attempting to create signed URL for: ${filePath} (attempt ${attempt + 1})`);
       const { data: signedUrlData, error: signedUrlError } = await supabase.storage
         .from('family-media')
         .createSignedUrl(filePath, 31536000); // Valid for 1 year
+      
+      console.log('🔐 Signed URL response:', {
+        hasData: !!signedUrlData,
+        hasError: !!signedUrlError,
+        signedUrl: signedUrlData?.signedUrl ? 'present' : 'missing',
+        errorMessage: signedUrlError?.message,
+        errorStatus: signedUrlError?.statusCode
+      });
       
       if (!signedUrlError && signedUrlData?.signedUrl) {
         console.log('✅ Signed URL generated for:', filePath);
@@ -797,6 +811,8 @@ const getStorageUrl = async (filePath: string, retries: number = 2): Promise<str
         console.warn(`⚠️  Signed URL generation failed (attempt ${attempt + 1}):`, {
           error: signedUrlError,
           message: signedUrlError.message,
+          statusCode: signedUrlError.statusCode,
+          name: signedUrlError.name,
           filePath
         });
       }
@@ -807,6 +823,11 @@ const getStorageUrl = async (filePath: string, retries: number = 2): Promise<str
         .from('family-media')
         .getPublicUrl(filePath);
       
+      console.log('🌐 Public URL response:', {
+        hasData: !!urlData,
+        publicUrl: urlData?.publicUrl ? 'present' : 'missing'
+      });
+      
       if (urlData?.publicUrl) {
         console.log('✅ Public URL generated for:', filePath);
         return urlData.publicUrl;
@@ -816,18 +837,29 @@ const getStorageUrl = async (filePath: string, retries: number = 2): Promise<str
       if (attempt === retries) {
         console.error('❌ Failed to generate any URL after all attempts:', {
           filePath,
-          signedUrlError,
-          publicUrlData: urlData
+          signedUrlError: signedUrlError ? {
+            message: signedUrlError.message,
+            statusCode: signedUrlError.statusCode,
+            name: signedUrlError.name
+          } : null,
+          publicUrlData: urlData ? {
+            hasPublicUrl: !!urlData.publicUrl
+          } : null
         });
       }
     } catch (error) {
-      console.error(`❌ Error getting storage URL (attempt ${attempt + 1}):`, error);
+      console.error(`❌ Error getting storage URL (attempt ${attempt + 1}):`, {
+        error,
+        errorMessage: error instanceof Error ? error.message : String(error),
+        filePath
+      });
       if (attempt === retries) {
         return null;
       }
     }
   }
   
+  console.error('❌ getStorageUrl returning null after all retries for:', filePath);
   return null;
 };
 
@@ -861,11 +893,23 @@ export const uploadFile = async (file: File, folder: string = ''): Promise<strin
         cacheControl: '3600',
         upsert: false // Don't overwrite existing files
       });
+    
+    // Log the raw response for debugging
+    console.log('📤 Upload response:', { 
+      hasData: !!data, 
+      hasError: !!error,
+      dataPath: data?.path,
+      errorMessage: error?.message,
+      errorStatus: error?.statusCode,
+      errorName: error?.name
+    });
       
     if (error) {
-      console.error('Storage upload error:', {
+      console.error('❌ Storage upload error:', {
         error,
         message: error.message,
+        statusCode: error.statusCode,
+        name: error.name,
         filePath,
         fileName: file.name,
         fileSize: file.size,
@@ -876,13 +920,17 @@ export const uploadFile = async (file: File, folder: string = ''): Promise<strin
       if (error.message?.includes('413') || 
           error.message?.includes('Request Entity Too Large') ||
           error.message?.includes('too large') ||
-          error.message?.includes('size limit')) {
+          error.message?.includes('size limit') ||
+          error.statusCode === 413) {
         const fileSizeMB = (file.size / (1024 * 1024)).toFixed(2);
         throw new Error(`File is too large (${fileSizeMB}MB). Maximum file size is 5MB. Please compress or resize your image.`);
       }
       
       // Handle specific error cases
-      if (error.message?.includes('already exists') || error.message?.includes('duplicate') || error.message?.includes('409')) {
+      if (error.message?.includes('already exists') || 
+          error.message?.includes('duplicate') || 
+          error.message?.includes('409') ||
+          error.statusCode === 409) {
         // File already exists, try to get URL for existing file
         console.log('⚠️  File already exists, attempting to get URL for existing file:', filePath);
         const existingUrl = await getStorageUrl(filePath);
@@ -896,28 +944,60 @@ export const uploadFile = async (file: File, folder: string = ''): Promise<strin
     }
     
     if (!data || !data.path) {
-      console.error('❌ Upload succeeded but no data/path returned:', { data, error });
+      console.error('❌ Upload succeeded but no data/path returned:', { 
+        data, 
+        error,
+        dataType: typeof data,
+        dataKeys: data ? Object.keys(data) : 'null'
+      });
       throw new Error('Upload completed but no file path was returned');
     }
     
-    console.log('Upload successful:', data);
+    console.log('✅ Upload successful:', { path: data.path, id: data.id });
     
     // Small delay to ensure file is fully available (helps with race conditions)
     await new Promise(resolve => setTimeout(resolve, 100));
     
     // Get accessible URL (signed URL for local, public URL as fallback)
-    const url = await getStorageUrl(data.path);
+    let url = await getStorageUrl(data.path);
     
     if (!url) {
-      // Provide more detailed error information
-      const errorDetails = {
-        filePath: data.path,
-        fileName: file.name,
-        fileSize: file.size,
-        userId: user.id
-      };
-      console.error('❌ Failed to generate file URL after upload:', errorDetails);
-      throw new Error(`Failed to generate accessible URL for uploaded file. The file was uploaded successfully but we couldn't retrieve its URL. Please try again.`);
+      // Final fallback: Try getPublicUrl directly (this should always work for public buckets)
+      console.log('⚠️  getStorageUrl failed, attempting direct getPublicUrl as final fallback');
+      try {
+        const { data: urlData } = supabase.storage
+          .from('family-media')
+          .getPublicUrl(data.path);
+        
+        if (urlData?.publicUrl) {
+          console.log('✅ Direct getPublicUrl succeeded:', urlData.publicUrl);
+          url = urlData.publicUrl;
+        } else {
+          // Last resort: Construct URL manually from client config
+          console.log('⚠️  getPublicUrl returned no data, attempting manual URL construction');
+          // Access the internal URL from the client (Supabase stores it internally)
+          const clientUrl = (supabase as any).supabaseUrl || 
+                          (supabase as any).rest?.url?.replace('/rest/v1', '') ||
+                          import.meta.env.VITE_SUPABASE_URL ||
+                          import.meta.env.VITE_SUPABASE_URL_LOCAL ||
+                          'http://localhost:60011';
+          
+          const publicUrl = `${clientUrl}/storage/v1/object/public/family-media/${encodeURIComponent(data.path)}`;
+          console.log('🔗 Manually constructed public URL:', publicUrl);
+          url = publicUrl;
+        }
+      } catch (urlError) {
+        console.error('❌ All URL generation methods failed:', urlError);
+        // Provide more detailed error information
+        const errorDetails = {
+          filePath: data.path,
+          fileName: file.name,
+          fileSize: file.size,
+          userId: user.id
+        };
+        console.error('❌ Failed to generate file URL after upload:', errorDetails);
+        throw new Error(`Failed to generate accessible URL for uploaded file. The file was uploaded successfully but we couldn't retrieve its URL. Please try again.`);
+      }
     }
     
     console.log('✅ File URL generated:', url);

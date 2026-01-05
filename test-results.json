@@ -1,214 +1,16 @@
 {
-  "numTotalTestSuites": 130,
-  "numPassedTestSuites": 130,
+  "numTotalTestSuites": 150,
+  "numPassedTestSuites": 150,
   "numFailedTestSuites": 0,
   "numPendingTestSuites": 0,
-  "numTotalTests": 245,
-  "numPassedTests": 245,
+  "numTotalTests": 315,
+  "numPassedTests": 315,
   "numFailedTests": 0,
   "numPendingTests": 0,
   "numTodoTests": 0,
-  "startTime": 1767520452342,
+  "startTime": 1767619216544,
   "success": true,
   "testResults": [
-    {
-      "assertionResults": [
-        {
-          "ancestorTitles": [
-            "",
-            "AuthContext",
-            "Authentication State"
-          ],
-          "fullName": " AuthContext Authentication State should provide initial loading state",
-          "status": "passed",
-          "title": "should provide initial loading state",
-          "duration": 103,
-          "failureMessages": []
-        },
-        {
-          "ancestorTitles": [
-            "",
-            "AuthContext",
-            "Authentication State"
-          ],
-          "fullName": " AuthContext Authentication State should provide user when authenticated",
-          "status": "passed",
-          "title": "should provide user when authenticated",
-          "duration": 67,
-          "failureMessages": []
-        },
-        {
-          "ancestorTitles": [
-            "",
-            "AuthContext",
-            "Authentication State"
-          ],
-          "fullName": " AuthContext Authentication State should handle authentication errors",
-          "status": "passed",
-          "title": "should handle authentication errors",
-          "duration": 30,
-          "failureMessages": []
-        },
-        {
-          "ancestorTitles": [
-            "",
-            "AuthContext",
-            "Sign In"
-          ],
-          "fullName": " AuthContext Sign In should sign in successfully",
-          "status": "passed",
-          "title": "should sign in successfully",
-          "duration": 62,
-          "failureMessages": []
-        },
-        {
-          "ancestorTitles": [
-            "",
-            "AuthContext",
-            "Sign In"
-          ],
-          "fullName": " AuthContext Sign In should handle sign in errors",
-          "status": "passed",
-          "title": "should handle sign in errors",
-          "duration": 27,
-          "failureMessages": []
-        },
-        {
-          "ancestorTitles": [
-            "",
-            "AuthContext",
-            "Sign Up"
-          ],
-          "fullName": " AuthContext Sign Up should sign up successfully",
-          "status": "passed",
-          "title": "should sign up successfully",
-          "duration": 39,
-          "failureMessages": []
-        },
-        {
-          "ancestorTitles": [
-            "",
-            "AuthContext",
-            "Sign Up"
-          ],
-          "fullName": " AuthContext Sign Up should handle sign up errors",
-          "status": "passed",
-          "title": "should handle sign up errors",
-          "duration": 43,
-          "failureMessages": []
-        },
-        {
-          "ancestorTitles": [
-            "",
-            "AuthContext",
-            "Sign Out"
-          ],
-          "fullName": " AuthContext Sign Out should sign out successfully",
-          "status": "passed",
-          "title": "should sign out successfully",
-          "duration": 56,
-          "failureMessages": []
-        },
-        {
-          "ancestorTitles": [
-            "",
-            "AuthContext",
-            "Sign Out"
-          ],
-          "fullName": " AuthContext Sign Out should handle sign out errors",
-          "status": "passed",
-          "title": "should handle sign out errors",
-          "duration": 39,
-          "failureMessages": []
-        }
-      ],
-      "startTime": 1767520465784,
-      "endTime": 1767520466253,
-      "status": "passed",
-      "message": "",
-      "name": "C:/ws/kinship-atlas/src/contexts/__tests__/AuthContext.test.tsx"
-    },
-    {
-      "assertionResults": [
-        {
-          "ancestorTitles": [
-            "",
-            "FamilyTreeContext",
-            "Initial State"
-          ],
-          "fullName": " FamilyTreeContext Initial State should provide initial selected member state",
-          "status": "passed",
-          "title": "should provide initial selected member state",
-          "duration": 112,
-          "failureMessages": []
-        },
-        {
-          "ancestorTitles": [
-            "",
-            "FamilyTreeContext",
-            "Initial State"
-          ],
-          "fullName": " FamilyTreeContext Initial State should load selected member from sessionStorage",
-          "status": "passed",
-          "title": "should load selected member from sessionStorage",
-          "duration": 57,
-          "failureMessages": []
-        },
-        {
-          "ancestorTitles": [
-            "",
-            "FamilyTreeContext",
-            "Member Selection"
-          ],
-          "fullName": " FamilyTreeContext Member Selection should allow selecting a member",
-          "status": "passed",
-          "title": "should allow selecting a member",
-          "duration": 46,
-          "failureMessages": []
-        },
-        {
-          "ancestorTitles": [
-            "",
-            "FamilyTreeContext",
-            "Member Selection"
-          ],
-          "fullName": " FamilyTreeContext Member Selection should clear selection when clearSelectedMember is called",
-          "status": "passed",
-          "title": "should clear selection when clearSelectedMember is called",
-          "duration": 34,
-          "failureMessages": []
-        },
-        {
-          "ancestorTitles": [
-            "",
-            "FamilyTreeContext",
-            "Member Selection"
-          ],
-          "fullName": " FamilyTreeContext Member Selection should persist selection to sessionStorage",
-          "status": "passed",
-          "title": "should persist selection to sessionStorage",
-          "duration": 1379,
-          "failureMessages": []
-        },
-        {
-          "ancestorTitles": [
-            "",
-            "FamilyTreeContext",
-            "Context Provider"
-          ],
-          "fullName": " FamilyTreeContext Context Provider should throw error when used outside provider",
-          "status": "passed",
-          "title": "should throw error when used outside provider",
-          "duration": 41,
-          "failureMessages": []
-        }
-      ],
-      "startTime": 1767520465785,
-      "endTime": 1767520467455,
-      "status": "passed",
-      "message": "",
-      "name": "C:/ws/kinship-atlas/src/contexts/__tests__/FamilyTreeContext.test.tsx"
-    },
     {
       "assertionResults": [
         {
@@ -219,7 +21,7 @@
           "fullName": " usePermissions should return correct permissions for admin user",
           "status": "passed",
           "title": "should return correct permissions for admin user",
-          "duration": 150,
+          "duration": 88,
           "failureMessages": []
         },
         {
@@ -230,7 +32,7 @@
           "fullName": " usePermissions should return correct permissions for regular user",
           "status": "passed",
           "title": "should return correct permissions for regular user",
-          "duration": 33,
+          "duration": 57,
           "failureMessages": []
         },
         {
@@ -241,7 +43,7 @@
           "fullName": " usePermissions should return false for unauthenticated user",
           "status": "passed",
           "title": "should return false for unauthenticated user",
-          "duration": 7,
+          "duration": 6,
           "failureMessages": []
         },
         {
@@ -252,7 +54,7 @@
           "fullName": " usePermissions should cache permission results",
           "status": "passed",
           "title": "should cache permission results",
-          "duration": 50,
+          "duration": 19,
           "failureMessages": []
         },
         {
@@ -263,7 +65,7 @@
           "fullName": " usePermissions should clear cache",
           "status": "passed",
           "title": "should clear cache",
-          "duration": 8,
+          "duration": 5,
           "failureMessages": []
         },
         {
@@ -274,12 +76,12 @@
           "fullName": " usePermissions should handle permission check errors",
           "status": "passed",
           "title": "should handle permission check errors",
-          "duration": 40,
+          "duration": 30,
           "failureMessages": []
         }
       ],
-      "startTime": 1767520494984,
-      "endTime": 1767520495273,
+      "startTime": 1767619272726,
+      "endTime": 1767619272933,
       "status": "passed",
       "message": "",
       "name": "C:/ws/kinship-atlas/src/hooks/__tests__/usePermissions.test.ts"
@@ -294,7 +96,7 @@
           "fullName": " useStorageUrl should return null for null URL",
           "status": "passed",
           "title": "should return null for null URL",
-          "duration": 46,
+          "duration": 66,
           "failureMessages": []
         },
         {
@@ -305,7 +107,7 @@
           "fullName": " useStorageUrl should return null for undefined URL",
           "status": "passed",
           "title": "should return null for undefined URL",
-          "duration": 5,
+          "duration": 4,
           "failureMessages": []
         },
         {
@@ -316,7 +118,7 @@
           "fullName": " useStorageUrl should return signed URL directly if already signed",
           "status": "passed",
           "title": "should return signed URL directly if already signed",
-          "duration": 12,
+          "duration": 16,
           "failureMessages": []
         },
         {
@@ -327,7 +129,7 @@
           "fullName": " useStorageUrl should convert public URL to signed URL",
           "status": "passed",
           "title": "should convert public URL to signed URL",
-          "duration": 83,
+          "duration": 90,
           "failureMessages": []
         },
         {
@@ -338,7 +140,7 @@
           "fullName": " useStorageUrl should handle conversion errors gracefully",
           "status": "passed",
           "title": "should handle conversion errors gracefully",
-          "duration": 20,
+          "duration": 38,
           "failureMessages": []
         },
         {
@@ -353,8 +155,8 @@
           "failureMessages": []
         }
       ],
-      "startTime": 1767520483072,
-      "endTime": 1767520483403,
+      "startTime": 1767619272351,
+      "endTime": 1767619272728,
       "status": "passed",
       "message": "",
       "name": "C:/ws/kinship-atlas/src/hooks/__tests__/useStorageUrl.test.ts"
@@ -369,7 +171,7 @@
           "fullName": " useStories should fetch stories on mount",
           "status": "passed",
           "title": "should fetch stories on mount",
-          "duration": 172,
+          "duration": 151,
           "failureMessages": []
         },
         {
@@ -380,7 +182,7 @@
           "fullName": " useStories should handle fetch errors",
           "status": "passed",
           "title": "should handle fetch errors",
-          "duration": 133,
+          "duration": 97,
           "failureMessages": []
         },
         {
@@ -421,7 +223,7 @@
           "fullName": " useStory should fetch a single story",
           "status": "passed",
           "title": "should fetch a single story",
-          "duration": 148,
+          "duration": 85,
           "failureMessages": []
         },
         {
@@ -432,7 +234,7 @@
           "fullName": " useStory should handle fetch errors",
           "status": "passed",
           "title": "should handle fetch errors",
-          "duration": 73,
+          "duration": 86,
           "failureMessages": []
         },
         {
@@ -443,7 +245,7 @@
           "fullName": " useMemberStories should fetch stories for a member",
           "status": "passed",
           "title": "should fetch stories for a member",
-          "duration": 87,
+          "duration": 84,
           "failureMessages": []
         },
         {
@@ -454,12 +256,12 @@
           "fullName": " useMemberStories should not fetch if memberId is empty",
           "status": "passed",
           "title": "should not fetch if memberId is empty",
-          "duration": 5,
+          "duration": 15,
           "failureMessages": []
         }
       ],
-      "startTime": 1767520468056,
-      "endTime": 1767520468685,
+      "startTime": 1767619262618,
+      "endTime": 1767619263139,
       "status": "passed",
       "message": "",
       "name": "C:/ws/kinship-atlas/src/hooks/__tests__/useStories.test.ts"
@@ -474,7 +276,7 @@
           "fullName": " useMemberTimeline should fetch member timeline on mount",
           "status": "passed",
           "title": "should fetch member timeline on mount",
-          "duration": 352,
+          "duration": 177,
           "failureMessages": []
         },
         {
@@ -485,7 +287,7 @@
           "fullName": " useMemberTimeline should handle fetch errors",
           "status": "passed",
           "title": "should handle fetch errors",
-          "duration": 128,
+          "duration": 87,
           "failureMessages": []
         },
         {
@@ -496,7 +298,7 @@
           "fullName": " useMemberTimeline should not fetch if memberId is empty",
           "status": "passed",
           "title": "should not fetch if memberId is empty",
-          "duration": 16,
+          "duration": 18,
           "failureMessages": []
         },
         {
@@ -507,7 +309,7 @@
           "fullName": " useFamilyTimeline should fetch family timeline on mount",
           "status": "passed",
           "title": "should fetch family timeline on mount",
-          "duration": 52,
+          "duration": 70,
           "failureMessages": []
         },
         {
@@ -518,7 +320,7 @@
           "fullName": " useFamilyTimeline should return empty array if no member IDs provided",
           "status": "passed",
           "title": "should return empty array if no member IDs provided",
-          "duration": 18,
+          "duration": 38,
           "failureMessages": []
         },
         {
@@ -529,7 +331,7 @@
           "fullName": " useTimelineSearch should search timeline",
           "status": "passed",
           "title": "should search timeline",
-          "duration": 33,
+          "duration": 39,
           "failureMessages": []
         },
         {
@@ -540,7 +342,7 @@
           "fullName": " useTimelineSearch should clear search results",
           "status": "passed",
           "title": "should clear search results",
-          "duration": 17,
+          "duration": 21,
           "failureMessages": []
         },
         {
@@ -551,7 +353,7 @@
           "fullName": " useTimelineSearch should not search if query is empty",
           "status": "passed",
           "title": "should not search if query is empty",
-          "duration": 7,
+          "duration": 17,
           "failureMessages": []
         },
         {
@@ -562,7 +364,7 @@
           "fullName": " useTimelineStats should fetch timeline stats",
           "status": "passed",
           "title": "should fetch timeline stats",
-          "duration": 94,
+          "duration": 114,
           "failureMessages": []
         },
         {
@@ -573,12 +375,12 @@
           "fullName": " useTimelineStats should handle fetch errors",
           "status": "passed",
           "title": "should handle fetch errors",
-          "duration": 142,
+          "duration": 78,
           "failureMessages": []
         }
       ],
-      "startTime": 1767520481605,
-      "endTime": 1767520482469,
+      "startTime": 1767619266004,
+      "endTime": 1767619266668,
       "status": "passed",
       "message": "",
       "name": "C:/ws/kinship-atlas/src/hooks/__tests__/useTimeline.test.ts"
@@ -593,7 +395,7 @@
           "fullName": " AddFamilyMemberPage should render loading state when auth is loading",
           "status": "passed",
           "title": "should render loading state when auth is loading",
-          "duration": 344,
+          "duration": 158,
           "failureMessages": []
         },
         {
@@ -604,7 +406,7 @@
           "fullName": " AddFamilyMemberPage should redirect to auth if user is not authenticated",
           "status": "passed",
           "title": "should redirect to auth if user is not authenticated",
-          "duration": 17,
+          "duration": 32,
           "failureMessages": []
         },
         {
@@ -615,7 +417,7 @@
           "fullName": " AddFamilyMemberPage should render AddFamilyMember component when authenticated",
           "status": "passed",
           "title": "should render AddFamilyMember component when authenticated",
-          "duration": 128,
+          "duration": 34,
           "failureMessages": []
         },
         {
@@ -626,12 +428,12 @@
           "fullName": " AddFamilyMemberPage should pass correct user info to MobileLayout",
           "status": "passed",
           "title": "should pass correct user info to MobileLayout",
-          "duration": 25,
+          "duration": 9,
           "failureMessages": []
         }
       ],
-      "startTime": 1767520490778,
-      "endTime": 1767520491293,
+      "startTime": 1767619274192,
+      "endTime": 1767619274426,
       "status": "passed",
       "message": "",
       "name": "C:/ws/kinship-atlas/src/pages/__tests__/AddFamilyMemberPage.test.tsx"
@@ -646,7 +448,7 @@
           "fullName": " Auth should render sign in form by default",
           "status": "passed",
           "title": "should render sign in form by default",
-          "duration": 1131,
+          "duration": 1425,
           "failureMessages": []
         },
         {
@@ -657,7 +459,7 @@
           "fullName": " Auth should switch to sign up tab",
           "status": "passed",
           "title": "should switch to sign up tab",
-          "duration": 713,
+          "duration": 801,
           "failureMessages": []
         },
         {
@@ -668,7 +470,7 @@
           "fullName": " Auth should handle sign in",
           "status": "passed",
           "title": "should handle sign in",
-          "duration": 2216,
+          "duration": 2782,
           "failureMessages": []
         },
         {
@@ -679,7 +481,7 @@
           "fullName": " Auth should handle sign in errors",
           "status": "passed",
           "title": "should handle sign in errors",
-          "duration": 2235,
+          "duration": 2682,
           "failureMessages": []
         },
         {
@@ -690,7 +492,7 @@
           "fullName": " Auth should validate required fields for sign in",
           "status": "passed",
           "title": "should validate required fields for sign in",
-          "duration": 334,
+          "duration": 748,
           "failureMessages": []
         },
         {
@@ -701,7 +503,7 @@
           "fullName": " Auth should handle sign up",
           "status": "passed",
           "title": "should handle sign up",
-          "duration": 2105,
+          "duration": 3423,
           "failureMessages": []
         },
         {
@@ -712,7 +514,7 @@
           "fullName": " Auth should validate password length for sign up",
           "status": "passed",
           "title": "should validate password length for sign up",
-          "duration": 2317,
+          "duration": 2052,
           "failureMessages": []
         },
         {
@@ -723,1455 +525,15 @@
           "fullName": " Auth should show loading state during sign in",
           "status": "passed",
           "title": "should show loading state during sign in",
-          "duration": 1745,
+          "duration": 2791,
           "failureMessages": []
         }
       ],
-      "startTime": 1767520468012,
-      "endTime": 1767520480809,
+      "startTime": 1767619237013,
+      "endTime": 1767619253718,
       "status": "passed",
       "message": "",
       "name": "C:/ws/kinship-atlas/src/pages/__tests__/Auth.test.tsx"
-    },
-    {
-      "assertionResults": [
-        {
-          "ancestorTitles": [
-            "",
-            "AlbumService",
-            "getAllAlbums"
-          ],
-          "fullName": " AlbumService getAllAlbums should fetch all albums for the current user",
-          "status": "passed",
-          "title": "should fetch all albums for the current user",
-          "duration": 15,
-          "failureMessages": []
-        },
-        {
-          "ancestorTitles": [
-            "",
-            "AlbumService",
-            "getAllAlbums"
-          ],
-          "fullName": " AlbumService getAllAlbums should filter albums by family group",
-          "status": "passed",
-          "title": "should filter albums by family group",
-          "duration": 7,
-          "failureMessages": []
-        },
-        {
-          "ancestorTitles": [
-            "",
-            "AlbumService",
-            "getAllAlbums"
-          ],
-          "fullName": " AlbumService getAllAlbums should return empty array when user is not authenticated",
-          "status": "passed",
-          "title": "should return empty array when user is not authenticated",
-          "duration": 37,
-          "failureMessages": []
-        },
-        {
-          "ancestorTitles": [
-            "",
-            "AlbumService",
-            "getAllAlbums"
-          ],
-          "fullName": " AlbumService getAllAlbums should return empty array when filter matches no albums",
-          "status": "passed",
-          "title": "should return empty array when filter matches no albums",
-          "duration": 1,
-          "failureMessages": []
-        },
-        {
-          "ancestorTitles": [
-            "",
-            "AlbumService",
-            "getAlbumById"
-          ],
-          "fullName": " AlbumService getAlbumById should fetch a single album by ID",
-          "status": "passed",
-          "title": "should fetch a single album by ID",
-          "duration": 5,
-          "failureMessages": []
-        },
-        {
-          "ancestorTitles": [
-            "",
-            "AlbumService",
-            "getAlbumById"
-          ],
-          "fullName": " AlbumService getAlbumById should return null when album is not found",
-          "status": "passed",
-          "title": "should return null when album is not found",
-          "duration": 2,
-          "failureMessages": []
-        },
-        {
-          "ancestorTitles": [
-            "",
-            "AlbumService",
-            "createAlbum"
-          ],
-          "fullName": " AlbumService createAlbum should create an album successfully",
-          "status": "passed",
-          "title": "should create an album successfully",
-          "duration": 2,
-          "failureMessages": []
-        },
-        {
-          "ancestorTitles": [
-            "",
-            "AlbumService",
-            "createAlbum"
-          ],
-          "fullName": " AlbumService createAlbum should return null when user is not authenticated",
-          "status": "passed",
-          "title": "should return null when user is not authenticated",
-          "duration": 1,
-          "failureMessages": []
-        },
-        {
-          "ancestorTitles": [
-            "",
-            "AlbumService",
-            "updateAlbum"
-          ],
-          "fullName": " AlbumService updateAlbum should update an album successfully",
-          "status": "passed",
-          "title": "should update an album successfully",
-          "duration": 2,
-          "failureMessages": []
-        },
-        {
-          "ancestorTitles": [
-            "",
-            "AlbumService",
-            "deleteAlbum"
-          ],
-          "fullName": " AlbumService deleteAlbum should delete an album successfully",
-          "status": "passed",
-          "title": "should delete an album successfully",
-          "duration": 1,
-          "failureMessages": []
-        },
-        {
-          "ancestorTitles": [
-            "",
-            "AlbumService",
-            "deleteAlbum"
-          ],
-          "fullName": " AlbumService deleteAlbum should return false when user is not authenticated",
-          "status": "passed",
-          "title": "should return false when user is not authenticated",
-          "duration": 1,
-          "failureMessages": []
-        },
-        {
-          "ancestorTitles": [
-            "",
-            "AlbumService",
-            "addMediaToAlbum"
-          ],
-          "fullName": " AlbumService addMediaToAlbum should add media to an album successfully",
-          "status": "passed",
-          "title": "should add media to an album successfully",
-          "duration": 3,
-          "failureMessages": []
-        },
-        {
-          "ancestorTitles": [
-            "",
-            "AlbumService",
-            "removeMediaFromAlbum"
-          ],
-          "fullName": " AlbumService removeMediaFromAlbum should remove media from an album successfully",
-          "status": "passed",
-          "title": "should remove media from an album successfully",
-          "duration": 2,
-          "failureMessages": []
-        },
-        {
-          "ancestorTitles": [
-            "",
-            "AlbumService",
-            "getStoryCategories"
-          ],
-          "fullName": " AlbumService getStoryCategories should fetch all story categories",
-          "status": "passed",
-          "title": "should fetch all story categories",
-          "duration": 2,
-          "failureMessages": []
-        },
-        {
-          "ancestorTitles": [
-            "",
-            "AlbumService",
-            "getStoryCategories"
-          ],
-          "fullName": " AlbumService getStoryCategories should return empty array on error",
-          "status": "passed",
-          "title": "should return empty array on error",
-          "duration": 2,
-          "failureMessages": []
-        },
-        {
-          "ancestorTitles": [
-            "",
-            "AlbumService",
-            "getAlbumsByFamilyGroup"
-          ],
-          "fullName": " AlbumService getAlbumsByFamilyGroup should fetch albums filtered by family group",
-          "status": "passed",
-          "title": "should fetch albums filtered by family group",
-          "duration": 6,
-          "failureMessages": []
-        },
-        {
-          "ancestorTitles": [
-            "",
-            "AlbumService",
-            "getAlbumsByFamilyMember"
-          ],
-          "fullName": " AlbumService getAlbumsByFamilyMember should fetch albums filtered by family member",
-          "status": "passed",
-          "title": "should fetch albums filtered by family member",
-          "duration": 3,
-          "failureMessages": []
-        },
-        {
-          "ancestorTitles": [
-            "",
-            "AlbumService",
-            "getAlbumsByStoryCategory"
-          ],
-          "fullName": " AlbumService getAlbumsByStoryCategory should fetch albums filtered by story category",
-          "status": "passed",
-          "title": "should fetch albums filtered by story category",
-          "duration": 1,
-          "failureMessages": []
-        }
-      ],
-      "startTime": 1767520488319,
-      "endTime": 1767520488424,
-      "status": "passed",
-      "message": "",
-      "name": "C:/ws/kinship-atlas/src/services/__tests__/albumService.test.ts"
-    },
-    {
-      "assertionResults": [
-        {
-          "ancestorTitles": [
-            "",
-            "FamilyGroupService",
-            "getAllFamilyGroups"
-          ],
-          "fullName": " FamilyGroupService getAllFamilyGroups should fetch all family groups for the current user",
-          "status": "passed",
-          "title": "should fetch all family groups for the current user",
-          "duration": 27,
-          "failureMessages": []
-        },
-        {
-          "ancestorTitles": [
-            "",
-            "FamilyGroupService",
-            "getAllFamilyGroups"
-          ],
-          "fullName": " FamilyGroupService getAllFamilyGroups should return empty array when user is not authenticated",
-          "status": "passed",
-          "title": "should return empty array when user is not authenticated",
-          "duration": 1,
-          "failureMessages": []
-        },
-        {
-          "ancestorTitles": [
-            "",
-            "FamilyGroupService",
-            "getAllFamilyGroups"
-          ],
-          "fullName": " FamilyGroupService getAllFamilyGroups should return empty array on error",
-          "status": "passed",
-          "title": "should return empty array on error",
-          "duration": 37,
-          "failureMessages": []
-        },
-        {
-          "ancestorTitles": [
-            "",
-            "FamilyGroupService",
-            "getFamilyGroup"
-          ],
-          "fullName": " FamilyGroupService getFamilyGroup should fetch a single family group by ID",
-          "status": "passed",
-          "title": "should fetch a single family group by ID",
-          "duration": 2,
-          "failureMessages": []
-        },
-        {
-          "ancestorTitles": [
-            "",
-            "FamilyGroupService",
-            "getFamilyGroup"
-          ],
-          "fullName": " FamilyGroupService getFamilyGroup should return null on error",
-          "status": "passed",
-          "title": "should return null on error",
-          "duration": 2,
-          "failureMessages": []
-        },
-        {
-          "ancestorTitles": [
-            "",
-            "FamilyGroupService",
-            "createFamilyGroup"
-          ],
-          "fullName": " FamilyGroupService createFamilyGroup should create a family group successfully",
-          "status": "passed",
-          "title": "should create a family group successfully",
-          "duration": 5,
-          "failureMessages": []
-        },
-        {
-          "ancestorTitles": [
-            "",
-            "FamilyGroupService",
-            "createFamilyGroup"
-          ],
-          "fullName": " FamilyGroupService createFamilyGroup should return error when name is empty",
-          "status": "passed",
-          "title": "should return error when name is empty",
-          "duration": 1,
-          "failureMessages": []
-        },
-        {
-          "ancestorTitles": [
-            "",
-            "FamilyGroupService",
-            "createFamilyGroup"
-          ],
-          "fullName": " FamilyGroupService createFamilyGroup should return error when user is not authenticated",
-          "status": "passed",
-          "title": "should return error when user is not authenticated",
-          "duration": 3,
-          "failureMessages": []
-        },
-        {
-          "ancestorTitles": [
-            "",
-            "FamilyGroupService",
-            "createFamilyGroup"
-          ],
-          "fullName": " FamilyGroupService createFamilyGroup should handle database errors",
-          "status": "passed",
-          "title": "should handle database errors",
-          "duration": 2,
-          "failureMessages": []
-        },
-        {
-          "ancestorTitles": [
-            "",
-            "FamilyGroupService",
-            "updateFamilyGroup"
-          ],
-          "fullName": " FamilyGroupService updateFamilyGroup should update a family group successfully",
-          "status": "passed",
-          "title": "should update a family group successfully",
-          "duration": 2,
-          "failureMessages": []
-        },
-        {
-          "ancestorTitles": [
-            "",
-            "FamilyGroupService",
-            "updateFamilyGroup"
-          ],
-          "fullName": " FamilyGroupService updateFamilyGroup should return error when name is empty",
-          "status": "passed",
-          "title": "should return error when name is empty",
-          "duration": 1,
-          "failureMessages": []
-        },
-        {
-          "ancestorTitles": [
-            "",
-            "FamilyGroupService",
-            "updateFamilyGroup"
-          ],
-          "fullName": " FamilyGroupService updateFamilyGroup should return error when group not found",
-          "status": "passed",
-          "title": "should return error when group not found",
-          "duration": 1,
-          "failureMessages": []
-        },
-        {
-          "ancestorTitles": [
-            "",
-            "FamilyGroupService",
-            "deleteFamilyGroup"
-          ],
-          "fullName": " FamilyGroupService deleteFamilyGroup should delete a family group successfully",
-          "status": "passed",
-          "title": "should delete a family group successfully",
-          "duration": 2,
-          "failureMessages": []
-        },
-        {
-          "ancestorTitles": [
-            "",
-            "FamilyGroupService",
-            "deleteFamilyGroup"
-          ],
-          "fullName": " FamilyGroupService deleteFamilyGroup should return error when user is not authenticated",
-          "status": "passed",
-          "title": "should return error when user is not authenticated",
-          "duration": 3,
-          "failureMessages": []
-        },
-        {
-          "ancestorTitles": [
-            "",
-            "FamilyGroupService",
-            "assignMemberToGroup"
-          ],
-          "fullName": " FamilyGroupService assignMemberToGroup should assign a member to a group successfully",
-          "status": "passed",
-          "title": "should assign a member to a group successfully",
-          "duration": 4,
-          "failureMessages": []
-        },
-        {
-          "ancestorTitles": [
-            "",
-            "FamilyGroupService",
-            "assignMemberToGroup"
-          ],
-          "fullName": " FamilyGroupService assignMemberToGroup should handle duplicate assignment gracefully",
-          "status": "passed",
-          "title": "should handle duplicate assignment gracefully",
-          "duration": 2,
-          "failureMessages": []
-        },
-        {
-          "ancestorTitles": [
-            "",
-            "FamilyGroupService",
-            "assignMemberToGroup"
-          ],
-          "fullName": " FamilyGroupService assignMemberToGroup should return error when member not found",
-          "status": "passed",
-          "title": "should return error when member not found",
-          "duration": 1,
-          "failureMessages": []
-        },
-        {
-          "ancestorTitles": [
-            "",
-            "FamilyGroupService",
-            "removeMemberFromGroup"
-          ],
-          "fullName": " FamilyGroupService removeMemberFromGroup should remove a member from a group successfully",
-          "status": "passed",
-          "title": "should remove a member from a group successfully",
-          "duration": 3,
-          "failureMessages": []
-        },
-        {
-          "ancestorTitles": [
-            "",
-            "FamilyGroupService",
-            "getMembersInGroup"
-          ],
-          "fullName": " FamilyGroupService getMembersInGroup should fetch all members in a group",
-          "status": "passed",
-          "title": "should fetch all members in a group",
-          "duration": 18,
-          "failureMessages": []
-        },
-        {
-          "ancestorTitles": [
-            "",
-            "FamilyGroupService",
-            "getMembersInGroup"
-          ],
-          "fullName": " FamilyGroupService getMembersInGroup should return empty array on error",
-          "status": "passed",
-          "title": "should return empty array on error",
-          "duration": 1,
-          "failureMessages": []
-        },
-        {
-          "ancestorTitles": [
-            "",
-            "FamilyGroupService",
-            "getGroupsForMember"
-          ],
-          "fullName": " FamilyGroupService getGroupsForMember should fetch all groups for a member",
-          "status": "passed",
-          "title": "should fetch all groups for a member",
-          "duration": 7,
-          "failureMessages": []
-        },
-        {
-          "ancestorTitles": [
-            "",
-            "FamilyGroupService",
-            "filterMembersByGroups"
-          ],
-          "fullName": " FamilyGroupService filterMembersByGroups should filter members by group IDs",
-          "status": "passed",
-          "title": "should filter members by group IDs",
-          "duration": 3,
-          "failureMessages": []
-        },
-        {
-          "ancestorTitles": [
-            "",
-            "FamilyGroupService",
-            "filterMembersByGroups"
-          ],
-          "fullName": " FamilyGroupService filterMembersByGroups should return empty array when no group IDs provided",
-          "status": "passed",
-          "title": "should return empty array when no group IDs provided",
-          "duration": 1,
-          "failureMessages": []
-        },
-        {
-          "ancestorTitles": [
-            "",
-            "FamilyGroupService",
-            "filterMembersByGroups"
-          ],
-          "fullName": " FamilyGroupService filterMembersByGroups should return empty array on error",
-          "status": "passed",
-          "title": "should return empty array on error",
-          "duration": 1,
-          "failureMessages": []
-        }
-      ],
-      "startTime": 1767520490041,
-      "endTime": 1767520490175,
-      "status": "passed",
-      "message": "",
-      "name": "C:/ws/kinship-atlas/src/services/__tests__/familyGroupService.test.ts"
-    },
-    {
-      "assertionResults": [
-        {
-          "ancestorTitles": [
-            "",
-            "FamilyMemberService",
-            "createFamilyMember"
-          ],
-          "fullName": " FamilyMemberService createFamilyMember should create a family member successfully",
-          "status": "passed",
-          "title": "should create a family member successfully",
-          "duration": 52,
-          "failureMessages": []
-        },
-        {
-          "ancestorTitles": [
-            "",
-            "FamilyMemberService",
-            "createFamilyMember"
-          ],
-          "fullName": " FamilyMemberService createFamilyMember should handle authentication errors",
-          "status": "passed",
-          "title": "should handle authentication errors",
-          "duration": 2,
-          "failureMessages": []
-        },
-        {
-          "ancestorTitles": [
-            "",
-            "FamilyMemberService",
-            "createFamilyMember"
-          ],
-          "fullName": " FamilyMemberService createFamilyMember should validate required fields",
-          "status": "passed",
-          "title": "should validate required fields",
-          "duration": 3,
-          "failureMessages": []
-        },
-        {
-          "ancestorTitles": [
-            "",
-            "FamilyMemberService",
-            "createFamilyMember"
-          ],
-          "fullName": " FamilyMemberService createFamilyMember should handle database errors",
-          "status": "passed",
-          "title": "should handle database errors",
-          "duration": 9,
-          "failureMessages": []
-        },
-        {
-          "ancestorTitles": [
-            "",
-            "FamilyMemberService",
-            "getAllFamilyMembers"
-          ],
-          "fullName": " FamilyMemberService getAllFamilyMembers should fetch all family members successfully",
-          "status": "passed",
-          "title": "should fetch all family members successfully",
-          "duration": 10,
-          "failureMessages": []
-        },
-        {
-          "ancestorTitles": [
-            "",
-            "FamilyMemberService",
-            "getAllFamilyMembers"
-          ],
-          "fullName": " FamilyMemberService getAllFamilyMembers should handle empty results",
-          "status": "passed",
-          "title": "should handle empty results",
-          "duration": 2,
-          "failureMessages": []
-        },
-        {
-          "ancestorTitles": [
-            "",
-            "FamilyMemberService",
-            "getAllFamilyMembers"
-          ],
-          "fullName": " FamilyMemberService getAllFamilyMembers should handle database errors",
-          "status": "passed",
-          "title": "should handle database errors",
-          "duration": 1,
-          "failureMessages": []
-        },
-        {
-          "ancestorTitles": [
-            "",
-            "FamilyMemberService",
-            "updateFamilyMember"
-          ],
-          "fullName": " FamilyMemberService updateFamilyMember should update a family member successfully",
-          "status": "passed",
-          "title": "should update a family member successfully",
-          "duration": 2,
-          "failureMessages": []
-        }
-      ],
-      "startTime": 1767520499783,
-      "endTime": 1767520499866,
-      "status": "passed",
-      "message": "",
-      "name": "C:/ws/kinship-atlas/src/services/__tests__/familyMemberService.test.ts"
-    },
-    {
-      "assertionResults": [
-        {
-          "ancestorTitles": [
-            "",
-            "FamilyRelationshipManager",
-            "createRelationship"
-          ],
-          "fullName": " FamilyRelationshipManager createRelationship should create a relationship successfully",
-          "status": "passed",
-          "title": "should create a relationship successfully",
-          "duration": 20,
-          "failureMessages": []
-        },
-        {
-          "ancestorTitles": [
-            "",
-            "FamilyRelationshipManager",
-            "createRelationship"
-          ],
-          "fullName": " FamilyRelationshipManager createRelationship should handle authentication errors",
-          "status": "passed",
-          "title": "should handle authentication errors",
-          "duration": 5,
-          "failureMessages": []
-        },
-        {
-          "ancestorTitles": [
-            "",
-            "FamilyRelationshipManager",
-            "createRelationship"
-          ],
-          "fullName": " FamilyRelationshipManager createRelationship should validate relationship data",
-          "status": "passed",
-          "title": "should validate relationship data",
-          "duration": 2,
-          "failureMessages": []
-        },
-        {
-          "ancestorTitles": [
-            "",
-            "FamilyRelationshipManager",
-            "createRelationship"
-          ],
-          "fullName": " FamilyRelationshipManager createRelationship should prevent self-relationships",
-          "status": "passed",
-          "title": "should prevent self-relationships",
-          "duration": 1,
-          "failureMessages": []
-        },
-        {
-          "ancestorTitles": [
-            "",
-            "FamilyRelationshipManager",
-            "createRelationship"
-          ],
-          "fullName": " FamilyRelationshipManager createRelationship should handle database errors",
-          "status": "passed",
-          "title": "should handle database errors",
-          "duration": 5,
-          "failureMessages": []
-        },
-        {
-          "ancestorTitles": [
-            "",
-            "FamilyRelationshipManager",
-            "deleteRelationship"
-          ],
-          "fullName": " FamilyRelationshipManager deleteRelationship should delete a relationship successfully",
-          "status": "passed",
-          "title": "should delete a relationship successfully",
-          "duration": 1,
-          "failureMessages": []
-        },
-        {
-          "ancestorTitles": [
-            "",
-            "FamilyRelationshipManager",
-            "deleteRelationship"
-          ],
-          "fullName": " FamilyRelationshipManager deleteRelationship should handle authentication errors",
-          "status": "passed",
-          "title": "should handle authentication errors",
-          "duration": 2,
-          "failureMessages": []
-        },
-        {
-          "ancestorTitles": [
-            "",
-            "FamilyRelationshipManager",
-            "deleteRelationship"
-          ],
-          "fullName": " FamilyRelationshipManager deleteRelationship should handle database errors",
-          "status": "passed",
-          "title": "should handle database errors",
-          "duration": 1,
-          "failureMessages": []
-        },
-        {
-          "ancestorTitles": [
-            "",
-            "FamilyRelationshipManager",
-            "getFamilyMembersWithRelations"
-          ],
-          "fullName": " FamilyRelationshipManager getFamilyMembersWithRelations should fetch family members with relations successfully",
-          "status": "passed",
-          "title": "should fetch family members with relations successfully",
-          "duration": 16,
-          "failureMessages": []
-        },
-        {
-          "ancestorTitles": [
-            "",
-            "FamilyRelationshipManager",
-            "getFamilyMembersWithRelations"
-          ],
-          "fullName": " FamilyRelationshipManager getFamilyMembersWithRelations should handle empty results",
-          "status": "passed",
-          "title": "should handle empty results",
-          "duration": 3,
-          "failureMessages": []
-        },
-        {
-          "ancestorTitles": [
-            "",
-            "FamilyRelationshipManager",
-            "getFamilyMembersWithRelations"
-          ],
-          "fullName": " FamilyRelationshipManager getFamilyMembersWithRelations should handle database errors",
-          "status": "passed",
-          "title": "should handle database errors",
-          "duration": 40,
-          "failureMessages": []
-        }
-      ],
-      "startTime": 1767520499163,
-      "endTime": 1767520499268,
-      "status": "passed",
-      "message": "",
-      "name": "C:/ws/kinship-atlas/src/services/__tests__/familyRelationshipManager.test.ts"
-    },
-    {
-      "assertionResults": [
-        {
-          "ancestorTitles": [
-            "",
-            "MediaService",
-            "uploadMedia"
-          ],
-          "fullName": " MediaService uploadMedia should upload media successfully",
-          "status": "passed",
-          "title": "should upload media successfully",
-          "duration": 18,
-          "failureMessages": []
-        },
-        {
-          "ancestorTitles": [
-            "",
-            "MediaService",
-            "uploadMedia"
-          ],
-          "fullName": " MediaService uploadMedia should return null if user is not authenticated",
-          "status": "passed",
-          "title": "should return null if user is not authenticated",
-          "duration": 12,
-          "failureMessages": []
-        },
-        {
-          "ancestorTitles": [
-            "",
-            "MediaService",
-            "uploadMedia"
-          ],
-          "fullName": " MediaService uploadMedia should handle upload errors",
-          "status": "passed",
-          "title": "should handle upload errors",
-          "duration": 3,
-          "failureMessages": []
-        },
-        {
-          "ancestorTitles": [
-            "",
-            "MediaService",
-            "getUserMedia"
-          ],
-          "fullName": " MediaService getUserMedia should fetch media successfully",
-          "status": "passed",
-          "title": "should fetch media successfully",
-          "duration": 3,
-          "failureMessages": []
-        },
-        {
-          "ancestorTitles": [
-            "",
-            "MediaService",
-            "getUserMedia"
-          ],
-          "fullName": " MediaService getUserMedia should handle errors gracefully",
-          "status": "passed",
-          "title": "should handle errors gracefully",
-          "duration": 22,
-          "failureMessages": []
-        },
-        {
-          "ancestorTitles": [
-            "",
-            "MediaService",
-            "deleteMedia"
-          ],
-          "fullName": " MediaService deleteMedia should delete media successfully",
-          "status": "passed",
-          "title": "should delete media successfully",
-          "duration": 7,
-          "failureMessages": []
-        },
-        {
-          "ancestorTitles": [
-            "",
-            "MediaService",
-            "deleteMedia"
-          ],
-          "fullName": " MediaService deleteMedia should return false if user is not authenticated",
-          "status": "passed",
-          "title": "should return false if user is not authenticated",
-          "duration": 1,
-          "failureMessages": []
-        },
-        {
-          "ancestorTitles": [
-            "",
-            "MediaService",
-            "updateMediaCaption"
-          ],
-          "fullName": " MediaService updateMediaCaption should update caption successfully",
-          "status": "passed",
-          "title": "should update caption successfully",
-          "duration": 9,
-          "failureMessages": []
-        },
-        {
-          "ancestorTitles": [
-            "",
-            "MediaService",
-            "updateMediaCaption"
-          ],
-          "fullName": " MediaService updateMediaCaption should return false on error",
-          "status": "passed",
-          "title": "should return false on error",
-          "duration": 4,
-          "failureMessages": []
-        }
-      ],
-      "startTime": 1767520506609,
-      "endTime": 1767520506691,
-      "status": "passed",
-      "message": "",
-      "name": "C:/ws/kinship-atlas/src/services/__tests__/mediaService.test.ts"
-    },
-    {
-      "assertionResults": [
-        {
-          "ancestorTitles": [
-            "",
-            "StoryService",
-            "createStory"
-          ],
-          "fullName": " StoryService createStory should create a story successfully",
-          "status": "passed",
-          "title": "should create a story successfully",
-          "duration": 19,
-          "failureMessages": []
-        },
-        {
-          "ancestorTitles": [
-            "",
-            "StoryService",
-            "createStory"
-          ],
-          "fullName": " StoryService createStory should return error if user is not authenticated",
-          "status": "passed",
-          "title": "should return error if user is not authenticated",
-          "duration": 10,
-          "failureMessages": []
-        },
-        {
-          "ancestorTitles": [
-            "",
-            "StoryService",
-            "createStory"
-          ],
-          "fullName": " StoryService createStory should handle database errors",
-          "status": "passed",
-          "title": "should handle database errors",
-          "duration": 2,
-          "failureMessages": []
-        },
-        {
-          "ancestorTitles": [
-            "",
-            "StoryService",
-            "getStory"
-          ],
-          "fullName": " StoryService getStory should fetch a story successfully",
-          "status": "passed",
-          "title": "should fetch a story successfully",
-          "duration": 5,
-          "failureMessages": []
-        },
-        {
-          "ancestorTitles": [
-            "",
-            "StoryService",
-            "getStory"
-          ],
-          "fullName": " StoryService getStory should return null on error",
-          "status": "passed",
-          "title": "should return null on error",
-          "duration": 50,
-          "failureMessages": []
-        },
-        {
-          "ancestorTitles": [
-            "",
-            "StoryService",
-            "getAllStories"
-          ],
-          "fullName": " StoryService getAllStories should fetch all stories successfully",
-          "status": "passed",
-          "title": "should fetch all stories successfully",
-          "duration": 3,
-          "failureMessages": []
-        },
-        {
-          "ancestorTitles": [
-            "",
-            "StoryService",
-            "getAllStories"
-          ],
-          "fullName": " StoryService getAllStories should return empty array on error",
-          "status": "passed",
-          "title": "should return empty array on error",
-          "duration": 1,
-          "failureMessages": []
-        },
-        {
-          "ancestorTitles": [
-            "",
-            "StoryService",
-            "updateStory"
-          ],
-          "fullName": " StoryService updateStory should update a story successfully",
-          "status": "passed",
-          "title": "should update a story successfully",
-          "duration": 4,
-          "failureMessages": []
-        },
-        {
-          "ancestorTitles": [
-            "",
-            "StoryService",
-            "createArtifact"
-          ],
-          "fullName": " StoryService createArtifact should create an artifact successfully",
-          "status": "passed",
-          "title": "should create an artifact successfully",
-          "duration": 2,
-          "failureMessages": []
-        },
-        {
-          "ancestorTitles": [
-            "",
-            "StoryService",
-            "createArtifact"
-          ],
-          "fullName": " StoryService createArtifact should return error if user is not authenticated",
-          "status": "passed",
-          "title": "should return error if user is not authenticated",
-          "duration": 1,
-          "failureMessages": []
-        },
-        {
-          "ancestorTitles": [
-            "",
-            "StoryService",
-            "getArtifact"
-          ],
-          "fullName": " StoryService getArtifact should fetch an artifact successfully",
-          "status": "passed",
-          "title": "should fetch an artifact successfully",
-          "duration": 3,
-          "failureMessages": []
-        },
-        {
-          "ancestorTitles": [
-            "",
-            "StoryService",
-            "getArtifact"
-          ],
-          "fullName": " StoryService getArtifact should return null on error",
-          "status": "passed",
-          "title": "should return null on error",
-          "duration": 1,
-          "failureMessages": []
-        },
-        {
-          "ancestorTitles": [
-            "",
-            "StoryService",
-            "getAllArtifacts"
-          ],
-          "fullName": " StoryService getAllArtifacts should fetch all artifacts successfully",
-          "status": "passed",
-          "title": "should fetch all artifacts successfully",
-          "duration": 48,
-          "failureMessages": []
-        },
-        {
-          "ancestorTitles": [
-            "",
-            "StoryService",
-            "getAllArtifacts"
-          ],
-          "fullName": " StoryService getAllArtifacts should return empty array on error",
-          "status": "passed",
-          "title": "should return empty array on error",
-          "duration": 2,
-          "failureMessages": []
-        },
-        {
-          "ancestorTitles": [
-            "",
-            "StoryService",
-            "deleteStory"
-          ],
-          "fullName": " StoryService deleteStory should delete a story successfully",
-          "status": "passed",
-          "title": "should delete a story successfully",
-          "duration": 1,
-          "failureMessages": []
-        },
-        {
-          "ancestorTitles": [
-            "",
-            "StoryService",
-            "deleteStory"
-          ],
-          "fullName": " StoryService deleteStory should return error if user is not authenticated",
-          "status": "passed",
-          "title": "should return error if user is not authenticated",
-          "duration": 2,
-          "failureMessages": []
-        }
-      ],
-      "startTime": 1767520505335,
-      "endTime": 1767520505491,
-      "status": "passed",
-      "message": "",
-      "name": "C:/ws/kinship-atlas/src/services/__tests__/storyService.test.ts"
-    },
-    {
-      "assertionResults": [
-        {
-          "ancestorTitles": [
-            "",
-            "TimelineService",
-            "getMemberTimeline"
-          ],
-          "fullName": " TimelineService getMemberTimeline should fetch member timeline successfully",
-          "status": "passed",
-          "title": "should fetch member timeline successfully",
-          "duration": 8,
-          "failureMessages": []
-        },
-        {
-          "ancestorTitles": [
-            "",
-            "TimelineService",
-            "getMemberTimeline"
-          ],
-          "fullName": " TimelineService getMemberTimeline should return empty array on error",
-          "status": "passed",
-          "title": "should return empty array on error",
-          "duration": 5,
-          "failureMessages": []
-        },
-        {
-          "ancestorTitles": [
-            "",
-            "TimelineService",
-            "getFamilyTimeline"
-          ],
-          "fullName": " TimelineService getFamilyTimeline should fetch family timeline successfully",
-          "status": "passed",
-          "title": "should fetch family timeline successfully",
-          "duration": 1,
-          "failureMessages": []
-        },
-        {
-          "ancestorTitles": [
-            "",
-            "TimelineService",
-            "getFamilyTimeline"
-          ],
-          "fullName": " TimelineService getFamilyTimeline should return empty array if no member IDs provided",
-          "status": "passed",
-          "title": "should return empty array if no member IDs provided",
-          "duration": 0,
-          "failureMessages": []
-        },
-        {
-          "ancestorTitles": [
-            "",
-            "TimelineService",
-            "getFamilyTimeline"
-          ],
-          "fullName": " TimelineService getFamilyTimeline should return empty array on error",
-          "status": "passed",
-          "title": "should return empty array on error",
-          "duration": 2,
-          "failureMessages": []
-        },
-        {
-          "ancestorTitles": [
-            "",
-            "TimelineService",
-            "getTimelineByDateRange"
-          ],
-          "fullName": " TimelineService getTimelineByDateRange should fetch timeline by date range successfully",
-          "status": "passed",
-          "title": "should fetch timeline by date range successfully",
-          "duration": 3,
-          "failureMessages": []
-        },
-        {
-          "ancestorTitles": [
-            "",
-            "TimelineService",
-            "getTimelineByDateRange"
-          ],
-          "fullName": " TimelineService getTimelineByDateRange should filter by member IDs if provided",
-          "status": "passed",
-          "title": "should filter by member IDs if provided",
-          "duration": 1,
-          "failureMessages": []
-        },
-        {
-          "ancestorTitles": [
-            "",
-            "TimelineService",
-            "getTimelineByLocation"
-          ],
-          "fullName": " TimelineService getTimelineByLocation should fetch timeline by location successfully",
-          "status": "passed",
-          "title": "should fetch timeline by location successfully",
-          "duration": 2,
-          "failureMessages": []
-        },
-        {
-          "ancestorTitles": [
-            "",
-            "TimelineService",
-            "getTimelineByLocation"
-          ],
-          "fullName": " TimelineService getTimelineByLocation should filter by distance radius",
-          "status": "passed",
-          "title": "should filter by distance radius",
-          "duration": 1,
-          "failureMessages": []
-        },
-        {
-          "ancestorTitles": [
-            "",
-            "TimelineService",
-            "getTimelineStats"
-          ],
-          "fullName": " TimelineService getTimelineStats should calculate timeline stats correctly",
-          "status": "passed",
-          "title": "should calculate timeline stats correctly",
-          "duration": 2,
-          "failureMessages": []
-        },
-        {
-          "ancestorTitles": [
-            "",
-            "TimelineService",
-            "getTimelineStats"
-          ],
-          "fullName": " TimelineService getTimelineStats should handle empty timeline",
-          "status": "passed",
-          "title": "should handle empty timeline",
-          "duration": 1,
-          "failureMessages": []
-        },
-        {
-          "ancestorTitles": [
-            "",
-            "TimelineService",
-            "searchTimeline"
-          ],
-          "fullName": " TimelineService searchTimeline should search timeline successfully",
-          "status": "passed",
-          "title": "should search timeline successfully",
-          "duration": 2,
-          "failureMessages": []
-        },
-        {
-          "ancestorTitles": [
-            "",
-            "TimelineService",
-            "searchTimeline"
-          ],
-          "fullName": " TimelineService searchTimeline should filter by member IDs if provided",
-          "status": "passed",
-          "title": "should filter by member IDs if provided",
-          "duration": 2,
-          "failureMessages": []
-        }
-      ],
-      "startTime": 1767520507162,
-      "endTime": 1767520507193,
-      "status": "passed",
-      "message": "",
-      "name": "C:/ws/kinship-atlas/src/services/__tests__/timelineService.test.ts"
-    },
-    {
-      "assertionResults": [
-        {
-          "ancestorTitles": [
-            "",
-            "UserService",
-            "getUserProfile"
-          ],
-          "fullName": " UserService getUserProfile should fetch user profile successfully",
-          "status": "passed",
-          "title": "should fetch user profile successfully",
-          "duration": 5,
-          "failureMessages": []
-        },
-        {
-          "ancestorTitles": [
-            "",
-            "UserService",
-            "getUserProfile"
-          ],
-          "fullName": " UserService getUserProfile should return null on error",
-          "status": "passed",
-          "title": "should return null on error",
-          "duration": 4,
-          "failureMessages": []
-        },
-        {
-          "ancestorTitles": [
-            "",
-            "UserService",
-            "updateUserProfile"
-          ],
-          "fullName": " UserService updateUserProfile should update user profile successfully",
-          "status": "passed",
-          "title": "should update user profile successfully",
-          "duration": 2,
-          "failureMessages": []
-        },
-        {
-          "ancestorTitles": [
-            "",
-            "UserService",
-            "updateUserProfile"
-          ],
-          "fullName": " UserService updateUserProfile should return false on error",
-          "status": "passed",
-          "title": "should return false on error",
-          "duration": 2,
-          "failureMessages": []
-        },
-        {
-          "ancestorTitles": [
-            "",
-            "UserService",
-            "getAllUsers"
-          ],
-          "fullName": " UserService getAllUsers should fetch all users successfully",
-          "status": "passed",
-          "title": "should fetch all users successfully",
-          "duration": 5,
-          "failureMessages": []
-        },
-        {
-          "ancestorTitles": [
-            "",
-            "UserService",
-            "getAllUsers"
-          ],
-          "fullName": " UserService getAllUsers should return empty array on error",
-          "status": "passed",
-          "title": "should return empty array on error",
-          "duration": 4,
-          "failureMessages": []
-        },
-        {
-          "ancestorTitles": [
-            "",
-            "UserService",
-            "updateUserRole"
-          ],
-          "fullName": " UserService updateUserRole should update user role successfully",
-          "status": "passed",
-          "title": "should update user role successfully",
-          "duration": 3,
-          "failureMessages": []
-        },
-        {
-          "ancestorTitles": [
-            "",
-            "UserService",
-            "updateUserRole"
-          ],
-          "fullName": " UserService updateUserRole should return false on error",
-          "status": "passed",
-          "title": "should return false on error",
-          "duration": 1,
-          "failureMessages": []
-        },
-        {
-          "ancestorTitles": [
-            "",
-            "UserService",
-            "isCurrentUserAdmin"
-          ],
-          "fullName": " UserService isCurrentUserAdmin should return true if user is admin",
-          "status": "passed",
-          "title": "should return true if user is admin",
-          "duration": 1,
-          "failureMessages": []
-        },
-        {
-          "ancestorTitles": [
-            "",
-            "UserService",
-            "isCurrentUserAdmin"
-          ],
-          "fullName": " UserService isCurrentUserAdmin should return false if user is not admin",
-          "status": "passed",
-          "title": "should return false if user is not admin",
-          "duration": 4,
-          "failureMessages": []
-        },
-        {
-          "ancestorTitles": [
-            "",
-            "UserService",
-            "isCurrentUserAdmin"
-          ],
-          "fullName": " UserService isCurrentUserAdmin should return false if user is not authenticated",
-          "status": "passed",
-          "title": "should return false if user is not authenticated",
-          "duration": 0,
-          "failureMessages": []
-        },
-        {
-          "ancestorTitles": [
-            "",
-            "UserService",
-            "canUserEditFamilyMember"
-          ],
-          "fullName": " UserService canUserEditFamilyMember should return true if user is admin",
-          "status": "passed",
-          "title": "should return true if user is admin",
-          "duration": 2,
-          "failureMessages": []
-        },
-        {
-          "ancestorTitles": [
-            "",
-            "UserService",
-            "canUserEditFamilyMember"
-          ],
-          "fullName": " UserService canUserEditFamilyMember should return true if user created the member",
-          "status": "passed",
-          "title": "should return true if user created the member",
-          "duration": 2,
-          "failureMessages": []
-        },
-        {
-          "ancestorTitles": [
-            "",
-            "UserService",
-            "getUserBranchMembers"
-          ],
-          "fullName": " UserService getUserBranchMembers should fetch user branch members successfully",
-          "status": "passed",
-          "title": "should fetch user branch members successfully",
-          "duration": 7,
-          "failureMessages": []
-        },
-        {
-          "ancestorTitles": [
-            "",
-            "UserService",
-            "getUserBranchMembers"
-          ],
-          "fullName": " UserService getUserBranchMembers should return empty array if user is not authenticated",
-          "status": "passed",
-          "title": "should return empty array if user is not authenticated",
-          "duration": 1,
-          "failureMessages": []
-        }
-      ],
-      "startTime": 1767520506557,
-      "endTime": 1767520506602,
-      "status": "passed",
-      "message": "",
-      "name": "C:/ws/kinship-atlas/src/services/__tests__/userService.test.ts"
     },
     {
       "assertionResults": [
@@ -2184,7 +546,7 @@
           "fullName": " authUtils performCompleteLogout should sign out from Supabase",
           "status": "passed",
           "title": "should sign out from Supabase",
-          "duration": 229,
+          "duration": 114,
           "failureMessages": []
         },
         {
@@ -2220,7 +582,7 @@
           "fullName": " authUtils performCompleteLogout should handle sign out errors gracefully",
           "status": "passed",
           "title": "should handle sign out errors gracefully",
-          "duration": 4,
+          "duration": 35,
           "failureMessages": []
         },
         {
@@ -2232,7 +594,7 @@
           "fullName": " authUtils hasValidSession should return true for valid session",
           "status": "passed",
           "title": "should return true for valid session",
-          "duration": 2,
+          "duration": 1,
           "failureMessages": []
         },
         {
@@ -2244,7 +606,7 @@
           "fullName": " authUtils hasValidSession should return false for no session",
           "status": "passed",
           "title": "should return false for no session",
-          "duration": 2,
+          "duration": 1,
           "failureMessages": []
         },
         {
@@ -2268,7 +630,7 @@
           "fullName": " authUtils getCurrentUser should return current user",
           "status": "passed",
           "title": "should return current user",
-          "duration": 4,
+          "duration": 6,
           "failureMessages": []
         },
         {
@@ -2280,7 +642,7 @@
           "fullName": " authUtils getCurrentUser should return null on error",
           "status": "passed",
           "title": "should return null on error",
-          "duration": 2,
+          "duration": 4,
           "failureMessages": []
         },
         {
@@ -2296,8 +658,8 @@
           "failureMessages": []
         }
       ],
-      "startTime": 1767520497785,
-      "endTime": 1767520498039,
+      "startTime": 1767619285435,
+      "endTime": 1767619285606,
       "status": "passed",
       "message": "",
       "name": "C:/ws/kinship-atlas/src/utils/__tests__/authUtils.test.ts"
@@ -2325,7 +687,7 @@
           "fullName": " dateUtils calculateAge should calculate age at death for deceased person",
           "status": "passed",
           "title": "should calculate age at death for deceased person",
-          "duration": 1,
+          "duration": 0,
           "failureMessages": []
         },
         {
@@ -2349,7 +711,7 @@
           "fullName": " dateUtils calculateAge should return NaN for invalid death date",
           "status": "passed",
           "title": "should return NaN for invalid death date",
-          "duration": 0,
+          "duration": 3,
           "failureMessages": []
         },
         {
@@ -2409,7 +771,7 @@
           "fullName": " dateUtils getYearRange should return \"Unknown\" for no birth date",
           "status": "passed",
           "title": "should return \"Unknown\" for no birth date",
-          "duration": 1,
+          "duration": 0,
           "failureMessages": []
         },
         {
@@ -2421,7 +783,7 @@
           "fullName": " dateUtils getYearRange should return birth year only for no death date",
           "status": "passed",
           "title": "should return birth year only for no death date",
-          "duration": 0,
+          "duration": 1,
           "failureMessages": []
         },
         {
@@ -2437,8 +799,8 @@
           "failureMessages": []
         }
       ],
-      "startTime": 1767520508199,
-      "endTime": 1767520508208,
+      "startTime": 1767619296154,
+      "endTime": 1767619296168,
       "status": "passed",
       "message": "",
       "name": "C:/ws/kinship-atlas/src/utils/__tests__/dateUtils.test.ts"
@@ -2454,7 +816,7 @@
           "fullName": " storageUrl extractFilePathFromUrl should extract file path from public URL",
           "status": "passed",
           "title": "should extract file path from public URL",
-          "duration": 65,
+          "duration": 6,
           "failureMessages": []
         },
         {
@@ -2466,7 +828,7 @@
           "fullName": " storageUrl extractFilePathFromUrl should extract file path from signed URL",
           "status": "passed",
           "title": "should extract file path from signed URL",
-          "duration": 22,
+          "duration": 2,
           "failureMessages": []
         },
         {
@@ -2478,7 +840,7 @@
           "fullName": " storageUrl extractFilePathFromUrl should handle URL-encoded paths",
           "status": "passed",
           "title": "should handle URL-encoded paths",
-          "duration": 41,
+          "duration": 2,
           "failureMessages": []
         },
         {
@@ -2490,7 +852,7 @@
           "fullName": " storageUrl extractFilePathFromUrl should return null for invalid URL",
           "status": "passed",
           "title": "should return null for invalid URL",
-          "duration": 82,
+          "duration": 22,
           "failureMessages": []
         },
         {
@@ -2502,7 +864,7 @@
           "fullName": " storageUrl extractFilePathFromUrl should return null for URL without storage path",
           "status": "passed",
           "title": "should return null for URL without storage path",
-          "duration": 6,
+          "duration": 1,
           "failureMessages": []
         },
         {
@@ -2514,7 +876,7 @@
           "fullName": " storageUrl extractFilePathFromUrl should return null for empty string",
           "status": "passed",
           "title": "should return null for empty string",
-          "duration": 1,
+          "duration": 0,
           "failureMessages": []
         },
         {
@@ -2526,7 +888,7 @@
           "fullName": " storageUrl getAccessibleStorageUrl should return signed URL if already signed",
           "status": "passed",
           "title": "should return signed URL if already signed",
-          "duration": 11,
+          "duration": 12,
           "failureMessages": []
         },
         {
@@ -2538,7 +900,7 @@
           "fullName": " storageUrl getAccessibleStorageUrl should convert public URL to signed URL",
           "status": "passed",
           "title": "should convert public URL to signed URL",
-          "duration": 19,
+          "duration": 9,
           "failureMessages": []
         },
         {
@@ -2550,7 +912,7 @@
           "fullName": " storageUrl getAccessibleStorageUrl should return original URL if signed URL generation fails",
           "status": "passed",
           "title": "should return original URL if signed URL generation fails",
-          "duration": 5,
+          "duration": 12,
           "failureMessages": []
         },
         {
@@ -2562,7 +924,7 @@
           "fullName": " storageUrl getAccessibleStorageUrl should return original URL if path extraction fails",
           "status": "passed",
           "title": "should return original URL if path extraction fails",
-          "duration": 2,
+          "duration": 12,
           "failureMessages": []
         },
         {
@@ -2586,7 +948,7 @@
           "fullName": " storageUrl getAccessibleStorageUrl should return null for undefined input",
           "status": "passed",
           "title": "should return null for undefined input",
-          "duration": 0,
+          "duration": 1,
           "failureMessages": []
         },
         {
@@ -2598,15 +960,2442 @@
           "fullName": " storageUrl getAccessibleStorageUrl should handle errors gracefully",
           "status": "passed",
           "title": "should handle errors gracefully",
-          "duration": 12,
+          "duration": 9,
           "failureMessages": []
         }
       ],
-      "startTime": 1767520499204,
-      "endTime": 1767520499475,
+      "startTime": 1767619281860,
+      "endTime": 1767619281953,
       "status": "passed",
       "message": "",
       "name": "C:/ws/kinship-atlas/src/utils/__tests__/storageUrl.test.ts"
+    },
+    {
+      "assertionResults": [
+        {
+          "ancestorTitles": [
+            "",
+            "AuthContext",
+            "Authentication State"
+          ],
+          "fullName": " AuthContext Authentication State should provide initial loading state",
+          "status": "passed",
+          "title": "should provide initial loading state",
+          "duration": 141,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "AuthContext",
+            "Authentication State"
+          ],
+          "fullName": " AuthContext Authentication State should provide user when authenticated",
+          "status": "passed",
+          "title": "should provide user when authenticated",
+          "duration": 56,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "AuthContext",
+            "Authentication State"
+          ],
+          "fullName": " AuthContext Authentication State should handle authentication errors",
+          "status": "passed",
+          "title": "should handle authentication errors",
+          "duration": 88,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "AuthContext",
+            "Sign In"
+          ],
+          "fullName": " AuthContext Sign In should sign in successfully",
+          "status": "passed",
+          "title": "should sign in successfully",
+          "duration": 106,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "AuthContext",
+            "Sign In"
+          ],
+          "fullName": " AuthContext Sign In should handle sign in errors",
+          "status": "passed",
+          "title": "should handle sign in errors",
+          "duration": 90,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "AuthContext",
+            "Sign Up"
+          ],
+          "fullName": " AuthContext Sign Up should sign up successfully",
+          "status": "passed",
+          "title": "should sign up successfully",
+          "duration": 41,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "AuthContext",
+            "Sign Up"
+          ],
+          "fullName": " AuthContext Sign Up should handle sign up errors",
+          "status": "passed",
+          "title": "should handle sign up errors",
+          "duration": 32,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "AuthContext",
+            "Sign Out"
+          ],
+          "fullName": " AuthContext Sign Out should sign out successfully",
+          "status": "passed",
+          "title": "should sign out successfully",
+          "duration": 43,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "AuthContext",
+            "Sign Out"
+          ],
+          "fullName": " AuthContext Sign Out should handle sign out errors",
+          "status": "passed",
+          "title": "should handle sign out errors",
+          "duration": 53,
+          "failureMessages": []
+        }
+      ],
+      "startTime": 1767619272577,
+      "endTime": 1767619273232,
+      "status": "passed",
+      "message": "",
+      "name": "C:/ws/kinship-atlas/src/contexts/__tests__/AuthContext.test.tsx"
+    },
+    {
+      "assertionResults": [
+        {
+          "ancestorTitles": [
+            "",
+            "FamilyTreeContext",
+            "Initial State"
+          ],
+          "fullName": " FamilyTreeContext Initial State should provide initial selected member state",
+          "status": "passed",
+          "title": "should provide initial selected member state",
+          "duration": 140,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "FamilyTreeContext",
+            "Initial State"
+          ],
+          "fullName": " FamilyTreeContext Initial State should load selected member from sessionStorage",
+          "status": "passed",
+          "title": "should load selected member from sessionStorage",
+          "duration": 39,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "FamilyTreeContext",
+            "Member Selection"
+          ],
+          "fullName": " FamilyTreeContext Member Selection should allow selecting a member",
+          "status": "passed",
+          "title": "should allow selecting a member",
+          "duration": 55,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "FamilyTreeContext",
+            "Member Selection"
+          ],
+          "fullName": " FamilyTreeContext Member Selection should clear selection when clearSelectedMember is called",
+          "status": "passed",
+          "title": "should clear selection when clearSelectedMember is called",
+          "duration": 38,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "FamilyTreeContext",
+            "Member Selection"
+          ],
+          "fullName": " FamilyTreeContext Member Selection should persist selection to sessionStorage",
+          "status": "passed",
+          "title": "should persist selection to sessionStorage",
+          "duration": 1735,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "FamilyTreeContext",
+            "Context Provider"
+          ],
+          "fullName": " FamilyTreeContext Context Provider should throw error when used outside provider",
+          "status": "passed",
+          "title": "should throw error when used outside provider",
+          "duration": 38,
+          "failureMessages": []
+        }
+      ],
+      "startTime": 1767619258607,
+      "endTime": 1767619260652,
+      "status": "passed",
+      "message": "",
+      "name": "C:/ws/kinship-atlas/src/contexts/__tests__/FamilyTreeContext.test.tsx"
+    },
+    {
+      "assertionResults": [
+        {
+          "ancestorTitles": [
+            "",
+            "AlbumService",
+            "getAllAlbums"
+          ],
+          "fullName": " AlbumService getAllAlbums should fetch all albums for the current user",
+          "status": "passed",
+          "title": "should fetch all albums for the current user",
+          "duration": 85,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "AlbumService",
+            "getAllAlbums"
+          ],
+          "fullName": " AlbumService getAllAlbums should filter albums by family group",
+          "status": "passed",
+          "title": "should filter albums by family group",
+          "duration": 31,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "AlbumService",
+            "getAllAlbums"
+          ],
+          "fullName": " AlbumService getAllAlbums should return empty array when user is not authenticated",
+          "status": "passed",
+          "title": "should return empty array when user is not authenticated",
+          "duration": 20,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "AlbumService",
+            "getAllAlbums"
+          ],
+          "fullName": " AlbumService getAllAlbums should return empty array when filter matches no albums",
+          "status": "passed",
+          "title": "should return empty array when filter matches no albums",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "AlbumService",
+            "getAlbumById"
+          ],
+          "fullName": " AlbumService getAlbumById should fetch a single album by ID",
+          "status": "passed",
+          "title": "should fetch a single album by ID",
+          "duration": 3,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "AlbumService",
+            "getAlbumById"
+          ],
+          "fullName": " AlbumService getAlbumById should return null when album is not found",
+          "status": "passed",
+          "title": "should return null when album is not found",
+          "duration": 18,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "AlbumService",
+            "createAlbum"
+          ],
+          "fullName": " AlbumService createAlbum should create an album successfully",
+          "status": "passed",
+          "title": "should create an album successfully",
+          "duration": 5,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "AlbumService",
+            "createAlbum"
+          ],
+          "fullName": " AlbumService createAlbum should return null when user is not authenticated",
+          "status": "passed",
+          "title": "should return null when user is not authenticated",
+          "duration": 7,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "AlbumService",
+            "updateAlbum"
+          ],
+          "fullName": " AlbumService updateAlbum should update an album successfully",
+          "status": "passed",
+          "title": "should update an album successfully",
+          "duration": 2,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "AlbumService",
+            "deleteAlbum"
+          ],
+          "fullName": " AlbumService deleteAlbum should delete an album successfully",
+          "status": "passed",
+          "title": "should delete an album successfully",
+          "duration": 13,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "AlbumService",
+            "deleteAlbum"
+          ],
+          "fullName": " AlbumService deleteAlbum should return false when user is not authenticated",
+          "status": "passed",
+          "title": "should return false when user is not authenticated",
+          "duration": 3,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "AlbumService",
+            "addMediaToAlbum"
+          ],
+          "fullName": " AlbumService addMediaToAlbum should add media to an album successfully",
+          "status": "passed",
+          "title": "should add media to an album successfully",
+          "duration": 8,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "AlbumService",
+            "removeMediaFromAlbum"
+          ],
+          "fullName": " AlbumService removeMediaFromAlbum should remove media from an album successfully",
+          "status": "passed",
+          "title": "should remove media from an album successfully",
+          "duration": 3,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "AlbumService",
+            "getStoryCategories"
+          ],
+          "fullName": " AlbumService getStoryCategories should fetch all story categories",
+          "status": "passed",
+          "title": "should fetch all story categories",
+          "duration": 2,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "AlbumService",
+            "getStoryCategories"
+          ],
+          "fullName": " AlbumService getStoryCategories should return empty array on error",
+          "status": "passed",
+          "title": "should return empty array on error",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "AlbumService",
+            "getAlbumsByFamilyGroup"
+          ],
+          "fullName": " AlbumService getAlbumsByFamilyGroup should fetch albums filtered by family group",
+          "status": "passed",
+          "title": "should fetch albums filtered by family group",
+          "duration": 5,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "AlbumService",
+            "getAlbumsByFamilyMember"
+          ],
+          "fullName": " AlbumService getAlbumsByFamilyMember should fetch albums filtered by family member",
+          "status": "passed",
+          "title": "should fetch albums filtered by family member",
+          "duration": 2,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "AlbumService",
+            "getAlbumsByStoryCategory"
+          ],
+          "fullName": " AlbumService getAlbumsByStoryCategory should fetch albums filtered by story category",
+          "status": "passed",
+          "title": "should fetch albums filtered by story category",
+          "duration": 1,
+          "failureMessages": []
+        }
+      ],
+      "startTime": 1767619285470,
+      "endTime": 1767619285690,
+      "status": "passed",
+      "message": "",
+      "name": "C:/ws/kinship-atlas/src/services/__tests__/albumService.test.ts"
+    },
+    {
+      "assertionResults": [
+        {
+          "ancestorTitles": [
+            "",
+            "FamilyGroupService",
+            "getAllFamilyGroups"
+          ],
+          "fullName": " FamilyGroupService getAllFamilyGroups should fetch all family groups for the current user",
+          "status": "passed",
+          "title": "should fetch all family groups for the current user",
+          "duration": 14,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "FamilyGroupService",
+            "getAllFamilyGroups"
+          ],
+          "fullName": " FamilyGroupService getAllFamilyGroups should return empty array when user is not authenticated",
+          "status": "passed",
+          "title": "should return empty array when user is not authenticated",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "FamilyGroupService",
+            "getAllFamilyGroups"
+          ],
+          "fullName": " FamilyGroupService getAllFamilyGroups should return empty array on error",
+          "status": "passed",
+          "title": "should return empty array on error",
+          "duration": 9,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "FamilyGroupService",
+            "getFamilyGroup"
+          ],
+          "fullName": " FamilyGroupService getFamilyGroup should fetch a single family group by ID",
+          "status": "passed",
+          "title": "should fetch a single family group by ID",
+          "duration": 2,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "FamilyGroupService",
+            "getFamilyGroup"
+          ],
+          "fullName": " FamilyGroupService getFamilyGroup should return null on error",
+          "status": "passed",
+          "title": "should return null on error",
+          "duration": 2,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "FamilyGroupService",
+            "createFamilyGroup"
+          ],
+          "fullName": " FamilyGroupService createFamilyGroup should create a family group successfully",
+          "status": "passed",
+          "title": "should create a family group successfully",
+          "duration": 3,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "FamilyGroupService",
+            "createFamilyGroup"
+          ],
+          "fullName": " FamilyGroupService createFamilyGroup should return error when name is empty",
+          "status": "passed",
+          "title": "should return error when name is empty",
+          "duration": 2,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "FamilyGroupService",
+            "createFamilyGroup"
+          ],
+          "fullName": " FamilyGroupService createFamilyGroup should return error when user is not authenticated",
+          "status": "passed",
+          "title": "should return error when user is not authenticated",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "FamilyGroupService",
+            "createFamilyGroup"
+          ],
+          "fullName": " FamilyGroupService createFamilyGroup should handle database errors",
+          "status": "passed",
+          "title": "should handle database errors",
+          "duration": 2,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "FamilyGroupService",
+            "updateFamilyGroup"
+          ],
+          "fullName": " FamilyGroupService updateFamilyGroup should update a family group successfully",
+          "status": "passed",
+          "title": "should update a family group successfully",
+          "duration": 2,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "FamilyGroupService",
+            "updateFamilyGroup"
+          ],
+          "fullName": " FamilyGroupService updateFamilyGroup should return error when name is empty",
+          "status": "passed",
+          "title": "should return error when name is empty",
+          "duration": 2,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "FamilyGroupService",
+            "updateFamilyGroup"
+          ],
+          "fullName": " FamilyGroupService updateFamilyGroup should return error when group not found",
+          "status": "passed",
+          "title": "should return error when group not found",
+          "duration": 2,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "FamilyGroupService",
+            "deleteFamilyGroup"
+          ],
+          "fullName": " FamilyGroupService deleteFamilyGroup should delete a family group successfully",
+          "status": "passed",
+          "title": "should delete a family group successfully",
+          "duration": 4,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "FamilyGroupService",
+            "deleteFamilyGroup"
+          ],
+          "fullName": " FamilyGroupService deleteFamilyGroup should return error when user is not authenticated",
+          "status": "passed",
+          "title": "should return error when user is not authenticated",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "FamilyGroupService",
+            "assignMemberToGroup"
+          ],
+          "fullName": " FamilyGroupService assignMemberToGroup should assign a member to a group successfully",
+          "status": "passed",
+          "title": "should assign a member to a group successfully",
+          "duration": 3,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "FamilyGroupService",
+            "assignMemberToGroup"
+          ],
+          "fullName": " FamilyGroupService assignMemberToGroup should handle duplicate assignment gracefully",
+          "status": "passed",
+          "title": "should handle duplicate assignment gracefully",
+          "duration": 3,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "FamilyGroupService",
+            "assignMemberToGroup"
+          ],
+          "fullName": " FamilyGroupService assignMemberToGroup should return error when member not found",
+          "status": "passed",
+          "title": "should return error when member not found",
+          "duration": 3,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "FamilyGroupService",
+            "removeMemberFromGroup"
+          ],
+          "fullName": " FamilyGroupService removeMemberFromGroup should remove a member from a group successfully",
+          "status": "passed",
+          "title": "should remove a member from a group successfully",
+          "duration": 5,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "FamilyGroupService",
+            "getMembersInGroup"
+          ],
+          "fullName": " FamilyGroupService getMembersInGroup should fetch all members in a group",
+          "status": "passed",
+          "title": "should fetch all members in a group",
+          "duration": 3,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "FamilyGroupService",
+            "getMembersInGroup"
+          ],
+          "fullName": " FamilyGroupService getMembersInGroup should return empty array on error",
+          "status": "passed",
+          "title": "should return empty array on error",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "FamilyGroupService",
+            "getGroupsForMember"
+          ],
+          "fullName": " FamilyGroupService getGroupsForMember should fetch all groups for a member",
+          "status": "passed",
+          "title": "should fetch all groups for a member",
+          "duration": 5,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "FamilyGroupService",
+            "filterMembersByGroups"
+          ],
+          "fullName": " FamilyGroupService filterMembersByGroups should filter members by group IDs",
+          "status": "passed",
+          "title": "should filter members by group IDs",
+          "duration": 2,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "FamilyGroupService",
+            "filterMembersByGroups"
+          ],
+          "fullName": " FamilyGroupService filterMembersByGroups should return empty array when no group IDs provided",
+          "status": "passed",
+          "title": "should return empty array when no group IDs provided",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "FamilyGroupService",
+            "filterMembersByGroups"
+          ],
+          "fullName": " FamilyGroupService filterMembersByGroups should return empty array on error",
+          "status": "passed",
+          "title": "should return empty array on error",
+          "duration": 2,
+          "failureMessages": []
+        }
+      ],
+      "startTime": 1767619285774,
+      "endTime": 1767619285853,
+      "status": "passed",
+      "message": "",
+      "name": "C:/ws/kinship-atlas/src/services/__tests__/familyGroupService.test.ts"
+    },
+    {
+      "assertionResults": [
+        {
+          "ancestorTitles": [
+            "",
+            "FamilyMemberService",
+            "createFamilyMember"
+          ],
+          "fullName": " FamilyMemberService createFamilyMember should create a family member successfully",
+          "status": "passed",
+          "title": "should create a family member successfully",
+          "duration": 42,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "FamilyMemberService",
+            "createFamilyMember"
+          ],
+          "fullName": " FamilyMemberService createFamilyMember should handle authentication errors",
+          "status": "passed",
+          "title": "should handle authentication errors",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "FamilyMemberService",
+            "createFamilyMember"
+          ],
+          "fullName": " FamilyMemberService createFamilyMember should validate required fields",
+          "status": "passed",
+          "title": "should validate required fields",
+          "duration": 2,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "FamilyMemberService",
+            "createFamilyMember"
+          ],
+          "fullName": " FamilyMemberService createFamilyMember should handle database errors",
+          "status": "passed",
+          "title": "should handle database errors",
+          "duration": 3,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "FamilyMemberService",
+            "getAllFamilyMembers"
+          ],
+          "fullName": " FamilyMemberService getAllFamilyMembers should fetch all family members successfully",
+          "status": "passed",
+          "title": "should fetch all family members successfully",
+          "duration": 3,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "FamilyMemberService",
+            "getAllFamilyMembers"
+          ],
+          "fullName": " FamilyMemberService getAllFamilyMembers should handle empty results",
+          "status": "passed",
+          "title": "should handle empty results",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "FamilyMemberService",
+            "getAllFamilyMembers"
+          ],
+          "fullName": " FamilyMemberService getAllFamilyMembers should handle database errors",
+          "status": "passed",
+          "title": "should handle database errors",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "FamilyMemberService",
+            "updateFamilyMember"
+          ],
+          "fullName": " FamilyMemberService updateFamilyMember should update a family member successfully",
+          "status": "passed",
+          "title": "should update a family member successfully",
+          "duration": 2,
+          "failureMessages": []
+        }
+      ],
+      "startTime": 1767619274380,
+      "endTime": 1767619274437,
+      "status": "passed",
+      "message": "",
+      "name": "C:/ws/kinship-atlas/src/services/__tests__/familyMemberService.test.ts"
+    },
+    {
+      "assertionResults": [
+        {
+          "ancestorTitles": [
+            "",
+            "FamilyRelationshipManager",
+            "createRelationship"
+          ],
+          "fullName": " FamilyRelationshipManager createRelationship should create a relationship successfully",
+          "status": "passed",
+          "title": "should create a relationship successfully",
+          "duration": 6,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "FamilyRelationshipManager",
+            "createRelationship"
+          ],
+          "fullName": " FamilyRelationshipManager createRelationship should handle authentication errors",
+          "status": "passed",
+          "title": "should handle authentication errors",
+          "duration": 3,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "FamilyRelationshipManager",
+            "createRelationship"
+          ],
+          "fullName": " FamilyRelationshipManager createRelationship should validate relationship data",
+          "status": "passed",
+          "title": "should validate relationship data",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "FamilyRelationshipManager",
+            "createRelationship"
+          ],
+          "fullName": " FamilyRelationshipManager createRelationship should prevent self-relationships",
+          "status": "passed",
+          "title": "should prevent self-relationships",
+          "duration": 2,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "FamilyRelationshipManager",
+            "createRelationship"
+          ],
+          "fullName": " FamilyRelationshipManager createRelationship should handle database errors",
+          "status": "passed",
+          "title": "should handle database errors",
+          "duration": 4,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "FamilyRelationshipManager",
+            "deleteRelationship"
+          ],
+          "fullName": " FamilyRelationshipManager deleteRelationship should delete a relationship successfully",
+          "status": "passed",
+          "title": "should delete a relationship successfully",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "FamilyRelationshipManager",
+            "deleteRelationship"
+          ],
+          "fullName": " FamilyRelationshipManager deleteRelationship should handle authentication errors",
+          "status": "passed",
+          "title": "should handle authentication errors",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "FamilyRelationshipManager",
+            "deleteRelationship"
+          ],
+          "fullName": " FamilyRelationshipManager deleteRelationship should handle database errors",
+          "status": "passed",
+          "title": "should handle database errors",
+          "duration": 2,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "FamilyRelationshipManager",
+            "getFamilyMembersWithRelations"
+          ],
+          "fullName": " FamilyRelationshipManager getFamilyMembersWithRelations should fetch family members with relations successfully",
+          "status": "passed",
+          "title": "should fetch family members with relations successfully",
+          "duration": 3,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "FamilyRelationshipManager",
+            "getFamilyMembersWithRelations"
+          ],
+          "fullName": " FamilyRelationshipManager getFamilyMembersWithRelations should handle empty results",
+          "status": "passed",
+          "title": "should handle empty results",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "FamilyRelationshipManager",
+            "getFamilyMembersWithRelations"
+          ],
+          "fullName": " FamilyRelationshipManager getFamilyMembersWithRelations should handle database errors",
+          "status": "passed",
+          "title": "should handle database errors",
+          "duration": 54,
+          "failureMessages": []
+        }
+      ],
+      "startTime": 1767619283564,
+      "endTime": 1767619283644,
+      "status": "passed",
+      "message": "",
+      "name": "C:/ws/kinship-atlas/src/services/__tests__/familyRelationshipManager.test.ts"
+    },
+    {
+      "assertionResults": [
+        {
+          "ancestorTitles": [
+            "",
+            "MediaService",
+            "uploadMedia"
+          ],
+          "fullName": " MediaService uploadMedia should upload media successfully",
+          "status": "passed",
+          "title": "should upload media successfully",
+          "duration": 12,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "MediaService",
+            "uploadMedia"
+          ],
+          "fullName": " MediaService uploadMedia should return null if user is not authenticated",
+          "status": "passed",
+          "title": "should return null if user is not authenticated",
+          "duration": 12,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "MediaService",
+            "uploadMedia"
+          ],
+          "fullName": " MediaService uploadMedia should handle upload errors",
+          "status": "passed",
+          "title": "should handle upload errors",
+          "duration": 2,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "MediaService",
+            "getUserMedia"
+          ],
+          "fullName": " MediaService getUserMedia should fetch media successfully",
+          "status": "passed",
+          "title": "should fetch media successfully",
+          "duration": 3,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "MediaService",
+            "getUserMedia"
+          ],
+          "fullName": " MediaService getUserMedia should handle errors gracefully",
+          "status": "passed",
+          "title": "should handle errors gracefully",
+          "duration": 17,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "MediaService",
+            "deleteMedia"
+          ],
+          "fullName": " MediaService deleteMedia should delete media successfully",
+          "status": "passed",
+          "title": "should delete media successfully",
+          "duration": 3,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "MediaService",
+            "deleteMedia"
+          ],
+          "fullName": " MediaService deleteMedia should return false if user is not authenticated",
+          "status": "passed",
+          "title": "should return false if user is not authenticated",
+          "duration": 2,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "MediaService",
+            "updateMediaCaption"
+          ],
+          "fullName": " MediaService updateMediaCaption should update caption successfully",
+          "status": "passed",
+          "title": "should update caption successfully",
+          "duration": 2,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "MediaService",
+            "updateMediaCaption"
+          ],
+          "fullName": " MediaService updateMediaCaption should return false on error",
+          "status": "passed",
+          "title": "should return false on error",
+          "duration": 1,
+          "failureMessages": []
+        }
+      ],
+      "startTime": 1767619273349,
+      "endTime": 1767619273405,
+      "status": "passed",
+      "message": "",
+      "name": "C:/ws/kinship-atlas/src/services/__tests__/mediaService.test.ts"
+    },
+    {
+      "assertionResults": [
+        {
+          "ancestorTitles": [
+            "",
+            "StoryService",
+            "createStory"
+          ],
+          "fullName": " StoryService createStory should create a story successfully",
+          "status": "passed",
+          "title": "should create a story successfully",
+          "duration": 9,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "StoryService",
+            "createStory"
+          ],
+          "fullName": " StoryService createStory should return error if user is not authenticated",
+          "status": "passed",
+          "title": "should return error if user is not authenticated",
+          "duration": 108,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "StoryService",
+            "createStory"
+          ],
+          "fullName": " StoryService createStory should handle database errors",
+          "status": "passed",
+          "title": "should handle database errors",
+          "duration": 19,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "StoryService",
+            "getStory"
+          ],
+          "fullName": " StoryService getStory should fetch a story successfully",
+          "status": "passed",
+          "title": "should fetch a story successfully",
+          "duration": 16,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "StoryService",
+            "getStory"
+          ],
+          "fullName": " StoryService getStory should return null on error",
+          "status": "passed",
+          "title": "should return null on error",
+          "duration": 8,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "StoryService",
+            "getAllStories"
+          ],
+          "fullName": " StoryService getAllStories should fetch all stories successfully",
+          "status": "passed",
+          "title": "should fetch all stories successfully",
+          "duration": 2,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "StoryService",
+            "getAllStories"
+          ],
+          "fullName": " StoryService getAllStories should return empty array on error",
+          "status": "passed",
+          "title": "should return empty array on error",
+          "duration": 2,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "StoryService",
+            "updateStory"
+          ],
+          "fullName": " StoryService updateStory should update a story successfully",
+          "status": "passed",
+          "title": "should update a story successfully",
+          "duration": 4,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "StoryService",
+            "createArtifact"
+          ],
+          "fullName": " StoryService createArtifact should create an artifact successfully",
+          "status": "passed",
+          "title": "should create an artifact successfully",
+          "duration": 9,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "StoryService",
+            "createArtifact"
+          ],
+          "fullName": " StoryService createArtifact should return error if user is not authenticated",
+          "status": "passed",
+          "title": "should return error if user is not authenticated",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "StoryService",
+            "getArtifact"
+          ],
+          "fullName": " StoryService getArtifact should fetch an artifact successfully",
+          "status": "passed",
+          "title": "should fetch an artifact successfully",
+          "duration": 46,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "StoryService",
+            "getArtifact"
+          ],
+          "fullName": " StoryService getArtifact should return null on error",
+          "status": "passed",
+          "title": "should return null on error",
+          "duration": 2,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "StoryService",
+            "getAllArtifacts"
+          ],
+          "fullName": " StoryService getAllArtifacts should fetch all artifacts successfully",
+          "status": "passed",
+          "title": "should fetch all artifacts successfully",
+          "duration": 2,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "StoryService",
+            "getAllArtifacts"
+          ],
+          "fullName": " StoryService getAllArtifacts should return empty array on error",
+          "status": "passed",
+          "title": "should return empty array on error",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "StoryService",
+            "deleteStory"
+          ],
+          "fullName": " StoryService deleteStory should delete a story successfully",
+          "status": "passed",
+          "title": "should delete a story successfully",
+          "duration": 2,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "StoryService",
+            "deleteStory"
+          ],
+          "fullName": " StoryService deleteStory should return error if user is not authenticated",
+          "status": "passed",
+          "title": "should return error if user is not authenticated",
+          "duration": 1,
+          "failureMessages": []
+        }
+      ],
+      "startTime": 1767619287005,
+      "endTime": 1767619287257,
+      "status": "passed",
+      "message": "",
+      "name": "C:/ws/kinship-atlas/src/services/__tests__/storyService.test.ts"
+    },
+    {
+      "assertionResults": [
+        {
+          "ancestorTitles": [
+            "",
+            "TimelineService",
+            "getMemberTimeline"
+          ],
+          "fullName": " TimelineService getMemberTimeline should fetch member timeline successfully",
+          "status": "passed",
+          "title": "should fetch member timeline successfully",
+          "duration": 13,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "TimelineService",
+            "getMemberTimeline"
+          ],
+          "fullName": " TimelineService getMemberTimeline should return empty array on error",
+          "status": "passed",
+          "title": "should return empty array on error",
+          "duration": 11,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "TimelineService",
+            "getFamilyTimeline"
+          ],
+          "fullName": " TimelineService getFamilyTimeline should fetch family timeline successfully",
+          "status": "passed",
+          "title": "should fetch family timeline successfully",
+          "duration": 2,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "TimelineService",
+            "getFamilyTimeline"
+          ],
+          "fullName": " TimelineService getFamilyTimeline should return empty array if no member IDs provided",
+          "status": "passed",
+          "title": "should return empty array if no member IDs provided",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "TimelineService",
+            "getFamilyTimeline"
+          ],
+          "fullName": " TimelineService getFamilyTimeline should return empty array on error",
+          "status": "passed",
+          "title": "should return empty array on error",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "TimelineService",
+            "getTimelineByDateRange"
+          ],
+          "fullName": " TimelineService getTimelineByDateRange should fetch timeline by date range successfully",
+          "status": "passed",
+          "title": "should fetch timeline by date range successfully",
+          "duration": 3,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "TimelineService",
+            "getTimelineByDateRange"
+          ],
+          "fullName": " TimelineService getTimelineByDateRange should filter by member IDs if provided",
+          "status": "passed",
+          "title": "should filter by member IDs if provided",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "TimelineService",
+            "getTimelineByLocation"
+          ],
+          "fullName": " TimelineService getTimelineByLocation should fetch timeline by location successfully",
+          "status": "passed",
+          "title": "should fetch timeline by location successfully",
+          "duration": 2,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "TimelineService",
+            "getTimelineByLocation"
+          ],
+          "fullName": " TimelineService getTimelineByLocation should filter by distance radius",
+          "status": "passed",
+          "title": "should filter by distance radius",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "TimelineService",
+            "getTimelineStats"
+          ],
+          "fullName": " TimelineService getTimelineStats should calculate timeline stats correctly",
+          "status": "passed",
+          "title": "should calculate timeline stats correctly",
+          "duration": 3,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "TimelineService",
+            "getTimelineStats"
+          ],
+          "fullName": " TimelineService getTimelineStats should handle empty timeline",
+          "status": "passed",
+          "title": "should handle empty timeline",
+          "duration": 10,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "TimelineService",
+            "searchTimeline"
+          ],
+          "fullName": " TimelineService searchTimeline should search timeline successfully",
+          "status": "passed",
+          "title": "should search timeline successfully",
+          "duration": 3,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "TimelineService",
+            "searchTimeline"
+          ],
+          "fullName": " TimelineService searchTimeline should filter by member IDs if provided",
+          "status": "passed",
+          "title": "should filter by member IDs if provided",
+          "duration": 4,
+          "failureMessages": []
+        }
+      ],
+      "startTime": 1767619293534,
+      "endTime": 1767619293595,
+      "status": "passed",
+      "message": "",
+      "name": "C:/ws/kinship-atlas/src/services/__tests__/timelineService.test.ts"
+    },
+    {
+      "assertionResults": [
+        {
+          "ancestorTitles": [
+            "",
+            "UserService",
+            "getUserProfile"
+          ],
+          "fullName": " UserService getUserProfile should fetch user profile successfully",
+          "status": "passed",
+          "title": "should fetch user profile successfully",
+          "duration": 26,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "UserService",
+            "getUserProfile"
+          ],
+          "fullName": " UserService getUserProfile should return null on error",
+          "status": "passed",
+          "title": "should return null on error",
+          "duration": 12,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "UserService",
+            "updateUserProfile"
+          ],
+          "fullName": " UserService updateUserProfile should update user profile successfully",
+          "status": "passed",
+          "title": "should update user profile successfully",
+          "duration": 2,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "UserService",
+            "updateUserProfile"
+          ],
+          "fullName": " UserService updateUserProfile should return false on error",
+          "status": "passed",
+          "title": "should return false on error",
+          "duration": 2,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "UserService",
+            "getAllUsers"
+          ],
+          "fullName": " UserService getAllUsers should fetch all users successfully",
+          "status": "passed",
+          "title": "should fetch all users successfully",
+          "duration": 7,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "UserService",
+            "getAllUsers"
+          ],
+          "fullName": " UserService getAllUsers should return empty array on error",
+          "status": "passed",
+          "title": "should return empty array on error",
+          "duration": 9,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "UserService",
+            "updateUserRole"
+          ],
+          "fullName": " UserService updateUserRole should update user role successfully",
+          "status": "passed",
+          "title": "should update user role successfully",
+          "duration": 8,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "UserService",
+            "updateUserRole"
+          ],
+          "fullName": " UserService updateUserRole should return false on error",
+          "status": "passed",
+          "title": "should return false on error",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "UserService",
+            "isCurrentUserAdmin"
+          ],
+          "fullName": " UserService isCurrentUserAdmin should return true if user is admin",
+          "status": "passed",
+          "title": "should return true if user is admin",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "UserService",
+            "isCurrentUserAdmin"
+          ],
+          "fullName": " UserService isCurrentUserAdmin should return false if user is not admin",
+          "status": "passed",
+          "title": "should return false if user is not admin",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "UserService",
+            "isCurrentUserAdmin"
+          ],
+          "fullName": " UserService isCurrentUserAdmin should return false if user is not authenticated",
+          "status": "passed",
+          "title": "should return false if user is not authenticated",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "UserService",
+            "canUserEditFamilyMember"
+          ],
+          "fullName": " UserService canUserEditFamilyMember should return true if user is admin",
+          "status": "passed",
+          "title": "should return true if user is admin",
+          "duration": 9,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "UserService",
+            "canUserEditFamilyMember"
+          ],
+          "fullName": " UserService canUserEditFamilyMember should return true if user created the member",
+          "status": "passed",
+          "title": "should return true if user created the member",
+          "duration": 4,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "UserService",
+            "getUserBranchMembers"
+          ],
+          "fullName": " UserService getUserBranchMembers should fetch user branch members successfully",
+          "status": "passed",
+          "title": "should fetch user branch members successfully",
+          "duration": 34,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "UserService",
+            "getUserBranchMembers"
+          ],
+          "fullName": " UserService getUserBranchMembers should return empty array if user is not authenticated",
+          "status": "passed",
+          "title": "should return empty array if user is not authenticated",
+          "duration": 24,
+          "failureMessages": []
+        }
+      ],
+      "startTime": 1767619284974,
+      "endTime": 1767619285154,
+      "status": "passed",
+      "message": "",
+      "name": "C:/ws/kinship-atlas/src/services/__tests__/userService.test.ts"
+    },
+    {
+      "assertionResults": [
+        {
+          "ancestorTitles": [
+            "",
+            "AdminDashboard"
+          ],
+          "fullName": " AdminDashboard should render loading state initially",
+          "status": "passed",
+          "title": "should render loading state initially",
+          "duration": 200,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "AdminDashboard"
+          ],
+          "fullName": " AdminDashboard should render admin dashboard with stats cards",
+          "status": "passed",
+          "title": "should render admin dashboard with stats cards",
+          "duration": 6097,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "AdminDashboard"
+          ],
+          "fullName": " AdminDashboard should display correct user count in stats",
+          "status": "passed",
+          "title": "should display correct user count in stats",
+          "duration": 1201,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "AdminDashboard"
+          ],
+          "fullName": " AdminDashboard should render all tabs",
+          "status": "passed",
+          "title": "should render all tabs",
+          "duration": 2583,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "AdminDashboard"
+          ],
+          "fullName": " AdminDashboard should render search input",
+          "status": "passed",
+          "title": "should render search input",
+          "duration": 845,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "AdminDashboard"
+          ],
+          "fullName": " AdminDashboard should render back to home button",
+          "status": "passed",
+          "title": "should render back to home button",
+          "duration": 1188,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "AdminDashboard"
+          ],
+          "fullName": " AdminDashboard should render import and export buttons",
+          "status": "passed",
+          "title": "should render import and export buttons",
+          "duration": 1645,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "AdminDashboard"
+          ],
+          "fullName": " AdminDashboard should navigate to home when back to home button is clicked",
+          "status": "passed",
+          "title": "should navigate to home when back to home button is clicked",
+          "duration": 1321,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "AdminDashboard"
+          ],
+          "fullName": " AdminDashboard should handle data loading errors gracefully",
+          "status": "passed",
+          "title": "should handle data loading errors gracefully",
+          "duration": 701,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "AdminDashboard"
+          ],
+          "fullName": " AdminDashboard should display users tab content",
+          "status": "passed",
+          "title": "should display users tab content",
+          "duration": 1518,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "AdminDashboard"
+          ],
+          "fullName": " AdminDashboard should display family members tab content when clicked",
+          "status": "passed",
+          "title": "should display family members tab content when clicked",
+          "duration": 2968,
+          "failureMessages": []
+        }
+      ],
+      "startTime": 1767619242609,
+      "endTime": 1767619262877,
+      "status": "passed",
+      "message": "",
+      "name": "C:/ws/kinship-atlas/src/components/admin/__tests__/AdminDashboard.test.tsx"
+    },
+    {
+      "assertionResults": [
+        {
+          "ancestorTitles": [
+            "",
+            "AdminStatsCards"
+          ],
+          "fullName": " AdminStatsCards should render all stat cards",
+          "status": "passed",
+          "title": "should render all stat cards",
+          "duration": 477,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "AdminStatsCards"
+          ],
+          "fullName": " AdminStatsCards should display correct user counts",
+          "status": "passed",
+          "title": "should display correct user counts",
+          "duration": 133,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "AdminStatsCards"
+          ],
+          "fullName": " AdminStatsCards should display correct counts for all stats",
+          "status": "passed",
+          "title": "should display correct counts for all stats",
+          "duration": 89,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "AdminStatsCards"
+          ],
+          "fullName": " AdminStatsCards should handle empty users array",
+          "status": "passed",
+          "title": "should handle empty users array",
+          "duration": 99,
+          "failureMessages": []
+        }
+      ],
+      "startTime": 1767619261793,
+      "endTime": 1767619262593,
+      "status": "passed",
+      "message": "",
+      "name": "C:/ws/kinship-atlas/src/components/admin/__tests__/AdminStatsCards.test.tsx"
+    },
+    {
+      "assertionResults": [
+        {
+          "ancestorTitles": [
+            "",
+            "FamilyMembersTab",
+            "Basic Rendering"
+          ],
+          "fullName": " FamilyMembersTab Basic Rendering should render the component with title and description",
+          "status": "passed",
+          "title": "should render the component with title and description",
+          "duration": 690,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "FamilyMembersTab",
+            "Basic Rendering"
+          ],
+          "fullName": " FamilyMembersTab Basic Rendering should render all family members in the table",
+          "status": "passed",
+          "title": "should render all family members in the table",
+          "duration": 633,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "FamilyMembersTab",
+            "Basic Rendering"
+          ],
+          "fullName": " FamilyMembersTab Basic Rendering should display correct results count",
+          "status": "passed",
+          "title": "should display correct results count",
+          "duration": 221,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "FamilyMembersTab",
+            "Basic Rendering"
+          ],
+          "fullName": " FamilyMembersTab Basic Rendering should render table headers",
+          "status": "passed",
+          "title": "should render table headers",
+          "duration": 565,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "FamilyMembersTab",
+            "Search Functionality"
+          ],
+          "fullName": " FamilyMembersTab Search Functionality should render search input",
+          "status": "passed",
+          "title": "should render search input",
+          "duration": 211,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "FamilyMembersTab",
+            "Search Functionality"
+          ],
+          "fullName": " FamilyMembersTab Search Functionality should filter members by first name",
+          "status": "passed",
+          "title": "should filter members by first name",
+          "duration": 347,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "FamilyMembersTab",
+            "Search Functionality"
+          ],
+          "fullName": " FamilyMembersTab Search Functionality should filter members by last name",
+          "status": "passed",
+          "title": "should filter members by last name",
+          "duration": 315,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "FamilyMembersTab",
+            "Search Functionality"
+          ],
+          "fullName": " FamilyMembersTab Search Functionality should filter members by birth place",
+          "status": "passed",
+          "title": "should filter members by birth place",
+          "duration": 322,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "FamilyMembersTab",
+            "Search Functionality"
+          ],
+          "fullName": " FamilyMembersTab Search Functionality should filter members by death place",
+          "status": "passed",
+          "title": "should filter members by death place",
+          "duration": 216,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "FamilyMembersTab",
+            "Search Functionality"
+          ],
+          "fullName": " FamilyMembersTab Search Functionality should filter members by bio",
+          "status": "passed",
+          "title": "should filter members by bio",
+          "duration": 272,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "FamilyMembersTab",
+            "Search Functionality"
+          ],
+          "fullName": " FamilyMembersTab Search Functionality should filter members by location description",
+          "status": "passed",
+          "title": "should filter members by location description",
+          "duration": 151,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "FamilyMembersTab",
+            "Search Functionality"
+          ],
+          "fullName": " FamilyMembersTab Search Functionality should be case insensitive",
+          "status": "passed",
+          "title": "should be case insensitive",
+          "duration": 166,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "FamilyMembersTab",
+            "Search Functionality"
+          ],
+          "fullName": " FamilyMembersTab Search Functionality should use global searchQuery when local search is empty",
+          "status": "passed",
+          "title": "should use global searchQuery when local search is empty",
+          "duration": 131,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "FamilyMembersTab",
+            "Search Functionality"
+          ],
+          "fullName": " FamilyMembersTab Search Functionality should prioritize local search over global searchQuery",
+          "status": "passed",
+          "title": "should prioritize local search over global searchQuery",
+          "duration": 160,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "FamilyMembersTab",
+            "Search Functionality"
+          ],
+          "fullName": " FamilyMembersTab Search Functionality should show empty state when no results match search",
+          "status": "passed",
+          "title": "should show empty state when no results match search",
+          "duration": 116,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "FamilyMembersTab",
+            "Filter Functionality"
+          ],
+          "fullName": " FamilyMembersTab Filter Functionality should render filters button",
+          "status": "passed",
+          "title": "should render filters button",
+          "duration": 140,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "FamilyMembersTab",
+            "Filter Functionality"
+          ],
+          "fullName": " FamilyMembersTab Filter Functionality should toggle filter panel when filters button is clicked",
+          "status": "passed",
+          "title": "should toggle filter panel when filters button is clicked",
+          "duration": 1230,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "FamilyMembersTab",
+            "Filter Functionality"
+          ],
+          "fullName": " FamilyMembersTab Filter Functionality should filter by gender - male",
+          "status": "passed",
+          "title": "should filter by gender - male",
+          "duration": 3208,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "FamilyMembersTab",
+            "Filter Functionality"
+          ],
+          "fullName": " FamilyMembersTab Filter Functionality should filter by gender - female",
+          "status": "passed",
+          "title": "should filter by gender - female",
+          "duration": 1853,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "FamilyMembersTab",
+            "Filter Functionality"
+          ],
+          "fullName": " FamilyMembersTab Filter Functionality should filter by root members - root only",
+          "status": "passed",
+          "title": "should filter by root members - root only",
+          "duration": 1247,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "FamilyMembersTab",
+            "Filter Functionality"
+          ],
+          "fullName": " FamilyMembersTab Filter Functionality should filter by root members - non-root only",
+          "status": "passed",
+          "title": "should filter by root members - non-root only",
+          "duration": 1632,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "FamilyMembersTab",
+            "Filter Functionality"
+          ],
+          "fullName": " FamilyMembersTab Filter Functionality should filter by relations - has relations",
+          "status": "passed",
+          "title": "should filter by relations - has relations",
+          "duration": 1178,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "FamilyMembersTab",
+            "Filter Functionality"
+          ],
+          "fullName": " FamilyMembersTab Filter Functionality should filter by relations - no relations",
+          "status": "passed",
+          "title": "should filter by relations - no relations",
+          "duration": 1227,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "FamilyMembersTab",
+            "Filter Functionality"
+          ],
+          "fullName": " FamilyMembersTab Filter Functionality should filter by creator",
+          "status": "passed",
+          "title": "should filter by creator",
+          "duration": 1457,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "FamilyMembersTab",
+            "Filter Combinations"
+          ],
+          "fullName": " FamilyMembersTab Filter Combinations should combine multiple filters correctly",
+          "status": "passed",
+          "title": "should combine multiple filters correctly",
+          "duration": 1964,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "FamilyMembersTab",
+            "Filter Combinations"
+          ],
+          "fullName": " FamilyMembersTab Filter Combinations should combine search and filters",
+          "status": "passed",
+          "title": "should combine search and filters",
+          "duration": 1386,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "FamilyMembersTab",
+            "Clear Filters"
+          ],
+          "fullName": " FamilyMembersTab Clear Filters should show clear button when filters are active",
+          "status": "passed",
+          "title": "should show clear button when filters are active",
+          "duration": 186,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "FamilyMembersTab",
+            "Clear Filters"
+          ],
+          "fullName": " FamilyMembersTab Clear Filters should clear all filters when clear button is clicked",
+          "status": "passed",
+          "title": "should clear all filters when clear button is clicked",
+          "duration": 1297,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "FamilyMembersTab",
+            "Clear Filters"
+          ],
+          "fullName": " FamilyMembersTab Clear Filters should show filter badge count when filters are active",
+          "status": "passed",
+          "title": "should show filter badge count when filters are active",
+          "duration": 919,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "FamilyMembersTab",
+            "Clear Filters"
+          ],
+          "fullName": " FamilyMembersTab Clear Filters should update badge count with multiple active filters",
+          "status": "passed",
+          "title": "should update badge count with multiple active filters",
+          "duration": 1504,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "FamilyMembersTab",
+            "Empty States"
+          ],
+          "fullName": " FamilyMembersTab Empty States should show empty state when no members exist",
+          "status": "passed",
+          "title": "should show empty state when no members exist",
+          "duration": 22,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "FamilyMembersTab",
+            "Empty States"
+          ],
+          "fullName": " FamilyMembersTab Empty States should show empty state when filters result in no matches",
+          "status": "passed",
+          "title": "should show empty state when filters result in no matches",
+          "duration": 872,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "FamilyMembersTab",
+            "Member Display"
+          ],
+          "fullName": " FamilyMembersTab Member Display should display root member badge for root members",
+          "status": "passed",
+          "title": "should display root member badge for root members",
+          "duration": 73,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "FamilyMembersTab",
+            "Member Display"
+          ],
+          "fullName": " FamilyMembersTab Member Display should display relation count correctly",
+          "status": "passed",
+          "title": "should display relation count correctly",
+          "duration": 315,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "FamilyMembersTab",
+            "Member Display"
+          ],
+          "fullName": " FamilyMembersTab Member Display should display creator name correctly",
+          "status": "passed",
+          "title": "should display creator name correctly",
+          "duration": 200,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "FamilyMembersTab",
+            "Member Display"
+          ],
+          "fullName": " FamilyMembersTab Member Display should display birth date correctly",
+          "status": "passed",
+          "title": "should display birth date correctly",
+          "duration": 140,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "FamilyMembersTab",
+            "Actions"
+          ],
+          "fullName": " FamilyMembersTab Actions should navigate to edit page when edit button is clicked",
+          "status": "passed",
+          "title": "should navigate to edit page when edit button is clicked",
+          "duration": 122,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "FamilyMembersTab",
+            "Actions"
+          ],
+          "fullName": " FamilyMembersTab Actions should call onDelete when delete is confirmed",
+          "status": "passed",
+          "title": "should call onDelete when delete is confirmed",
+          "duration": 591,
+          "failureMessages": []
+        }
+      ],
+      "startTime": 1767619238464,
+      "endTime": 1767619265746,
+      "status": "passed",
+      "message": "",
+      "name": "C:/ws/kinship-atlas/src/components/admin/__tests__/FamilyMembersTab.test.tsx"
+    },
+    {
+      "assertionResults": [
+        {
+          "ancestorTitles": [
+            "",
+            "UserManagementTab"
+          ],
+          "fullName": " UserManagementTab should render user management table",
+          "status": "passed",
+          "title": "should render user management table",
+          "duration": 1238,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "UserManagementTab"
+          ],
+          "fullName": " UserManagementTab should display empty state when no users match search",
+          "status": "passed",
+          "title": "should display empty state when no users match search",
+          "duration": 43,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "UserManagementTab"
+          ],
+          "fullName": " UserManagementTab should filter users by search query",
+          "status": "passed",
+          "title": "should filter users by search query",
+          "duration": 299,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "UserManagementTab"
+          ],
+          "fullName": " UserManagementTab should open create user dialog when Add User button is clicked",
+          "status": "passed",
+          "title": "should open create user dialog when Add User button is clicked",
+          "duration": 429,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "UserManagementTab"
+          ],
+          "fullName": " UserManagementTab should open edit user dialog when edit button is clicked",
+          "status": "passed",
+          "title": "should open edit user dialog when edit button is clicked",
+          "duration": 334,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "UserManagementTab"
+          ],
+          "fullName": " UserManagementTab should open change password dialog when password button is clicked",
+          "status": "passed",
+          "title": "should open change password dialog when password button is clicked",
+          "duration": 311,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "UserManagementTab"
+          ],
+          "fullName": " UserManagementTab should disable delete button for current user",
+          "status": "passed",
+          "title": "should disable delete button for current user",
+          "duration": 256,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "UserManagementTab"
+          ],
+          "fullName": " UserManagementTab should render create user dialog when open",
+          "status": "passed",
+          "title": "should render create user dialog when open",
+          "duration": 1354,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "UserManagementTab"
+          ],
+          "fullName": " UserManagementTab should validate email format in create user dialog",
+          "status": "passed",
+          "title": "should validate email format in create user dialog",
+          "duration": 1269,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "UserManagementTab"
+          ],
+          "fullName": " UserManagementTab should validate password length in create user dialog",
+          "status": "passed",
+          "title": "should validate password length in create user dialog",
+          "duration": 1146,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "UserManagementTab"
+          ],
+          "fullName": " UserManagementTab should render edit user dialog when open",
+          "status": "passed",
+          "title": "should render edit user dialog when open",
+          "duration": 1230,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "UserManagementTab"
+          ],
+          "fullName": " UserManagementTab should render change password dialog when open",
+          "status": "passed",
+          "title": "should render change password dialog when open",
+          "duration": 1056,
+          "failureMessages": []
+        }
+      ],
+      "startTime": 1767619239152,
+      "endTime": 1767619248125,
+      "status": "passed",
+      "message": "",
+      "name": "C:/ws/kinship-atlas/src/components/admin/__tests__/UserManagementTab.test.tsx"
     },
     {
       "assertionResults": [
@@ -2618,7 +3407,7 @@
           "fullName": " AuthForm should render login form by default",
           "status": "passed",
           "title": "should render login form by default",
-          "duration": 1106,
+          "duration": 1667,
           "failureMessages": []
         },
         {
@@ -2629,7 +3418,7 @@
           "fullName": " AuthForm should switch to register tab",
           "status": "passed",
           "title": "should switch to register tab",
-          "duration": 613,
+          "duration": 850,
           "failureMessages": []
         },
         {
@@ -2640,7 +3429,7 @@
           "fullName": " AuthForm should handle form input changes",
           "status": "passed",
           "title": "should handle form input changes",
-          "duration": 1363,
+          "duration": 2206,
           "failureMessages": []
         },
         {
@@ -2651,7 +3440,7 @@
           "fullName": " AuthForm should submit login form",
           "status": "passed",
           "title": "should submit login form",
-          "duration": 2125,
+          "duration": 2994,
           "failureMessages": []
         },
         {
@@ -2662,7 +3451,7 @@
           "fullName": " AuthForm should submit register form with name",
           "status": "passed",
           "title": "should submit register form with name",
-          "duration": 2659,
+          "duration": 4261,
           "failureMessages": []
         },
         {
@@ -2673,7 +3462,7 @@
           "fullName": " AuthForm should require email and password fields",
           "status": "passed",
           "title": "should require email and password fields",
-          "duration": 409,
+          "duration": 654,
           "failureMessages": []
         },
         {
@@ -2684,12 +3473,12 @@
           "fullName": " AuthForm should display forgot password link",
           "status": "passed",
           "title": "should display forgot password link",
-          "duration": 207,
+          "duration": 216,
           "failureMessages": []
         }
       ],
-      "startTime": 1767520467956,
-      "endTime": 1767520476440,
+      "startTime": 1767619236683,
+      "endTime": 1767619249532,
       "status": "passed",
       "message": "",
       "name": "C:/ws/kinship-atlas/src/components/auth/__tests__/AuthForm.test.tsx"
@@ -2705,7 +3494,7 @@
           "fullName": " ImportFamilyData File Upload should render upload interface",
           "status": "passed",
           "title": "should render upload interface",
-          "duration": 2241,
+          "duration": 2379,
           "failureMessages": []
         },
         {
@@ -2717,7 +3506,7 @@
           "fullName": " ImportFamilyData File Upload should show supported file types",
           "status": "passed",
           "title": "should show supported file types",
-          "duration": 788,
+          "duration": 736,
           "failureMessages": []
         },
         {
@@ -2729,7 +3518,7 @@
           "fullName": " ImportFamilyData Template Download should download JSON template",
           "status": "passed",
           "title": "should download JSON template",
-          "duration": 2876,
+          "duration": 5430,
           "failureMessages": []
         },
         {
@@ -2741,7 +3530,7 @@
           "fullName": " ImportFamilyData Template Download should download Excel template",
           "status": "passed",
           "title": "should download Excel template",
-          "duration": 3261,
+          "duration": 2974,
           "failureMessages": []
         },
         {
@@ -2753,7 +3542,7 @@
           "fullName": " ImportFamilyData JSON File Parsing should parse JSON file correctly",
           "status": "passed",
           "title": "should parse JSON file correctly",
-          "duration": 1341,
+          "duration": 1135,
           "failureMessages": []
         },
         {
@@ -2765,7 +3554,7 @@
           "fullName": " ImportFamilyData JSON File Parsing should handle invalid JSON file",
           "status": "passed",
           "title": "should handle invalid JSON file",
-          "duration": 2004,
+          "duration": 727,
           "failureMessages": []
         },
         {
@@ -2777,7 +3566,7 @@
           "fullName": " ImportFamilyData Excel File Parsing should parse Excel file correctly",
           "status": "passed",
           "title": "should parse Excel file correctly",
-          "duration": 1896,
+          "duration": 694,
           "failureMessages": []
         },
         {
@@ -2789,7 +3578,7 @@
           "fullName": " ImportFamilyData Data Import should import family members successfully",
           "status": "passed",
           "title": "should import family members successfully",
-          "duration": 2671,
+          "duration": 1682,
           "failureMessages": []
         },
         {
@@ -2801,7 +3590,7 @@
           "fullName": " ImportFamilyData Data Import should handle import errors gracefully",
           "status": "passed",
           "title": "should handle import errors gracefully",
-          "duration": 1977,
+          "duration": 2211,
           "failureMessages": []
         },
         {
@@ -2813,7 +3602,7 @@
           "fullName": " ImportFamilyData Preview Functionality should show preview tabs when data is loaded",
           "status": "passed",
           "title": "should show preview tabs when data is loaded",
-          "duration": 2998,
+          "duration": 3283,
           "failureMessages": []
         },
         {
@@ -2825,12 +3614,12 @@
           "fullName": " ImportFamilyData Error Handling should handle unsupported file types",
           "status": "passed",
           "title": "should handle unsupported file types",
-          "duration": 817,
+          "duration": 814,
           "failureMessages": []
         }
       ],
-      "startTime": 1767520481178,
-      "endTime": 1767520504053,
+      "startTime": 1767619239908,
+      "endTime": 1767619261982,
       "status": "passed",
       "message": "",
       "name": "C:/ws/kinship-atlas/src/components/family/__tests__/ImportFamilyData.test.tsx"
@@ -2845,7 +3634,7 @@
           "fullName": " ImageUpload should render upload button when no image",
           "status": "passed",
           "title": "should render upload button when no image",
-          "duration": 1733,
+          "duration": 762,
           "failureMessages": []
         },
         {
@@ -2856,7 +3645,7 @@
           "fullName": " ImageUpload should display current image if provided",
           "status": "passed",
           "title": "should display current image if provided",
-          "duration": 630,
+          "duration": 269,
           "failureMessages": []
         },
         {
@@ -2867,7 +3656,7 @@
           "fullName": " ImageUpload should handle file selection",
           "status": "passed",
           "title": "should handle file selection",
-          "duration": 520,
+          "duration": 398,
           "failureMessages": []
         },
         {
@@ -2878,7 +3667,7 @@
           "fullName": " ImageUpload should reject non-image files",
           "status": "passed",
           "title": "should reject non-image files",
-          "duration": 90,
+          "duration": 34,
           "failureMessages": []
         },
         {
@@ -2889,7 +3678,7 @@
           "fullName": " ImageUpload should reject files larger than 5MB",
           "status": "passed",
           "title": "should reject files larger than 5MB",
-          "duration": 733,
+          "duration": 549,
           "failureMessages": []
         },
         {
@@ -2900,7 +3689,7 @@
           "fullName": " ImageUpload should show loading state during upload",
           "status": "passed",
           "title": "should show loading state during upload",
-          "duration": 924,
+          "duration": 326,
           "failureMessages": []
         },
         {
@@ -2911,7 +3700,7 @@
           "fullName": " ImageUpload should handle upload errors",
           "status": "passed",
           "title": "should handle upload errors",
-          "duration": 405,
+          "duration": 339,
           "failureMessages": []
         },
         {
@@ -2922,7 +3711,7 @@
           "fullName": " ImageUpload should call onImageUploaded with uploaded URL",
           "status": "passed",
           "title": "should call onImageUploaded with uploaded URL",
-          "duration": 344,
+          "duration": 450,
           "failureMessages": []
         },
         {
@@ -2933,12 +3722,12 @@
           "fullName": " ImageUpload should support different sizes",
           "status": "passed",
           "title": "should support different sizes",
-          "duration": 69,
+          "duration": 54,
           "failureMessages": []
         }
       ],
-      "startTime": 1767520469291,
-      "endTime": 1767520474739,
+      "startTime": 1767619237356,
+      "endTime": 1767619240539,
       "status": "passed",
       "message": "",
       "name": "C:/ws/kinship-atlas/src/components/ui/__tests__/image-upload.test.tsx"
@@ -2954,7 +3743,7 @@
           "fullName": " FamilyTreeView Rendering should render family tree with members",
           "status": "passed",
           "title": "should render family tree with members",
-          "duration": 106,
+          "duration": 158,
           "failureMessages": []
         },
         {
@@ -2978,7 +3767,7 @@
           "fullName": " FamilyTreeView Rendering should show empty state when no members",
           "status": "passed",
           "title": "should show empty state when no members",
-          "duration": 26,
+          "duration": 39,
           "failureMessages": []
         },
         {
@@ -2990,7 +3779,7 @@
           "fullName": " FamilyTreeView Node Interaction should handle node selection",
           "status": "passed",
           "title": "should handle node selection",
-          "duration": 9,
+          "duration": 17,
           "failureMessages": []
         },
         {
@@ -3002,7 +3791,7 @@
           "fullName": " FamilyTreeView Node Interaction should show selected member",
           "status": "passed",
           "title": "should show selected member",
-          "duration": 12,
+          "duration": 11,
           "failureMessages": []
         },
         {
@@ -3014,7 +3803,7 @@
           "fullName": " FamilyTreeView Edge Interaction should handle edge creation",
           "status": "passed",
           "title": "should handle edge creation",
-          "duration": 12,
+          "duration": 48,
           "failureMessages": []
         },
         {
@@ -3026,7 +3815,7 @@
           "fullName": " FamilyTreeView Edge Interaction should handle edge removal",
           "status": "passed",
           "title": "should handle edge removal",
-          "duration": 24,
+          "duration": 11,
           "failureMessages": []
         },
         {
@@ -3038,7 +3827,7 @@
           "fullName": " FamilyTreeView Node Positioning should handle node movement",
           "status": "passed",
           "title": "should handle node movement",
-          "duration": 22,
+          "duration": 20,
           "failureMessages": []
         },
         {
@@ -3050,7 +3839,7 @@
           "fullName": " FamilyTreeView Tree Layout should render nodes with correct handles",
           "status": "passed",
           "title": "should render nodes with correct handles",
-          "duration": 34,
+          "duration": 11,
           "failureMessages": []
         },
         {
@@ -3062,7 +3851,19 @@
           "fullName": " FamilyTreeView Tree Layout should render edges between related members",
           "status": "passed",
           "title": "should render edges between related members",
-          "duration": 10,
+          "duration": 9,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "FamilyTreeView",
+            "Tree Layout"
+          ],
+          "fullName": " FamilyTreeView Tree Layout should handle merged connectors for spouse pairs with common children",
+          "status": "passed",
+          "title": "should handle merged connectors for spouse pairs with common children",
+          "duration": 18,
           "failureMessages": []
         },
         {
@@ -3074,7 +3875,7 @@
           "fullName": " FamilyTreeView Error Handling should handle missing family members gracefully",
           "status": "passed",
           "title": "should handle missing family members gracefully",
-          "duration": 37,
+          "duration": 16,
           "failureMessages": []
         },
         {
@@ -3086,15 +3887,72 @@
           "fullName": " FamilyTreeView Error Handling should handle malformed member data",
           "status": "passed",
           "title": "should handle malformed member data",
-          "duration": 14,
+          "duration": 7,
           "failureMessages": []
         }
       ],
-      "startTime": 1767520480503,
-      "endTime": 1767520480843,
+      "startTime": 1767619272089,
+      "endTime": 1767619272489,
       "status": "passed",
       "message": "",
       "name": "C:/ws/kinship-atlas/src/components/family/tree/__tests__/FamilyTreeView.test.tsx"
+    },
+    {
+      "assertionResults": [
+        {
+          "ancestorTitles": [
+            "",
+            "buildTreeEdges - Merged Connectors",
+            "Spouse pair with common children"
+          ],
+          "fullName": " buildTreeEdges - Merged Connectors Spouse pair with common children should detect merge info for edges when two spouses have common children",
+          "status": "passed",
+          "title": "should detect merge info for edges when two spouses have common children",
+          "duration": 6,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "buildTreeEdges - Merged Connectors",
+            "Spouse pair with common children"
+          ],
+          "fullName": " buildTreeEdges - Merged Connectors Spouse pair with common children should not add merge info when parents are not spouses",
+          "status": "passed",
+          "title": "should not add merge info when parents are not spouses",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "buildTreeEdges - Merged Connectors",
+            "Spouse pair with common children"
+          ],
+          "fullName": " buildTreeEdges - Merged Connectors Spouse pair with common children should not add merge info when child has only one parent",
+          "status": "passed",
+          "title": "should not add merge info when child has only one parent",
+          "duration": 1,
+          "failureMessages": []
+        },
+        {
+          "ancestorTitles": [
+            "",
+            "buildTreeEdges - Merged Connectors",
+            "Edge creation"
+          ],
+          "fullName": " buildTreeEdges - Merged Connectors Edge creation should create edges with correct relationship types",
+          "status": "passed",
+          "title": "should create edges with correct relationship types",
+          "duration": 1,
+          "failureMessages": []
+        }
+      ],
+      "startTime": 1767619297190,
+      "endTime": 1767619297199,
+      "status": "passed",
+      "message": "",
+      "name": "C:/ws/kinship-atlas/src/components/family/tree/utils/__tests__/treeDataBuilder.test.ts"
     }
   ]
 }

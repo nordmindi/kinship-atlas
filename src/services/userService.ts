@@ -27,7 +27,7 @@ export const getUserProfile = async (userId: string): Promise<UserProfile | null
       return null;
     }
 
-    return data as UserProfile;
+    return data as unknown as UserProfile;
   } catch (error) {
     console.error('Error fetching user profile:', error);
     return null;
@@ -64,14 +64,21 @@ export const updateUserProfile = async (userId: string, updates: Partial<UserPro
  */
 export const getAllUsers = async (): Promise<UserProfile[]> => {
   try {
-    const { data, error } = await supabase.rpc('get_all_users' as any);
+    const { data, error } = await supabase.rpc('get_all_users' as never);
 
     if (error) {
       console.error('Error fetching all users:', error);
       return [];
     }
 
-    return (data || []) as UserProfile[];
+    // Transform snake_case database fields to camelCase TypeScript fields
+    return (data || []).map((user: any) => ({
+      id: user.id,
+      role: user.role,
+      displayName: user.display_name || user.email || null,
+      createdAt: user.created_at || new Date().toISOString(),
+      updatedAt: user.updated_at || new Date().toISOString(),
+    })) as UserProfile[];
   } catch (error) {
     console.error('Error fetching all users:', error);
     return [];
@@ -86,7 +93,7 @@ import { UserRole } from '@/types';
  */
 export const updateUserRole = async (userId: string, role: UserRole): Promise<boolean> => {
   try {
-    const { data, error } = await supabase.rpc('update_user_role' as any, {
+    const { data, error } = await (supabase.rpc as any)('update_user_role', {
       target_user_id: userId,
       new_role: role
     });
@@ -205,5 +212,300 @@ export const getUserBranchMembers = async (): Promise<string[]> => {
   } catch (error) {
     console.error('Error fetching user branch members:', error);
     return [];
+  }
+};
+
+/**
+ * Delete a user (admin only)
+ * This will delete the user profile and optionally their auth account
+ */
+export const deleteUser = async (userId: string): Promise<{ success: boolean; error?: string }> => {
+  try {
+    // Check if current user is admin
+    const isAdmin = await isCurrentUserAdmin();
+    if (!isAdmin) {
+      return {
+        success: false,
+        error: 'Only administrators can delete users'
+      };
+    }
+
+    // Prevent self-deletion
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user?.id === userId) {
+      return {
+        success: false,
+        error: 'You cannot delete your own account'
+      };
+    }
+
+    // Delete user profile
+    const { error: deleteError } = await supabase
+      .from('user_profiles' as any)
+      .delete()
+      .eq('id', userId);
+
+    if (deleteError) {
+      console.error('Error deleting user profile:', deleteError);
+      return {
+        success: false,
+        error: 'Failed to delete user profile'
+      };
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error('Error deleting user:', error);
+    return {
+      success: false,
+      error: 'An unexpected error occurred while deleting the user'
+    };
+  }
+};
+
+/**
+ * Create a new user (admin only)
+ * Creates both the auth account and user profile
+ * Note: Admin check should be done in the calling component using AuthContext.isAdmin
+ */
+export const createUser = async (
+  email: string, 
+  password: string, 
+  role: UserRole, 
+  displayName?: string
+): Promise<{ success: boolean; userId?: string; error?: string }> => {
+  try {
+    // Note: Admin verification is done via RLS and database functions
+    // The calling component should verify isAdmin from AuthContext before calling this
+
+    // Validate inputs
+    if (!email || !password) {
+      return {
+        success: false,
+        error: 'Email and password are required'
+      };
+    }
+
+    if (password.length < 6) {
+      return {
+        success: false,
+        error: 'Password must be at least 6 characters long'
+      };
+    }
+
+    // Create the auth user
+    const { data: authData, error: authError } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: {
+          display_name: displayName || email.split('@')[0]
+        },
+        emailRedirectTo: undefined // Don't send confirmation email in admin creation
+      }
+    });
+
+    if (authError) {
+      console.error('Error creating auth user:', authError);
+      return {
+        success: false,
+        error: authError.message || 'Failed to create user account'
+      };
+    }
+
+    if (!authData.user) {
+      return {
+        success: false,
+        error: 'User creation failed - no user data returned'
+      };
+    }
+
+    const userId = authData.user.id;
+
+    // Update user profile with role and display name
+    // The profile should be created by the trigger, but we'll update it
+    const { error: profileError } = await supabase
+      .from('user_profiles' as any)
+      .update({
+        role,
+        display_name: displayName || email.split('@')[0],
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', userId);
+
+    if (profileError) {
+      console.error('Error updating user profile:', profileError);
+      // Try to insert if update failed (profile might not exist yet)
+      const { error: insertError } = await supabase
+        .from('user_profiles' as any)
+        .insert({
+          id: userId,
+          role,
+          display_name: displayName || email.split('@')[0]
+        });
+
+      if (insertError) {
+        console.error('Error creating user profile:', insertError);
+        return {
+          success: false,
+          error: 'User created but failed to set role. Please update manually.'
+        };
+      }
+    }
+
+    return {
+      success: true,
+      userId
+    };
+  } catch (error) {
+    console.error('Error creating user:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'An unexpected error occurred while creating the user'
+    };
+  }
+};
+
+/**
+ * Change user password (admin only)
+ * Sends a password reset email to the user
+ */
+export const changeUserPassword = async (
+  userId: string, 
+  newPassword: string
+): Promise<{ success: boolean; error?: string }> => {
+  try {
+    // Check if current user is admin
+    const isAdmin = await isCurrentUserAdmin();
+    if (!isAdmin) {
+      return {
+        success: false,
+        error: 'Only administrators can change user passwords'
+      };
+    }
+
+    // Validate password
+    if (!newPassword || newPassword.length < 6) {
+      return {
+        success: false,
+        error: 'Password must be at least 6 characters long'
+      };
+    }
+
+    // Get user email from profile
+    const { data: profile, error: profileError } = await supabase
+      .from('user_profiles' as any)
+      .select('id')
+      .eq('id', userId)
+      .single();
+
+    if (profileError || !profile) {
+      return {
+        success: false,
+        error: 'User not found'
+      };
+    }
+
+    // Note: Direct password updates require Supabase Auth Admin API
+    // For security, we'll use the password reset flow
+    // In production, this should be done via an Edge Function with service role key
+    
+    // For now, we'll return an error suggesting to use password reset
+    // The admin can manually reset the password via Supabase dashboard
+    // or we can implement an Edge Function later
+    
+    return {
+      success: false,
+      error: 'Password changes require Supabase Auth Admin API. Please use the Supabase dashboard or implement an Edge Function with service role key. For now, you can send a password reset email to the user.'
+    };
+  } catch (error) {
+    console.error('Error changing password:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'An unexpected error occurred while changing the password'
+    };
+  }
+};
+
+/**
+ * Send password reset email to user (admin only)
+ */
+export const sendPasswordResetEmail = async (
+  userId: string
+): Promise<{ success: boolean; error?: string }> => {
+  try {
+    // Check if current user is admin
+    const isAdmin = await isCurrentUserAdmin();
+    if (!isAdmin) {
+      return {
+        success: false,
+        error: 'Only administrators can send password reset emails'
+      };
+    }
+
+    // Get user email - we need to query auth.users which requires admin
+    // For now, we'll need the email passed in or use an Edge Function
+    
+    return {
+      success: false,
+      error: 'Password reset emails require user email. Please implement via Edge Function or use Supabase dashboard.'
+    };
+  } catch (error) {
+    console.error('Error sending password reset email:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'An unexpected error occurred'
+    };
+  }
+};
+
+/**
+ * Update user display name (admin only)
+ */
+export const updateUserDisplayName = async (
+  userId: string, 
+  displayName: string
+): Promise<{ success: boolean; error?: string }> => {
+  try {
+    // Check if current user is admin
+    const isAdmin = await isCurrentUserAdmin();
+    if (!isAdmin) {
+      return {
+        success: false,
+        error: 'Only administrators can update user display names'
+      };
+    }
+
+    const { data, error } = await (supabase.rpc as any)('admin_update_user_display_name', {
+      p_user_id: userId,
+      p_display_name: displayName
+    });
+
+    if (error) {
+      console.error('Error updating display name:', error);
+      // Fallback to direct update
+      const { error: updateError } = await supabase
+        .from('user_profiles' as any)
+        .update({
+          display_name: displayName,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', userId);
+
+      if (updateError) {
+        return {
+          success: false,
+          error: updateError.message || 'Failed to update display name'
+        };
+      }
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error('Error updating display name:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'An unexpected error occurred'
+    };
   }
 };
