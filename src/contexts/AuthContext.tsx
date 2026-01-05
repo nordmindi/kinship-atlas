@@ -5,6 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { UserProfile, UserRole } from '@/types';
 import { getUserProfile } from '@/services/userService';
 import { isAdmin, isEditor, isViewer, canWrite, canDelete, canManageUsers } from '@/lib/permissions';
+import { performCompleteLogout } from '@/utils/authUtils';
 
 type AuthContextType = {
   user: User | null;
@@ -33,20 +34,50 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isLoading, setIsLoading] = useState(true);
 
   // Function to load user profile
+  // If profile cannot be found, logout the user
   const loadUserProfile = async (userId: string) => {
     try {
       const profile = await getUserProfile(userId);
+      
+      // Check if user still has an active session
+      const { data: { session: currentSession } } = await supabase.auth.getSession();
+      
+      // If profile is null and user still has an active session, logout
+      if (!profile && currentSession?.user?.id === userId) {
+        console.warn('User profile not found - logging out user');
+        setUserProfile(null);
+        // Perform complete logout to clear all auth state
+        await performCompleteLogout();
+        // Redirect to auth page
+        window.location.href = '/auth';
+        return;
+      }
+      
       setUserProfile(profile);
     } catch (error) {
       console.error('Error loading user profile:', error);
       setUserProfile(null);
+      
+      // Check if user still has an active session
+      const { data: { session: currentSession } } = await supabase.auth.getSession();
+      
+      // If there's an error and user still has an active session, logout
+      if (currentSession?.user?.id === userId) {
+        console.warn('Error fetching user profile - logging out user');
+        await performCompleteLogout();
+        window.location.href = '/auth';
+      }
     }
   };
 
   // Function to refresh user profile
+  // If profile cannot be found, will logout the user via loadUserProfile
   const refreshUserProfile = async () => {
     if (user?.id) {
       await loadUserProfile(user.id);
+    } else {
+      // If no user, clear profile
+      setUserProfile(null);
     }
   };
 

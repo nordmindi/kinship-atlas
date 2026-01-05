@@ -3,6 +3,8 @@ import { UserProfile } from '@/types';
 
 /**
  * Get user profile with role information
+ * Returns null if profile doesn't exist or if there's a critical error
+ * Throws an error if there's an infinite recursion or policy error that requires logout
  */
 export const getUserProfile = async (userId: string): Promise<UserProfile | null> => {
   try {
@@ -13,7 +15,7 @@ export const getUserProfile = async (userId: string): Promise<UserProfile | null
       .single();
 
     if (error) {
-      // If table doesn't exist, return a default profile
+      // If table doesn't exist, return a default profile (for development)
       if (error.code === 'PGRST205' || error.message?.includes('Could not find the table')) {
         console.warn('user_profiles table not found, returning default profile');
         return {
@@ -23,7 +25,28 @@ export const getUserProfile = async (userId: string): Promise<UserProfile | null
           updatedAt: new Date().toISOString(),
         };
       }
+      
+      // Critical errors that indicate the profile cannot be accessed
+      // These should trigger a logout
+      if (
+        error.code === '42P17' || // infinite recursion detected in policy
+        error.code === 'PGRST116' || // no rows returned (profile doesn't exist)
+        error.message?.includes('infinite recursion') ||
+        error.message?.includes('does not exist') ||
+        error.message?.includes('permission denied')
+      ) {
+        console.error('Critical error fetching user profile - profile not accessible:', error);
+        // Return null to indicate profile is not accessible
+        return null;
+      }
+      
       console.error('Error fetching user profile:', error);
+      return null;
+    }
+
+    // If no data returned, profile doesn't exist
+    if (!data) {
+      console.warn('User profile not found for user:', userId);
       return null;
     }
 
