@@ -161,18 +161,20 @@ describe('FamilyMembersTab', () => {
       await waitFor(() => {
         expect(screen.getByText('John Doe')).toBeInTheDocument();
         expect(screen.queryByText('Jane Smith')).not.toBeInTheDocument();
-        // The text might be split across elements, so use a more flexible matcher
-        const showingText = screen.queryByText((content, element) => {
-          return element?.textContent?.includes('Showing') && element?.textContent?.includes('1') && element?.textContent?.includes('4');
-        });
-        // If queryByText doesn't find it, try queryAllByText with a regex
-        if (!showingText) {
-          const showingElements = screen.queryAllByText(/Showing.*1.*of.*4/i);
-          expect(showingElements.length).toBeGreaterThan(0);
-        } else {
-          expect(showingText).toBeInTheDocument();
-        }
+      }, { timeout: 3000 });
+
+      // Check for the "Showing X of Y" text - it might be split across elements
+      const showingElements = screen.queryAllByText((content, element) => {
+        const text = element?.textContent || '';
+        return text.includes('Showing') && text.includes('1') && text.includes('4');
       });
+      // If not found with function matcher, try regex
+      if (showingElements.length === 0) {
+        const regexElements = screen.queryAllByText(/Showing.*1.*of.*4/i);
+        expect(regexElements.length).toBeGreaterThan(0);
+      } else {
+        expect(showingElements.length).toBeGreaterThan(0);
+      }
     });
 
     it('should filter members by last name', async () => {
@@ -295,10 +297,12 @@ describe('FamilyMembersTab', () => {
 
       expect(screen.getByText('Gender')).toBeInTheDocument();
       expect(screen.getByText('Root Members')).toBeInTheDocument();
-      // Relations might appear multiple times, so use getAllByText
+      // Relations might appear multiple times, so use queryAllByText
       const relationsElements = screen.queryAllByText('Relations');
       expect(relationsElements.length).toBeGreaterThan(0);
-      expect(screen.getByText('Created By')).toBeInTheDocument();
+      // Created By might appear multiple times (in table header and filter panel)
+      const createdByElements = screen.queryAllByText('Created By');
+      expect(createdByElements.length).toBeGreaterThan(0);
     });
 
     it('should filter by gender - male', async () => {
@@ -634,17 +638,14 @@ describe('FamilyMembersTab', () => {
     it('should display birth date correctly', () => {
       renderFamilyMembersTab();
 
-      // Check that dates are formatted - the text might be split across elements
-      const dateElement = screen.queryByText((content, element) => {
-        return element?.textContent?.includes('1') && element?.textContent?.includes('1990');
+      // Check that dates are formatted - the date "1990-01-01" appears in the table
+      // Use queryAllByText since there might be multiple dates
+      const dateElements = screen.queryAllByText((content, element) => {
+        return element?.textContent?.includes('1990-01-01') || 
+               (element?.textContent?.includes('1990') && element?.textContent?.includes('01-01'));
       });
-      // If queryByText doesn't find it, try getAllByText with a regex
-      if (!dateElement) {
-        const dateElements = screen.queryAllByText(/1.*1990/);
-        expect(dateElements.length).toBeGreaterThan(0);
-      } else {
-        expect(dateElement).toBeInTheDocument();
-      }
+      // At least one date should be found
+      expect(dateElements.length).toBeGreaterThan(0);
     });
   });
 

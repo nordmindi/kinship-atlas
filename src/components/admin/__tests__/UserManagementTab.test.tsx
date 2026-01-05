@@ -156,36 +156,26 @@ describe('UserManagementTab', () => {
 
   it('should validate email format in create user dialog', async () => {
     const user = userEvent.setup();
-    renderComponent({ isUserDialogOpen: true });
+    // Render with invalid email already set to test validation
+    renderComponent({ isUserDialogOpen: true, newUserEmail: 'invalid-email' });
 
-    const emailInput = screen.getByLabelText('Email *');
-    await user.type(emailInput, 'invalid-email');
-    // Trigger blur to validate
-    await user.tab();
-
+    // The error message should appear immediately since email is invalid
     await waitFor(() => {
-      const errorMessage = screen.queryByText((content, element) => {
-        return element?.textContent?.includes('valid email') || element?.textContent?.includes('email address');
-      });
-      expect(errorMessage || screen.getByText(/valid email|email address/i)).toBeInTheDocument();
-    }, { timeout: 3000 });
+      const errorMessage = screen.queryByText('Please enter a valid email address');
+      expect(errorMessage).toBeInTheDocument();
+    }, { timeout: 2000 });
   });
 
   it('should validate password length in create user dialog', async () => {
     const user = userEvent.setup();
-    renderComponent({ isUserDialogOpen: true });
+    // Render with short password already set to test validation
+    renderComponent({ isUserDialogOpen: true, newUserPassword: '123' });
 
-    const passwordInput = screen.getByLabelText('Password *');
-    await user.type(passwordInput, '123');
-    // Trigger blur to validate
-    await user.tab();
-
+    // The error message should appear immediately since password is too short
     await waitFor(() => {
-      const errorMessage = screen.queryByText((content, element) => {
-        return element?.textContent?.includes('6 characters') || element?.textContent?.includes('at least');
-      });
-      expect(errorMessage || screen.getByText(/6 characters|at least/i)).toBeInTheDocument();
-    }, { timeout: 3000 });
+      const errorMessage = screen.queryByText('Password must be at least 6 characters long');
+      expect(errorMessage).toBeInTheDocument();
+    }, { timeout: 2000 });
   });
 
   it('should render edit user dialog when open', () => {
