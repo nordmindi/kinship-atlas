@@ -91,8 +91,7 @@ class StoryService {
           .insert(
             request.relatedMembers.map(member => ({
               story_id: storyId,
-              family_member_id: member.familyMemberId,
-              role: member.role
+              family_member_id: member.familyMemberId
             }))
           );
 
@@ -201,7 +200,6 @@ class StoryService {
           *,
           story_members (
             id,
-            role,
             family_member_id,
             family_members (
               id,
@@ -243,7 +241,6 @@ class StoryService {
             attrs,
             story_members (
               id,
-              role,
               family_member_id,
               family_members (
                 id,
@@ -479,7 +476,6 @@ class StoryService {
           *,
           story_members (
             id,
-            role,
             family_member_id,
             family_members (
               id,
@@ -517,7 +513,6 @@ class StoryService {
           *,
           story_members (
             id,
-            role,
             family_member_id,
             family_members (
               id,
@@ -642,8 +637,7 @@ class StoryService {
             .insert(
               request.relatedMembers.map(member => ({
                 story_id: request.id,
-                family_member_id: member.familyMemberId,
-                role: member.role
+                family_member_id: member.familyMemberId
               }))
             );
 
@@ -896,8 +890,7 @@ class StoryService {
           .insert(
             request.participants.map(participant => ({
               event_id: eventData.id,
-              family_member_id: participant.familyMemberId,
-              role: participant.role
+              family_member_id: participant.familyMemberId
             }))
           );
 
@@ -939,7 +932,6 @@ class StoryService {
           *,
           event_participants (
             id,
-            role,
             family_member_id,
             family_members (
               id,
@@ -977,7 +969,6 @@ class StoryService {
           *,
           event_participants (
             id,
-            role,
             family_member_id,
             family_members (
               id,
@@ -1335,7 +1326,7 @@ class StoryService {
         id: sm.id,
         storyId: sm.story_id,
         familyMemberId: sm.family_member_id,
-        role: sm.role,
+        role: sm.role || 'participant',
         familyMember: sm.family_members ? {
           id: sm.family_members.id,
           firstName: sm.family_members.first_name,
@@ -1382,7 +1373,7 @@ class StoryService {
         id: ep.id,
         eventId: ep.event_id,
         familyMemberId: ep.family_member_id,
-        role: ep.role,
+        role: ep.role || 'participant',
         familyMember: ep.family_members ? {
           id: ep.family_members.id,
           firstName: ep.family_members.first_name,
