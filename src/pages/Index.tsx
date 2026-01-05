@@ -3,7 +3,7 @@ import { Navigate, useNavigate } from "react-router-dom";
 import MobileLayout from "@/components/layout/MobileLayout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { PlusCircle, Search, Users, Map as MapIcon, BookOpen, UserPlus, BookPlus, Upload, Download, History } from "lucide-react";
+import { PlusCircle, Search, Users, Map as MapIcon, BookOpen, UserPlus, BookPlus, Upload, Download, History, MapPin } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import FamilyTreeView from "@/components/family/FamilyTreeView";
@@ -84,6 +84,11 @@ const Index = () => {
       return;
     }
 
+    // If selectedMemberId is null, that means "show all" - don't set a fallback
+    if (selectedMemberId === null) {
+      return;
+    }
+
     const isCurrentSelectionValid = selectedMemberId
       ? familyMembers.some(member => member.id === selectedMemberId)
       : false;
@@ -92,6 +97,7 @@ const Index = () => {
       return;
     }
 
+    // Only set fallback if we have an invalid selection (not null)
     const fallbackMemberId = familyMembers[0]?.id;
 
     if (fallbackMemberId) {
@@ -294,8 +300,7 @@ const Index = () => {
                   <div className="flex items-center justify-between mb-6">
                     <h2 className="text-xl font-semibold text-heritage-dark">Family</h2>
                     <Button variant="ghost" size="sm" className="text-heritage-purple hover:bg-heritage-purple-light" onClick={() => {
-                      setSelectedMemberId("");
-                      setActiveTab("tree");
+                      navigate("/family-members");
                     }}>
                       View All
                     </Button>
@@ -361,8 +366,10 @@ const Index = () => {
                   <div className="bg-white rounded-xl shadow-sm border border-heritage-purple/10 overflow-hidden">
                     <FamilyTreeView 
                       members={filteredMembers}
-                      currentMemberId={selectedMemberId || ""}
-                      onSelectMember={setSelectedMemberId}
+                      currentMemberId={selectedMemberId ?? ""}
+                      onSelectMember={(memberId) => {
+                        setSelectedMemberId(memberId);
+                      }}
                     />
                   </div>
                 )}

@@ -354,6 +354,79 @@ export const updateMediaCaption = async (mediaId: string, caption: string): Prom
 };
 
 /**
+ * Get all media (admin only)
+ */
+export const getAllMedia = async (): Promise<MediaItem[]> => {
+  try {
+    const { data, error } = await supabase
+      .from('media')
+      .select('*')
+      .order('created_at', { ascending: false });
+      
+    if (error) throw error;
+    
+    return (data || []).map(item => ({
+      id: item.id,
+      url: item.url,
+      caption: item.caption,
+      mediaType: item.media_type as 'image' | 'document' | 'audio' | 'video',
+      createdAt: item.created_at,
+      userId: item.user_id,
+      fileSize: item.file_size,
+      fileName: item.file_name
+    }));
+  } catch (error) {
+    console.error('Error fetching all media:', error);
+    return [];
+  }
+};
+
+/**
+ * Delete media as admin (admin only)
+ */
+export const deleteMediaAsAdmin = async (mediaId: string): Promise<boolean> => {
+  try {
+    // Get media info to delete from storage
+    const { data: mediaData, error: fetchError } = await supabase
+      .from('media')
+      .select('url, file_name')
+      .eq('id', mediaId)
+      .single();
+      
+    if (fetchError) throw fetchError;
+    
+    // Delete from database (admin can delete any media)
+    const { error: deleteError } = await supabase
+      .from('media')
+      .delete()
+      .eq('id', mediaId);
+    
+    if (deleteError) throw deleteError;
+    
+    // Try to delete from storage (extract path from URL)
+    try {
+      const url = new URL(mediaData.url);
+      const pathParts = url.pathname.split('/');
+      const bucketIndex = pathParts.findIndex(part => part === 'family-media');
+      if (bucketIndex !== -1 && bucketIndex < pathParts.length - 1) {
+        const filePath = pathParts.slice(bucketIndex + 1).join('/');
+        await supabase.storage
+          .from('family-media')
+          .remove([filePath]);
+      }
+    } catch (storageError) {
+      console.warn('Could not delete from storage:', storageError);
+      // Don't fail the operation if storage deletion fails
+    }
+    
+    return true;
+  } catch (error) {
+    console.error('Error deleting media as admin:', error);
+    return false;
+  }
+};
+
+/**
  * Attach media to a family member
  */
 export const attachMediaToMember = async (mediaId: string, memberId: string): Promise<boolean> => {

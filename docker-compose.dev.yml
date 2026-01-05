@@ -28,6 +28,7 @@ services:
       - ./docker-data/db:/var/lib/postgresql/data
       - ./supabase/init-auth-schema.sql:/docker-entrypoint-initdb.d/00-init-auth-schema.sql:ro
       - ./supabase/init-auth-types.sql:/docker-entrypoint-initdb.d/01-init-auth-types.sql:ro
+      - ./supabase/fix-gotrue-migration.sql:/docker-entrypoint-initdb.d/02-fix-gotrue-migration.sql:ro
       - ./supabase/migrations:/docker-entrypoint-initdb.d/migrations:ro
       - ./supabase/seed.sql:/docker-entrypoint-initdb.d/seed.sql:ro
     healthcheck:
@@ -40,7 +41,7 @@ services:
 
   # Supabase API
   api:
-    image: supabase/gotrue:v2.158.1
+    image: supabase/gotrue:v2.160.0
     container_name: kinship-atlas-api
     ports:
       - "60001:9999"

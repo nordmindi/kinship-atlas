@@ -112,6 +112,9 @@ const FamilyTreeRenderer: React.FC<FamilyTreeRendererProps> = ({
   const [focusMode, setFocusMode] = React.useState(false);
   const [focusMemberId, setFocusMemberId] = React.useState<string | null>(null);
   const [reactFlowInstance, setReactFlowInstance] = React.useState<ReactFlowInstance | null>(null);
+  // Separate instances for expanded and regular modes
+  const expandedInstanceRef = React.useRef<ReactFlowInstance | null>(null);
+  const regularInstanceRef = React.useRef<ReactFlowInstance | null>(null);
   const [treeOrientation, setTreeOrientation] = React.useState<'top-down' | 'bottom-up'>('top-down');
   const [treeType, setTreeType] = React.useState<'standard-pedigree' | 'combination-pedigree' | 'descendant-chart'>('standard-pedigree');
   const [isExpanded, setIsExpanded] = React.useState(false);
@@ -445,25 +448,30 @@ const FamilyTreeRenderer: React.FC<FamilyTreeRendererProps> = ({
   
   // Update state when props change and apply persistent layout
   useEffect(() => {
-    // Apply saved layout positions if available
-    const nodesWithLayout = layoutService.applyLayoutToNodes(nodes);
+    let isMounted = true;
     
-    // DIAGNOSTIC: Log incoming nodes
-    if (import.meta.env.DEV && nodes.length > 0) {
-      const sampleNode = nodes[0] as FamilyMemberNodeType;
-      console.log('📥 FamilyTreeRenderer: Received nodes prop', {
-        'totalNodes': nodes.length,
-        'sampleNodeId': sampleNode.id,
-        'sampleNodeHasOnEdit': !!(sampleNode as any).onEdit,
-        'sampleNodeHasOnViewProfile': !!(sampleNode as any).onViewProfile,
-        'sampleNodeDataKeys': Object.keys(sampleNode.data || {}),
-        'sampleNodeKeys': Object.keys(sampleNode)
-      });
-    }
-    
-    // Add collapse data and path highlighting to nodes
-    // Preserve all node properties including callbacks (onEdit, onViewProfile, etc.)
-    const nodesWithCollapseData = nodesWithLayout.map(node => {
+    // Apply saved layout positions if available (async)
+    const applyLayout = async () => {
+      const nodesWithLayout = await layoutService.applyLayoutToNodes(nodes);
+      
+      if (!isMounted) return;
+      
+      // DIAGNOSTIC: Log incoming nodes
+      if (import.meta.env.DEV && nodes.length > 0) {
+        const sampleNode = nodes[0] as FamilyMemberNodeType;
+        console.log('📥 FamilyTreeRenderer: Received nodes prop', {
+          'totalNodes': nodes.length,
+          'sampleNodeId': sampleNode.id,
+          'sampleNodeHasOnEdit': !!(sampleNode as any).onEdit,
+          'sampleNodeHasOnViewProfile': !!(sampleNode as any).onViewProfile,
+          'sampleNodeDataKeys': Object.keys(sampleNode.data || {}),
+          'sampleNodeKeys': Object.keys(sampleNode)
+        });
+      }
+      
+      // Add collapse data and path highlighting to nodes
+      // Preserve all node properties including callbacks (onEdit, onViewProfile, etc.)
+      const nodesWithCollapseData = nodesWithLayout.map(node => {
       const nodeWithCallbacks = node as FamilyMemberNodeType;
       const hasCallbacks = !!(nodeWithCallbacks.onEdit || nodeWithCallbacks.onViewProfile || nodeWithCallbacks.onViewTimeline);
       
@@ -529,9 +537,16 @@ const FamilyTreeRenderer: React.FC<FamilyTreeRendererProps> = ({
       });
     }
     
-    // Restore callbacks to nodes before setting state
-    const nodesWithRestoredCallbacks = restoreCallbacks(visibleNodes);
-    setNodes(nodesWithRestoredCallbacks);
+      // Restore callbacks to nodes before setting state
+      const nodesWithRestoredCallbacks = restoreCallbacks(visibleNodes);
+      setNodes(nodesWithRestoredCallbacks);
+    };
+    
+    applyLayout();
+    
+    return () => {
+      isMounted = false;
+    };
   }, [nodes, setNodes, getVisibleNodes, isCollapsed, getHiddenDescendantCount, highlightedPath, pathStartMember, toggleCollapse, preserveCallbacks, restoreCallbacks]);
   
   // DIAGNOSTIC: Monitor nodesState changes
@@ -578,217 +593,192 @@ const FamilyTreeRenderer: React.FC<FamilyTreeRendererProps> = ({
 
   // Save layout when nodes change (debounced) - increased debounce for better performance
   useEffect(() => {
-    const timeoutId = setTimeout(() => {
+    const timeoutId = setTimeout(async () => {
       if (nodesState.length > 0) {
-        layoutService.saveLayout(nodesState);
+        await layoutService.saveLayout(nodesState);
       }
     }, 2000); // Save after 2 seconds of inactivity for better performance
 
     return () => clearTimeout(timeoutId);
   }, [nodesState]);
   
-  // Zoom and layout functions
-  const handleZoomIn = useCallback(() => {
-    if (reactFlowInstance) {
-      reactFlowInstance.zoomIn();
+  // Get the active ReactFlow instance based on current mode
+  // This must be defined BEFORE handlers that use it
+  const getActiveInstance = useCallback((): ReactFlowInstance | null => {
+    if (isExpanded) {
+      return expandedInstanceRef.current || reactFlowInstance;
+    } else {
+      return regularInstanceRef.current || reactFlowInstance;
     }
-  }, [reactFlowInstance]);
+  }, [isExpanded, reactFlowInstance]);
+  
+  // Zoom and layout functions - use active instance
+  const handleZoomIn = useCallback(() => {
+    const instance = getActiveInstance();
+    if (instance) {
+      instance.zoomIn();
+    } else {
+      console.warn('ReactFlow instance not available for zoom in');
+    }
+  }, [getActiveInstance]);
   
   const handleZoomOut = useCallback(() => {
-    if (reactFlowInstance) {
-      reactFlowInstance.zoomOut();
+    const instance = getActiveInstance();
+    if (instance) {
+      instance.zoomOut();
+    } else {
+      console.warn('ReactFlow instance not available for zoom out');
     }
-  }, [reactFlowInstance]);
+  }, [getActiveInstance]);
   
   const handleFitView = useCallback(() => {
-    if (reactFlowInstance) {
-      reactFlowInstance.fitView({ padding: 0.2 });
+    const instance = getActiveInstance();
+    if (instance) {
+      instance.fitView({ padding: 0.2 });
+    } else {
+      console.warn('ReactFlow instance not available for fit view');
     }
-  }, [reactFlowInstance]);
+  }, [getActiveInstance]);
 
   const handleToggleExpand = useCallback(() => {
-    setIsExpanded(prev => !prev);
-    // Fit view after expanding/collapsing
-    setTimeout(() => {
-      if (reactFlowInstance) {
-        reactFlowInstance.fitView({ padding: 0.2, duration: 300 });
-      }
-    }, 100);
-  }, [reactFlowInstance]);
+    setIsExpanded(prev => {
+      const newExpanded = !prev;
+      // Fit view after expanding/collapsing with a delay to ensure instance is ready
+      setTimeout(() => {
+        const instance = newExpanded ? expandedInstanceRef.current : regularInstanceRef.current;
+        if (instance) {
+          instance.fitView({ padding: 0.2, duration: 300 });
+        }
+      }, 200);
+      return newExpanded;
+    });
+  }, []);
   
   const handleHierarchyLayout = useCallback(() => {
-    if (!reactFlowInstance || !familyMembers.length) return;
+    const instance = getActiveInstance();
+    if (!instance || !familyMembers.length) {
+      console.warn('Cannot apply hierarchy layout: instance or members missing');
+      return;
+    }
     
-    // Create a proper pyramid hierarchy with oldest members at top
-    const memberMap = new Map<string, FamilyMember>();
-    familyMembers.forEach(member => memberMap.set(member.id, member));
+    // Find root member (member with no parents, or first member)
+    const rootMember = familyMembers.find(member => 
+      !member.relations?.some(rel => rel.type === 'parent')
+    ) || familyMembers[0];
     
-    // Find all members who have no parents (oldest generation)
-    const findOldestGeneration = () => {
-      const oldestMembers = familyMembers.filter(member => {
-        // Check if this member has any parent relationships
-        const hasParents = familyMembers.some(otherMember => 
-          otherMember.relations?.some(rel => 
-            rel.type === 'parent' && rel.personId === member.id
-          )
-        );
-        return !hasParents;
-      });
-      
-      // If no clear oldest generation, use birth year to find oldest
-      if (oldestMembers.length === 0 || oldestMembers.length === familyMembers.length) {
-        return familyMembers.sort((a, b) => {
-          const yearA = a.birthDate ? new Date(a.birthDate).getFullYear() : 1900;
-          const yearB = b.birthDate ? new Date(b.birthDate).getFullYear() : 1900;
-          return yearA - yearB;
-        }).slice(0, Math.max(1, Math.floor(familyMembers.length / 3)));
-      }
-      
-      return oldestMembers;
-    };
+    if (!rootMember) return;
     
-    const oldestGeneration = findOldestGeneration();
-    console.log('Oldest generation found:', oldestGeneration);
-    
-    // Build generation levels using a proper hierarchy algorithm
-    const memberGenerations = new Map<string, number>();
-    const generations = new Map<number, string[]>();
-    const processed = new Set<string>();
-    
-    // Start with oldest generation at level 0 (top of pyramid)
-    oldestGeneration.forEach(member => {
-      memberGenerations.set(member.id, 0);
-      if (!generations.has(0)) generations.set(0, []);
-      generations.get(0)!.push(member.id);
-    });
-    
-    // Recursively build generations going down
-    const buildGenerationsDown = (memberId: string, currentLevel: number) => {
-      if (processed.has(memberId)) return;
-      processed.add(memberId);
-      
-      const member = memberMap.get(memberId);
-      if (!member) return;
-      
-      // Find children (members who have this member as parent)
-      const children = familyMembers.filter(child => 
-        child.relations?.some(rel => 
-          rel.type === 'parent' && rel.personId === memberId
-        )
+    // Import the hierarchical layout algorithm
+    import('./utils/hierarchicalLayout').then(({ calculateHierarchicalLayout }) => {
+      const positions = calculateHierarchicalLayout(
+        familyMembers,
+        rootMember.id,
+        {
+          horizontalSpacing: 250,
+          verticalSpacing: 200,
+          spouseSpacing: 150,
+          siblingSpacing: 200,
+        }
       );
       
-      children.forEach(child => {
-        const childLevel = currentLevel + 1;
-        memberGenerations.set(child.id, childLevel);
-        if (!generations.has(childLevel)) generations.set(childLevel, []);
-        if (!generations.get(childLevel)!.includes(child.id)) {
-          generations.get(childLevel)!.push(child.id);
-        }
-        buildGenerationsDown(child.id, childLevel);
+      console.log('Hierarchical layout calculated:', {
+        totalPositions: positions.size,
+        positions: Array.from(positions.entries()).slice(0, 5)
       });
       
-      // Find spouses (same generation level)
-      const spouses = familyMembers.filter(spouse => 
-        spouse.relations?.some(rel => 
-          rel.type === 'spouse' && rel.personId === memberId
-        )
-      );
+      // Update node positions
+      const updatedNodes = nodesState.map(node => {
+        const position = positions.get(node.id);
+        if (position) {
+          return {
+            ...node,
+            position,
+            style: {
+              ...node.style,
+              transition: 'all 0.5s ease-in-out'
+            }
+          };
+        }
+        // If node not in positions, keep current position but log warning
+        if (import.meta.env.DEV) {
+          console.warn(`Node ${node.id} not found in hierarchical layout positions`);
+        }
+        return node;
+      });
       
-      spouses.forEach(spouse => {
-        if (!memberGenerations.has(spouse.id)) {
-          memberGenerations.set(spouse.id, currentLevel);
-          if (!generations.has(currentLevel)) generations.set(currentLevel, []);
-          if (!generations.get(currentLevel)!.includes(spouse.id)) {
-            generations.get(currentLevel)!.push(spouse.id);
+      // CRITICAL FIX: Preserve callbacks when updating nodes
+      setNodes(restoreCallbacks(updatedNodes));
+      
+      // Fit view after layout with proper timing and options
+      // Use requestAnimationFrame and multiple attempts to ensure nodes are rendered
+      requestAnimationFrame(() => {
+        setTimeout(() => {
+          const instance = getActiveInstance();
+          if (instance) {
+            console.log('Fitting view to hierarchical layout...');
+            // Calculate bounds of all nodes
+            const nodeBounds = updatedNodes
+              .filter(node => positions.has(node.id))
+              .map(node => {
+                const pos = positions.get(node.id)!;
+                return {
+                  x: pos.x,
+                  y: pos.y,
+                  width: 140, // node width
+                  height: 180 // node height
+                };
+              });
+            
+            if (nodeBounds.length > 0) {
+              const minX = Math.min(...nodeBounds.map(b => b.x));
+              const maxX = Math.max(...nodeBounds.map(b => b.x + b.width));
+              const minY = Math.min(...nodeBounds.map(b => b.y));
+              const maxY = Math.max(...nodeBounds.map(b => b.y + b.height));
+              
+              const width = maxX - minX;
+              const height = maxY - minY;
+              
+              console.log('Node bounds:', { minX, maxX, minY, maxY, width, height });
+              
+              // Get the active instance again (it might have changed)
+              const currentInstance = getActiveInstance();
+              if (currentInstance) {
+                // Fit view with calculated bounds
+                currentInstance.fitView({ 
+                  padding: 0.2,
+                  includeHiddenNodes: false,
+                  maxZoom: 1.5,
+                  minZoom: 0.1,
+                  duration: 800
+                });
+                
+                // Try again after transition completes
+                setTimeout(() => {
+                  const finalInstance = getActiveInstance();
+                  if (finalInstance) {
+                    finalInstance.fitView({ 
+                      padding: 0.15,
+                      includeHiddenNodes: false,
+                      maxZoom: 2,
+                      minZoom: 0.1,
+                      duration: 400
+                    });
+                  }
+                }, 900);
+              }
+            }
           }
-          buildGenerationsDown(spouse.id, currentLevel);
-        }
+        }, 100);
       });
-    };
-    
-    // Build all generations starting from oldest
-    oldestGeneration.forEach(member => {
-      buildGenerationsDown(member.id, 0);
+    }).catch(error => {
+      console.error('Error loading hierarchical layout:', error);
+      toast.error('Failed to apply hierarchical layout');
     });
-    
-    console.log('Generated hierarchy:', { 
-      generations: Array.from(generations.entries()).map(([level, members]) => ({
-        level,
-        members: members.map(id => {
-          const member = memberMap.get(id);
-          return `${member?.firstName} ${member?.lastName} (${member?.birthDate ? new Date(member.birthDate).getFullYear() : 'Unknown'})`;
-        })
-      })),
-      memberGenerations: Array.from(memberGenerations.entries()).map(([id, level]) => {
-        const member = memberMap.get(id);
-        return `${member?.firstName} ${member?.lastName}: Level ${level}`;
-      })
-    });
-    
-    // Create position map for each generation
-    const memberPositions = new Map<string, number>();
-    generations.forEach((memberIds, generation) => {
-      // Sort members within generation by birth year (oldest first)
-      const sortedMembers = memberIds.sort((a, b) => {
-        const memberA = memberMap.get(a);
-        const memberB = memberMap.get(b);
-        const yearA = memberA?.birthDate ? new Date(memberA.birthDate).getFullYear() : 1900;
-        const yearB = memberB?.birthDate ? new Date(memberB.birthDate).getFullYear() : 1900;
-        return yearA - yearB;
-      });
-      
-      sortedMembers.forEach((memberId, index) => {
-        memberPositions.set(memberId, index);
-      });
-    });
-    
-    // Update node positions based on hierarchy
-    const updatedNodes = nodesState.map(node => {
-      const generation = memberGenerations.get(node.id);
-      const positionInGeneration = memberPositions.get(node.id) || 0;
-      
-      if (generation === undefined) {
-        // If member not in hierarchy, put them at the bottom
-        const maxGeneration = Math.max(...Array.from(generations.keys()));
-        const bottomGeneration = maxGeneration + 1;
-        memberGenerations.set(node.id, bottomGeneration);
-        if (!generations.has(bottomGeneration)) generations.set(bottomGeneration, []);
-        generations.get(bottomGeneration)!.push(node.id);
-        memberPositions.set(node.id, 0);
-        
-        return {
-          ...node,
-          position: {
-            x: 0,
-            y: bottomGeneration * 200
-          }
-        };
-      }
-      
-      // Calculate position with proper spacing
-      const generationSize = generations.get(generation)?.length || 1;
-      const centerOffset = (generationSize - 1) * 300 / 2;
-      
-      return {
-        ...node,
-        position: {
-          x: (positionInGeneration * 300) - centerOffset,
-          y: generation * 200
-        }
-      };
-    });
-    
-    // CRITICAL FIX: Preserve callbacks when updating nodes
-    setNodes(restoreCallbacks(updatedNodes));
-    
-    // Fit view after layout
-    setTimeout(() => {
-      reactFlowInstance.fitView({ padding: 0.2 });
-    }, 100);
-  }, [reactFlowInstance, nodesState, familyMembers, setNodes, restoreCallbacks]);
+  }, [getActiveInstance, nodesState, familyMembers, setNodes, restoreCallbacks]);
   
   const handleGenealogicalLayout = useCallback(() => {
-    if (!reactFlowInstance || !familyMembers.length) return;
+    const instance = getActiveInstance();
+    if (!instance || !familyMembers.length) return;
     
     // Create a traditional genealogical tree layout
     const memberMap = new Map<string, FamilyMember>();
@@ -939,9 +929,12 @@ const FamilyTreeRenderer: React.FC<FamilyTreeRendererProps> = ({
     
     // Fit view after layout
     setTimeout(() => {
-      reactFlowInstance.fitView({ padding: 0.2 });
+      const instance = getActiveInstance();
+      if (instance) {
+        instance.fitView({ padding: 0.2 });
+      }
     }, 100);
-  }, [reactFlowInstance, nodesState, familyMembers, setNodes, treeOrientation, restoreCallbacks]);
+  }, [getActiveInstance, nodesState, familyMembers, setNodes, treeOrientation, restoreCallbacks]);
 
   const handleToggleOrientation = useCallback(() => {
     setTreeOrientation(prev => prev === 'top-down' ? 'bottom-up' : 'top-down');
@@ -952,7 +945,8 @@ const FamilyTreeRenderer: React.FC<FamilyTreeRendererProps> = ({
   }, [handleGenealogicalLayout]);
 
   const handleStandardPedigreeLayout = useCallback(() => {
-    if (!reactFlowInstance || !familyMembers.length) return;
+    const instance = getActiveInstance();
+    if (!instance || !familyMembers.length) return;
     
     // Standard Pedigree: Individual + direct line of ancestors only
     const memberMap = new Map<string, FamilyMember>();
@@ -1054,12 +1048,16 @@ const FamilyTreeRenderer: React.FC<FamilyTreeRendererProps> = ({
     
     // Fit view after layout
     setTimeout(() => {
-      reactFlowInstance.fitView({ padding: 0.2 });
+      const instance = getActiveInstance();
+      if (instance) {
+        instance.fitView({ padding: 0.2 });
+      }
     }, 100);
-  }, [reactFlowInstance, nodesState, familyMembers, setNodes, restoreCallbacks]);
+  }, [getActiveInstance, nodesState, familyMembers, setNodes, restoreCallbacks]);
   
   const handleCombinationPedigreeLayout = useCallback(() => {
-    if (!reactFlowInstance || !familyMembers.length) return;
+    const instance = getActiveInstance();
+    if (!instance || !familyMembers.length) return;
     
     // Combination Pedigree: Couple + ancestors + descendants
     const memberMap = new Map<string, FamilyMember>();
@@ -1205,12 +1203,16 @@ const FamilyTreeRenderer: React.FC<FamilyTreeRendererProps> = ({
     
     // Fit view after layout
     setTimeout(() => {
-      reactFlowInstance.fitView({ padding: 0.2 });
+      const instance = getActiveInstance();
+      if (instance) {
+        instance.fitView({ padding: 0.2 });
+      }
     }, 100);
-  }, [reactFlowInstance, nodesState, familyMembers, setNodes, restoreCallbacks]);
+  }, [getActiveInstance, nodesState, familyMembers, setNodes, restoreCallbacks]);
   
   const handleDescendantChartLayout = useCallback(() => {
-    if (!reactFlowInstance || !familyMembers.length) return;
+    const instance = getActiveInstance();
+    if (!instance || !familyMembers.length) return;
     
     // Descendant Chart: Individual/couple + descendants only
     const memberMap = new Map<string, FamilyMember>();
@@ -1326,18 +1328,31 @@ const FamilyTreeRenderer: React.FC<FamilyTreeRendererProps> = ({
     
     // Fit view after layout
     setTimeout(() => {
-      reactFlowInstance.fitView({ padding: 0.2 });
+      const instance = getActiveInstance();
+      if (instance) {
+        instance.fitView({ padding: 0.2 });
+      }
     }, 100);
-  }, [reactFlowInstance, nodesState, familyMembers, setNodes, restoreCallbacks]);
-  
-  const handleInit = useCallback((instance: ReactFlowInstance) => {
+  }, [getActiveInstance, nodesState, familyMembers, setNodes, restoreCallbacks]);
+
+  const handleInit = useCallback((instance: ReactFlowInstance, isExpandedMode: boolean = false) => {
     console.log('ReactFlow initialized:', {
       viewport: instance.getViewport(),
       nodes: nodes.length,
-      edges: edges.length
+      edges: edges.length,
+      isExpandedMode
     });
     
+    // Store instance in appropriate ref
+    if (isExpandedMode) {
+      expandedInstanceRef.current = instance;
+    } else {
+      regularInstanceRef.current = instance;
+    }
+    
+    // Also update the main state (for backward compatibility)
     setReactFlowInstance(instance);
+    
     if (onInit) {
       onInit(instance);
     }
@@ -1482,11 +1497,12 @@ const FamilyTreeRenderer: React.FC<FamilyTreeRendererProps> = ({
     
     // Fit view to show all nodes
     setTimeout(() => {
-      if (reactFlowInstance) {
-        reactFlowInstance.fitView({ padding: 0.2 });
+      const instance = getActiveInstance();
+      if (instance) {
+        instance.fitView({ padding: 0.2 });
       }
     }, 600);
-  }, [familyMembers, setNodes, reactFlowInstance, restoreCallbacks]);
+  }, [familyMembers, setNodes, getActiveInstance, restoreCallbacks]);
 
   const handleNodeClick = useCallback((event: React.MouseEvent, node: Node) => {
     console.log('Node clicked:', node.id, node.data);
@@ -1547,9 +1563,10 @@ const FamilyTreeRenderer: React.FC<FamilyTreeRendererProps> = ({
     const target = event.target as HTMLElement;
     if (target.closest('.react-flow__node')) return; // Don't start box selection if clicking on node
     
-    if (!reactFlowInstance) return;
+    const instance = getActiveInstance();
+    if (!instance) return;
     
-    const point = reactFlowInstance.screenToFlowPosition({
+    const point = instance.screenToFlowPosition({
       x: event.clientX,
       y: event.clientY,
     });
@@ -1568,16 +1585,17 @@ const FamilyTreeRenderer: React.FC<FamilyTreeRendererProps> = ({
       endScreenX: event.clientX,
       endScreenY: event.clientY,
     });
-  }, [reactFlowInstance]);
+  }, [getActiveInstance]);
   
   // Handle mouse move - update box selection
   const handleContainerMouseMove = useCallback((event: React.MouseEvent) => {
-    if (!isBoxSelectingRef.current || !boxSelectionStartRef.current || !reactFlowInstance) {
+    const instance = getActiveInstance();
+    if (!isBoxSelectingRef.current || !boxSelectionStartRef.current || !instance) {
       // Also check existing boxSelection state
       if (!boxSelection?.isActive) return;
     }
     
-    const point = reactFlowInstance.screenToFlowPosition({
+    const point = instance.screenToFlowPosition({
       x: event.clientX,
       y: event.clientY,
     });
@@ -1616,7 +1634,9 @@ const FamilyTreeRenderer: React.FC<FamilyTreeRendererProps> = ({
         const nodeY = node.position.y;
         // Approximate node size (180px width, 100px height)
         // Convert to flow coordinates (account for zoom)
-        const zoom = reactFlowInstance.getZoom();
+        const instance = getActiveInstance();
+        if (!instance) return false;
+        const zoom = instance.getZoom();
         const nodeWidth = 180 / zoom;
         const nodeHeight = 100 / zoom;
         
@@ -2105,13 +2125,15 @@ const FamilyTreeRenderer: React.FC<FamilyTreeRendererProps> = ({
       );
       
       const scale = distance / touchStartRef.current.distance;
-      const currentZoom = reactFlowInstance.getZoom();
-      const newZoom = Math.max(0.5, Math.min(2, currentZoom * scale));
-      
-      reactFlowInstance.zoomTo(newZoom);
-      touchStartRef.current.distance = distance;
+      const instance = getActiveInstance();
+      if (instance) {
+        const currentZoom = instance.getZoom();
+        const newZoom = Math.max(0.5, Math.min(2, currentZoom * scale));
+        instance.zoomTo(newZoom);
+        touchStartRef.current.distance = distance;
+      }
     }
-  }, [reactFlowInstance]);
+  }, [getActiveInstance]);
 
   const handleTouchEnd = useCallback(() => {
     touchStartRef.current = null;
@@ -2222,8 +2244,9 @@ const FamilyTreeRenderer: React.FC<FamilyTreeRendererProps> = ({
           onNodeClick(newNode as FamilyMemberNodeType);
           
           // Center on selected node
-          if (reactFlowInstance) {
-            reactFlowInstance.setCenter(newNode.position.x, newNode.position.y, { zoom: 1.5, duration: 300 });
+          const instance = getActiveInstance();
+          if (instance) {
+            instance.setCenter(newNode.position.x, newNode.position.y, { zoom: 1.5, duration: 300 });
           }
         }
         return;
@@ -2340,7 +2363,9 @@ const FamilyTreeRenderer: React.FC<FamilyTreeRendererProps> = ({
             style={{ 
               width: '100%',
               height: 'calc(100vh - 60px)',
-              position: 'relative'
+              minHeight: '600px',
+              position: 'relative',
+              overflow: 'hidden'
             }}
           >
             <div
@@ -2357,7 +2382,7 @@ const FamilyTreeRenderer: React.FC<FamilyTreeRendererProps> = ({
                 edges={edgesState}
                 nodeTypes={nodeTypes}
                 edgeTypes={edgeTypes}
-                onInit={handleInit}
+                onInit={(instance) => handleInit(instance, true)}
                 onNodeClick={handleNodeClick}
                 onNodeDoubleClick={handleNodeDoubleClick}
                 onNodeContextMenu={handleNodeContextMenu}
@@ -2504,7 +2529,17 @@ const FamilyTreeRenderer: React.FC<FamilyTreeRendererProps> = ({
                   />
                 )}
                 
-                <Panel position="top-right" className="bg-white rounded-lg shadow-lg border p-2 flex flex-col gap-2 max-h-[90vh] overflow-y-auto">
+                <Panel 
+                  position="top-right" 
+                  className="bg-white rounded-lg shadow-lg border p-2 flex flex-col gap-2"
+                  style={{
+                    maxHeight: '85vh',
+                    overflowY: 'auto',
+                    overflowX: 'hidden',
+                    scrollbarWidth: 'thin',
+                    scrollbarColor: '#cbd5e1 transparent'
+                  }}
+                >
                   <div className="flex gap-1">
                     <Button
                       size="sm"
@@ -2545,7 +2580,8 @@ const FamilyTreeRenderer: React.FC<FamilyTreeRendererProps> = ({
                   </div>
                   
                   {/* Layout Buttons */}
-                  <div className="flex flex-col gap-1">
+                  <div className="flex flex-col gap-1 border-t border-gray-200 pt-2 mt-1">
+                    <div className="text-xs font-semibold text-gray-600 mb-1">Layout Options</div>
                     <Button
                       size="sm"
                       variant="default"
@@ -2561,11 +2597,11 @@ const FamilyTreeRenderer: React.FC<FamilyTreeRendererProps> = ({
                       size="sm"
                       variant="outline"
                       onClick={handleHierarchyLayout}
-                      className="h-8 text-xs border-blue-500 text-blue-600 hover:bg-blue-50"
-                      title="Pyramid Tree"
+                      className="h-8 text-xs border-blue-500 text-blue-600 hover:bg-blue-50 font-medium"
+                      title="Hierarchy Layout - Parents on top, children below, spouses side by side"
                     >
                       <TreePineIcon className="h-4 w-4 mr-1" />
-                      Pyramid Tree
+                      Hierarchy Layout
                     </Button>
                     
                     <Button
@@ -2645,7 +2681,8 @@ const FamilyTreeRenderer: React.FC<FamilyTreeRendererProps> = ({
           width: '100%',
           height: isExpanded ? '100vh' : '600px',
           minHeight: isExpanded ? '100vh' : '600px',
-          position: 'relative'
+          position: 'relative',
+          overflow: 'hidden'
         }}
         role="application"
         aria-label="Family tree visualization"
@@ -2665,7 +2702,7 @@ const FamilyTreeRenderer: React.FC<FamilyTreeRendererProps> = ({
           edges={edgesState}
           nodeTypes={nodeTypes}
           edgeTypes={edgeTypes}
-          onInit={handleInit}
+          onInit={(instance) => handleInit(instance, false)}
           onNodeClick={handleNodeClick}
           onNodeDoubleClick={handleNodeDoubleClick}
           onNodeContextMenu={handleNodeContextMenu}
@@ -2773,8 +2810,8 @@ const FamilyTreeRenderer: React.FC<FamilyTreeRendererProps> = ({
             <Button
               size="sm"
               variant="outline"
-              onClick={() => {
-                layoutService.clearLayout();
+              onClick={async () => {
+                await layoutService.clearLayout();
                 window.location.reload();
               }}
               className="h-8 text-xs border-orange-500 text-orange-600 hover:bg-orange-50"

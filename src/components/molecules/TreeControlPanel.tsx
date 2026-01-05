@@ -15,7 +15,14 @@ export const TreeControlPanel: React.FC<TreeControlPanelProps> = ({
   return (
     <Panel
       position={position}
-      className={`bg-white rounded-lg shadow-lg border p-2 flex flex-col gap-2 max-h-[90vh] overflow-y-auto ${className}`}
+      className={`bg-white rounded-lg shadow-lg border p-2 flex flex-col gap-2 max-h-[85vh] overflow-y-auto overscroll-contain ${className}`}
+      style={{
+        maxHeight: '85vh',
+        overflowY: 'auto',
+        overflowX: 'hidden',
+        scrollbarWidth: 'thin',
+        scrollbarColor: '#cbd5e1 transparent'
+      }}
     >
       {children}
     </Panel>

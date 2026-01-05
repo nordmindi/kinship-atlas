@@ -140,6 +140,25 @@ coverage:
   minNewFeatures: 80
   minCriticalPaths: 90
 
+mandatory-testing:
+  - "ALL new functionality MUST include tests - no exceptions"
+  - "New components require component tests with React Testing Library"
+  - "New services/hooks require unit tests with Vitest"
+  - "New utilities require unit tests"
+  - "New features require integration tests for critical paths"
+  - "Tests must be written in the same PR/commit as the feature"
+  - "Test files must be co-located: `__tests__/` directory next to source files"
+  - "Test naming: `*.test.ts` for utilities/services, `*.test.tsx` for components"
+
+test-requirements:
+  - "Test happy paths and error scenarios"
+  - "Test edge cases and boundary conditions"
+  - "Test authentication and authorization"
+  - "Test data validation and error handling"
+  - "Test loading states and async operations"
+  - "Mock external dependencies (Supabase, APIs, file operations)"
+  - "Use realistic test data that matches production structure"
+
 e2e-assertions:
   - 'End-user route never contains data-testid="shell-root"'
   - 'Admin route never contains data-testid="app-header"'
@@ -172,6 +191,21 @@ typescript:
     - "Interfaces/Types for all DTOs"
     - "Generics for reusable components/hooks"
     - "Unions for state machines"
+
+linting:
+  mandatory:
+    - "ALL code MUST pass ESLint before commit - no exceptions"
+    - "Fix ALL linting errors before submitting PR"
+    - "Run `npm run lint` before committing"
+    - "Use `npm run lint:fix` to auto-fix issues when possible"
+    - "TypeScript errors are linting failures - fix all type errors"
+    - "No console.log in production code (use proper logging)"
+    - "No unused imports or variables"
+    - "Follow consistent code formatting (Prettier)"
+  pre-commit:
+    - "Run linting as part of pre-commit hook"
+    - "CI pipeline will fail on linting errors"
+    - "Review linting output before pushing"
 react:
   patterns:
     - "Functional components with hooks"
@@ -195,20 +229,36 @@ a11y:
 
 quality-gates:
   commands:
-    - "npm run lint"
-    - "npm run type-check"
-    - "npm run test"
-    - "npm run build"
+    - "npm run lint" # MUST pass - no exceptions
+    - "npm run lint:fix" # Auto-fix linting issues
+    - "npm run type-check" # MUST pass - no type errors
+    - "npm run test" # MUST pass - all tests green
+    - "npm run test:coverage" # Check coverage thresholds
+    - "npm run build" # MUST succeed
+  enforcement:
+    - "All quality gates MUST pass before merge"
+    - "No bypassing linting or type checking"
+    - "Test failures block merge"
+    - "Coverage below threshold blocks merge"
 
 ## 🔁 Workflow & Prompts (for Cursor & AI)
 before-coding:
   - "Read APPLICATION_DEVELOPMENT_INSTRUCTIONS.md"
   - "Identify area: End-User or Admin; confirm allowed roles"
   - "Locate target files; outline smallest possible change"
+  - "Check if data structures are changing - import/export may need updates"
 while-coding:
   - "Keep diffs small and isolated"
   - "No cross-area imports"
-  - "Add/update tests in the same PR"
+  - "Add/update tests in the same PR - MANDATORY"
+  - "Fix linting errors immediately"
+  - "If adding new data fields/types, check import/export functions"
+after-coding:
+  - "Run `npm run lint` and fix all errors"
+  - "Run `npm run type-check` and fix all type errors"
+  - "Write tests for new functionality"
+  - "Run `npm run test` and ensure all pass"
+  - "Update import/export if data structures changed"
 commits:
   examples:
     - "feat(app): add parent-child linking with duplicate detection"
@@ -219,6 +269,48 @@ ai-prompt-examples:
   - "Update ProtectedRoute to prevent cross-layout flashes; add tests for both areas."
   - "Add Zod validation for member form (dates/places), show RHF errors, and write unit tests."
   - "Implement GEDCOM import with dry-run report and conflict detection; add integration tests."
+
+## 📥📤 Import/Export Data Management (CRITICAL)
+import-export-rules:
+  mandatory-updates:
+    - "When adding new data types (albums, categories, etc.), MUST update both import and export"
+    - "When modifying data structures, MUST update import/export to maintain compatibility"
+    - "When adding new relationships, MUST include them in export and handle in import"
+    - "Export MUST include all IDs and relationships for data coherence"
+    - "Import MUST handle missing optional fields gracefully"
+  
+  export-requirements:
+    - "Export ALL data types: familyMembers, relationships, stories, locations, media, artifacts, albums, storyCategories"
+    - "Export ALL relationships: album-media, album-familyGroups, album-familyMembers, album-storyCategories, story-members"
+    - "Preserve ALL IDs for proper import matching"
+    - "Include metadata: timestamps, user IDs, categories, etc."
+    - "Support both JSON and Excel formats"
+    - "Export must be complete and coherent for cross-environment migration"
+  
+  import-requirements:
+    - "Handle missing fields gracefully (backward compatibility)"
+    - "Map old IDs to new IDs when importing"
+    - "Handle duplicate detection (members, relationships)"
+    - "Preserve relationships during import"
+    - "Support incremental imports (skip existing data)"
+    - "Validate data structure before import"
+    - "Provide detailed import reports (success, warnings, errors)"
+  
+  files-to-update:
+    - "src/components/family/ExportFamilyData.tsx - Update when adding new data types"
+    - "src/components/family/ImportFamilyData.tsx - Update when adding new data types"
+    - "Export interface must match import interface"
+    - "Both JSON and Excel formats must be updated"
+  
+  checklist:
+    - "[ ] Export includes new data type"
+    - "[ ] Import handles new data type"
+    - "[ ] All relationships exported"
+    - "[ ] All relationships imported"
+    - "[ ] IDs preserved in export"
+    - "[ ] ID mapping works in import"
+    - "[ ] Tests updated for new data types"
+    - "[ ] Backward compatibility maintained"
 
 ## 📈 Performance & DX
 performance:
@@ -248,16 +340,28 @@ development:
   - "[ ] Proper error handling & loading states"
   - "[ ] A11y (WCAG 2.1 AA) & responsive"
 testing:
-  - "[ ] Unit tests for components/hooks/services"
+  - "[ ] Unit tests for components/hooks/services - MANDATORY for new features"
   - "[ ] Integration tests for complex flows"
   - "[ ] Coverage ≥ 80% (new), ≥ 90% (critical)"
   - "[ ] Error paths & privacy redaction tested"
+  - "[ ] Tests written in same PR as feature"
+  - "[ ] All tests passing before merge"
 quality:
-  - "[ ] ESLint passes"
-  - "[ ] Type-check passes"
+  - "[ ] ESLint passes - MANDATORY (run `npm run lint`)"
+  - "[ ] All linting errors fixed - MANDATORY"
+  - "[ ] Type-check passes - MANDATORY (run `npm run type-check`)"
   - "[ ] Prettier applied"
   - "[ ] Imports sorted"
   - "[ ] No console.log in prod"
+  - "[ ] No unused imports or variables"
+import-export:
+  - "[ ] Export updated if new data types added"
+  - "[ ] Import updated if new data types added"
+  - "[ ] All relationships included in export"
+  - "[ ] All relationships handled in import"
+  - "[ ] IDs preserved for data coherence"
+  - "[ ] Backward compatibility maintained"
+  - "[ ] Tests updated for import/export changes"
 architecture-security:
   - "[ ] Layout rules respected (no cross-area UI)"
   - "[ ] RBAC & privacy enforced server-side"

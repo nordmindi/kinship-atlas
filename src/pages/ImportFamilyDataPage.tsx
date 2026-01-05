@@ -20,7 +20,7 @@ interface ImportResult {
 }
 
 const ImportFamilyDataPage = () => {
-  const { user, isLoading: authLoading } = useAuth();
+  const { user, isLoading: authLoading, isAdmin } = useAuth();
   const navigate = useNavigate();
   const [showImportDialog, setShowImportDialog] = useState(true);
 
@@ -58,6 +58,31 @@ const ImportFamilyDataPage = () => {
 
   if (!user) {
     return <Navigate to="/auth" replace />;
+  }
+
+  if (!isAdmin) {
+    return (
+      <MobileLayout 
+        currentUser={{ 
+          name: user.email?.split('@')[0] || 'User', 
+          email: user.email || ''
+        }}
+        showBackButton
+        title="Access Denied"
+      >
+        <div className="p-6">
+          <div className="text-center">
+            <h2 className="text-xl font-bold mb-2">Access Denied</h2>
+            <p className="text-muted-foreground">
+              Only administrators can import family data. Please contact an administrator if you need access.
+            </p>
+            <Button onClick={() => navigate('/')} className="mt-4">
+              Go Home
+            </Button>
+          </div>
+        </div>
+      </MobileLayout>
+    );
   }
 
   return (

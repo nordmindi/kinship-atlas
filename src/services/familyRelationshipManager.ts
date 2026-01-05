@@ -443,6 +443,55 @@ class FamilyRelationshipManager {
   }
 
   /**
+   * Get all relationships (admin only)
+   */
+  async getAllRelations(): Promise<Array<{
+    id: string;
+    fromMemberId: string;
+    toMemberId: string;
+    relationType: RelationshipType;
+    fromMember?: { firstName: string; lastName: string };
+    toMember?: { firstName: string; lastName: string };
+  }>> {
+    try {
+      const { data, error } = await supabase
+        .from('relations')
+        .select(`
+          id,
+          from_member_id,
+          to_member_id,
+          relation_type,
+          from_member:family_members!from_member_id(first_name, last_name),
+          to_member:family_members!to_member_id(first_name, last_name)
+        `)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching all relations:', error);
+        return [];
+      }
+
+      return (data || []).map((rel: any) => ({
+        id: rel.id,
+        fromMemberId: rel.from_member_id,
+        toMemberId: rel.to_member_id,
+        relationType: rel.relation_type as RelationshipType,
+        fromMember: rel.from_member ? {
+          firstName: rel.from_member.first_name,
+          lastName: rel.from_member.last_name
+        } : undefined,
+        toMember: rel.to_member ? {
+          firstName: rel.to_member.first_name,
+          lastName: rel.to_member.last_name
+        } : undefined
+      }));
+    } catch (error) {
+      console.error('Error fetching all relations:', error);
+      return [];
+    }
+  }
+
+  /**
    * Suggest the correct relationship direction based on birth dates
    */
   async suggestRelationshipDirection(fromMemberId: string, toMemberId: string, desiredRelationshipType: 'parent' | 'child' | 'spouse' | 'sibling'): Promise<{ suggestedType: RelationshipType; reason: string } | null> {
