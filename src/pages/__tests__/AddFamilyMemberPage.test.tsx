@@ -10,7 +10,7 @@ vi.mock('@/components/family/AddFamilyMember', () => ({
   default: () => <div>AddFamilyMember Component</div>
 }))
 vi.mock('@/components/layout/MobileLayout', () => ({
-  default: ({ children, title }: any) => (
+  default: ({ children, title }: { children: React.ReactNode; title: string }) => (
     <div>
       <h1>{title}</h1>
       {children}
@@ -21,14 +21,6 @@ vi.mock('react-router-dom', async () => {
   const actual = await vi.importActual<typeof import('react-router-dom')>('react-router-dom')
   return {
     ...actual,
-    Navigate: ({ to }: { to: string }) => {
-      return React.createElement('div', {
-        'data-testid': 'navigate',
-        'data-to': to
-      })
-    }
-  } as typeof actual & {
-    Navigate: ({ to }: { to: string }) => React.ReactElement
   }
 })
 
@@ -41,41 +33,13 @@ describe('AddFamilyMemberPage', () => {
     vi.clearAllMocks()
   })
 
-  it('should render loading state when auth is loading', () => {
-    vi.mocked(useAuth).mockReturnValue({
-      user: null,
-      isAdmin: false,
-      isLoading: true,
-      signIn: vi.fn(),
-      signUp: vi.fn(),
-      signOut: vi.fn()
-    } as any)
+  /**
+   * Note: Authentication and authorization are now handled by ProtectedRoute in App.tsx.
+   * These tests assume the user is already authenticated since ProtectedRoute would
+   * prevent unauthenticated access before this component renders.
+   */
 
-    renderWithRouter(<AddFamilyMemberPage />)
-
-    expect(screen.getByText('Loading...')).toBeInTheDocument()
-  })
-
-  it('should redirect to auth if user is not authenticated', () => {
-    vi.mocked(useAuth).mockReturnValue({
-      user: null,
-      isAdmin: false,
-      isLoading: false,
-      signIn: vi.fn(),
-      signUp: vi.fn(),
-      signOut: vi.fn()
-    } as any)
-
-    renderWithRouter(<AddFamilyMemberPage />)
-
-    // Should show Navigate component (mocked in setup)
-    const navigate = screen.queryByTestId('navigate')
-    // The Navigate component is mocked in test setup, so we check for it
-    expect(navigate).toBeInTheDocument()
-    expect(navigate).toHaveAttribute('data-to', '/auth')
-  })
-
-  it('should render AddFamilyMember component when authenticated', () => {
+  it('should render AddFamilyMember component when user is authenticated', () => {
     const mockUser = {
       id: 'user-123',
       email: 'test@example.com'
@@ -115,5 +79,45 @@ describe('AddFamilyMemberPage', () => {
 
     expect(screen.getByText('Add Family Member')).toBeInTheDocument()
   })
-})
 
+  it('should handle user with only email (no full name)', () => {
+    const mockUser = {
+      id: 'user-456',
+      email: 'jane@example.com'
+    }
+
+    vi.mocked(useAuth).mockReturnValue({
+      user: mockUser,
+      isAdmin: false,
+      isLoading: false,
+      signIn: vi.fn(),
+      signUp: vi.fn(),
+      signOut: vi.fn()
+    } as any)
+
+    renderWithRouter(<AddFamilyMemberPage />)
+
+    // Page should still render correctly
+    expect(screen.getByText('Add Family Member')).toBeInTheDocument()
+    expect(screen.getByText('AddFamilyMember Component')).toBeInTheDocument()
+  })
+
+  it('should handle null user gracefully', () => {
+    // This tests the edge case where user might be null
+    // In practice, ProtectedRoute prevents this, but the component should be defensive
+    vi.mocked(useAuth).mockReturnValue({
+      user: null,
+      isAdmin: false,
+      isLoading: false,
+      signIn: vi.fn(),
+      signUp: vi.fn(),
+      signOut: vi.fn()
+    } as any)
+
+    renderWithRouter(<AddFamilyMemberPage />)
+
+    // Should still render (with fallback values for user info)
+    expect(screen.getByText('Add Family Member')).toBeInTheDocument()
+    expect(screen.getByText('AddFamilyMember Component')).toBeInTheDocument()
+  })
+})

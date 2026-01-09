@@ -633,7 +633,7 @@ class FamilyRelationshipManager {
       .select('relation_type')
       .eq('from_member_id', fromId)
       .eq('to_member_id', toId)
-      .single();
+      .maybeSingle();
 
     if (error || !data) return null;
     return { type: data.relation_type as RelationshipType };

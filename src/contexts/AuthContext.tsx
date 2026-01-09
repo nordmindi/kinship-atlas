@@ -1,6 +1,5 @@
-
-import React, { createContext, useContext, useEffect, useState } from 'react';
-import { User, Session } from '@supabase/supabase-js';
+import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
+import { User, Session, AuthError } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { UserProfile, UserRole } from '@/types';
 import { getUserProfile } from '@/services/userService';
@@ -24,7 +23,13 @@ type AuthContextType = {
   signUp: (email: string, password: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
   refreshUserProfile: () => Promise<void>;
+  refreshSession: () => Promise<{ error: Error | null }>;
+  /** Whether the session is about to expire (within 5 minutes) */
+  isSessionExpiringSoon: boolean;
 };
+
+/** Session expiry warning threshold in milliseconds (5 minutes) */
+const SESSION_EXPIRY_WARNING_MS = 5 * 60 * 1000;
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -34,10 +39,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+  const [isSessionExpiringSoon, setIsSessionExpiringSoon] = useState(false);
+  
+  // Ref to track if we're already refreshing the session
+  const isRefreshingSession = useRef(false);
+  
+  // Session expiry check interval
+  const sessionCheckIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Function to check if session is about to expire
+  const checkSessionExpiry = useCallback(() => {
+    if (!session?.expires_at) {
+      setIsSessionExpiringSoon(false);
+      return;
+    }
+    
+    const expiresAt = session.expires_at * 1000; // Convert to milliseconds
+    const now = Date.now();
+    const timeUntilExpiry = expiresAt - now;
+    
+    setIsSessionExpiringSoon(timeUntilExpiry > 0 && timeUntilExpiry < SESSION_EXPIRY_WARNING_MS);
+  }, [session?.expires_at]);
 
   // Function to load user profile
   // If profile cannot be found, logout the user
-  const loadUserProfile = async (userId: string) => {
+  const loadUserProfile = useCallback(async (userId: string) => {
     try {
       const profile = await getUserProfile(userId);
 
@@ -56,8 +82,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       setUserProfile(profile);
-    } catch (error) {
-      console.error('Error loading user profile:', error);
+    } catch (err) {
+      console.error('Error loading user profile:', err);
       setUserProfile(null);
 
       // Check if user still has an active session
@@ -70,18 +96,61 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         window.location.href = '/auth';
       }
     }
-  };
+  }, []);
 
   // Function to refresh user profile
   // If profile cannot be found, will logout the user via loadUserProfile
-  const refreshUserProfile = async () => {
+  const refreshUserProfile = useCallback(async () => {
     if (user?.id) {
       await loadUserProfile(user.id);
     } else {
       // If no user, clear profile
       setUserProfile(null);
     }
-  };
+  }, [user?.id, loadUserProfile]);
+
+  // Function to manually refresh the session
+  const refreshSession = useCallback(async (): Promise<{ error: Error | null }> => {
+    // Prevent concurrent refresh attempts
+    if (isRefreshingSession.current) {
+      return { error: null };
+    }
+
+    isRefreshingSession.current = true;
+
+    try {
+      const { data, error: refreshError } = await supabase.auth.refreshSession();
+      
+      if (refreshError) {
+        // If refresh fails due to invalid session, sign out
+        if (
+          refreshError.message?.includes('Invalid Refresh Token') ||
+          refreshError.message?.includes('Refresh Token Not Found') ||
+          (refreshError as AuthError).status === 401
+        ) {
+          console.warn('Session refresh failed - signing out user');
+          await performCompleteLogout();
+          setUser(null);
+          setSession(null);
+          setUserProfile(null);
+          window.location.href = '/auth';
+        }
+        return { error: refreshError };
+      }
+
+      if (data.session) {
+        setSession(data.session);
+        setUser(data.session.user);
+        setIsSessionExpiringSoon(false);
+      }
+
+      return { error: null };
+    } catch (err) {
+      return { error: err as Error };
+    } finally {
+      isRefreshingSession.current = false;
+    }
+  }, []);
 
   useEffect(() => {
     let isMounted = true;
@@ -97,40 +166,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const timeoutPromise = new Promise((_, reject) =>
           setTimeout(() => reject(new Error('Connection to authentication server timed out')), 15000)
         );
-
-        // Auto-login for development only (disabled in production)
-        if (import.meta.env.DEV) {
-          // We wrap the initial session check in a race with timeout
-          const sessionCheckPromise = supabase.auth.getSession();
-          const { data: { session } } = await Promise.race([sessionCheckPromise, timeoutPromise]) as { data: { session: Session | null } };
-
-          if (!session) {
-            // Only attempt auto-login in development mode
-            try {
-              const { data, error } = await supabase.auth.signInWithPassword({
-                email: 'test@kinship-atlas.com',
-                password: 'testpassword123'
-              });
-              if (error) {
-                // Silently fail in development - user can manually log in
-                if (error.message.includes('Invalid login credentials')) {
-                  // Try to create the test user if it doesn't exist
-                  await supabase.auth.signUp({
-                    email: 'test@kinship-atlas.com',
-                    password: 'testpassword123'
-                  });
-                  // Retry login after user creation
-                  await supabase.auth.signInWithPassword({
-                    email: 'test@kinship-atlas.com',
-                    password: 'testpassword123'
-                  });
-                }
-              }
-            } catch (err) {
-              // Silently handle errors in development
-            }
-          }
-        }
 
         // Main session retrieval with timeout
         const sessionPromise = supabase.auth.getSession();
@@ -204,7 +239,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         subscription.unsubscribe();
       }
     };
-  }, []);
+  }, [loadUserProfile]);
+
+  // Set up session expiry check interval
+  useEffect(() => {
+    // Check immediately
+    checkSessionExpiry();
+
+    // Check every minute
+    sessionCheckIntervalRef.current = setInterval(checkSessionExpiry, 60 * 1000);
+
+    return () => {
+      if (sessionCheckIntervalRef.current) {
+        clearInterval(sessionCheckIntervalRef.current);
+      }
+    };
+  }, [checkSessionExpiry]);
 
   const signIn = async (email: string, password: string) => {
     try {
@@ -256,6 +306,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     signUp,
     signOut,
     refreshUserProfile,
+    refreshSession,
+    isSessionExpiringSoon,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

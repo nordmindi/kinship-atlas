@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -8,6 +7,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { FamilyTreeProvider } from "@/contexts/FamilyTreeContext";
 import { TabVisibilityProvider } from "@/components/providers/TabVisibilityProvider";
+import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { queryClient } from "@/lib/queryClient";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
@@ -39,27 +39,108 @@ const App = () => (
           <TabVisibilityProvider>
             <BrowserRouter>
               <Routes>
-                <Route path="/" element={<Index />} />
-              <Route path="/auth" element={<Auth />} />
-              <Route path="/add-family-member" element={<AddFamilyMemberPage />} />
-              <Route path="/edit-family-member/:id" element={<EditFamilyMemberPage />} />
-              <Route path="/family-member/:id" element={<FamilyMemberDetailPage />} />
-              <Route path="/add-story" element={<AddStoryPage />} />
-              <Route path="/add-relation/:id/:type" element={<AddRelationPage />} />
-                <Route path="/family-tree" element={<FamilyTreeViewPage />} />
-              <Route path="/family-members" element={<AllFamilyMembersPage />} />
-              <Route path="/map" element={<FamilyMapPage />} />
-              <Route path="/stories" element={<Index />} />
-              <Route path="/albums" element={<MediaGalleryPage />} />
-                <Route path="/timeline" element={<Index />} />
-                <Route path="/profile" element={<UserProfilePage />} />
-                <Route path="/admin" element={<AdminPage />} />
-              <Route path="/import-family-data" element={<ImportFamilyDataPage />} />
-              <Route path="/export-family-data" element={<ExportFamilyDataPage />} />
-              <Route path="/legacy-stories" element={<LegacyStoriesPage />} />
-              <Route path="/story/:id" element={<StoryDetailPage />} />
-              <Route path="/family-groups" element={<FamilyGroupsPage />} />
-              <Route path="*" element={<NotFound />} />
+                {/* Public routes */}
+                <Route path="/auth" element={<Auth />} />
+                
+                {/* Protected routes - require authentication */}
+                <Route path="/" element={
+                  <ProtectedRoute>
+                    <Index />
+                  </ProtectedRoute>
+                } />
+                <Route path="/add-family-member" element={
+                  <ProtectedRoute allowedRoles={['admin', 'editor']}>
+                    <AddFamilyMemberPage />
+                  </ProtectedRoute>
+                } />
+                <Route path="/edit-family-member/:id" element={
+                  <ProtectedRoute allowedRoles={['admin', 'editor']}>
+                    <EditFamilyMemberPage />
+                  </ProtectedRoute>
+                } />
+                <Route path="/family-member/:id" element={
+                  <ProtectedRoute>
+                    <FamilyMemberDetailPage />
+                  </ProtectedRoute>
+                } />
+                <Route path="/add-story" element={
+                  <ProtectedRoute allowedRoles={['admin', 'editor']}>
+                    <AddStoryPage />
+                  </ProtectedRoute>
+                } />
+                <Route path="/add-relation/:id/:type" element={
+                  <ProtectedRoute allowedRoles={['admin', 'editor']}>
+                    <AddRelationPage />
+                  </ProtectedRoute>
+                } />
+                <Route path="/family-tree" element={
+                  <ProtectedRoute>
+                    <FamilyTreeViewPage />
+                  </ProtectedRoute>
+                } />
+                <Route path="/family-members" element={
+                  <ProtectedRoute>
+                    <AllFamilyMembersPage />
+                  </ProtectedRoute>
+                } />
+                <Route path="/map" element={
+                  <ProtectedRoute>
+                    <FamilyMapPage />
+                  </ProtectedRoute>
+                } />
+                <Route path="/stories" element={
+                  <ProtectedRoute>
+                    <Index />
+                  </ProtectedRoute>
+                } />
+                <Route path="/albums" element={
+                  <ProtectedRoute>
+                    <MediaGalleryPage />
+                  </ProtectedRoute>
+                } />
+                <Route path="/timeline" element={
+                  <ProtectedRoute>
+                    <Index />
+                  </ProtectedRoute>
+                } />
+                <Route path="/profile" element={
+                  <ProtectedRoute>
+                    <UserProfilePage />
+                  </ProtectedRoute>
+                } />
+                <Route path="/admin" element={
+                  <ProtectedRoute allowedRoles={['admin']}>
+                    <AdminPage />
+                  </ProtectedRoute>
+                } />
+                <Route path="/import-family-data" element={
+                  <ProtectedRoute allowedRoles={['admin']}>
+                    <ImportFamilyDataPage />
+                  </ProtectedRoute>
+                } />
+                <Route path="/export-family-data" element={
+                  <ProtectedRoute allowedRoles={['admin', 'editor']}>
+                    <ExportFamilyDataPage />
+                  </ProtectedRoute>
+                } />
+                <Route path="/legacy-stories" element={
+                  <ProtectedRoute>
+                    <LegacyStoriesPage />
+                  </ProtectedRoute>
+                } />
+                <Route path="/story/:id" element={
+                  <ProtectedRoute>
+                    <StoryDetailPage />
+                  </ProtectedRoute>
+                } />
+                <Route path="/family-groups" element={
+                  <ProtectedRoute>
+                    <FamilyGroupsPage />
+                  </ProtectedRoute>
+                } />
+                
+                {/* 404 route */}
+                <Route path="*" element={<NotFound />} />
               </Routes>
             </BrowserRouter>
           </TabVisibilityProvider>

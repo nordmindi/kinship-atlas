@@ -1,33 +1,25 @@
 import React, { useState } from 'react';
 import MobileLayout from "@/components/layout/MobileLayout";
 import { useAuth } from "@/contexts/AuthContext";
-import { Navigate } from "react-router-dom";
 import MediaManager from '@/components/media/MediaManager';
 import AlbumManager from '@/components/albums/AlbumManager';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ImageIcon, FolderOpen } from 'lucide-react';
 
+/**
+ * Media Gallery page.
+ * 
+ * Note: Authentication is handled by ProtectedRoute in App.tsx.
+ */
 const MediaGalleryPage = () => {
-  const { user, isLoading: authLoading } = useAuth();
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<'media' | 'albums'>('albums');
-  
-  if (authLoading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <div className="animate-pulse text-heritage-purple">Loading...</div>
-      </div>
-    );
-  }
-  
-  if (!user) {
-    return <Navigate to="/auth" replace />;
-  }
 
   return (
     <MobileLayout 
       currentUser={{ 
-        name: user.email?.split('@')[0] || 'User', 
-        email: user.email || ''
+        name: user?.email?.split('@')[0] || 'User', 
+        email: user?.email || ''
       }}
       showBackButton
       title="Media & Albums"

@@ -138,16 +138,22 @@ describe('Auth', () => {
     const signUpTab = screen.getByText('Sign Up')
     await user.click(signUpTab)
 
+    // Wait for tab content to change
+    await waitFor(() => {
+      expect(screen.getByText('Create an account')).toBeInTheDocument()
+    })
+
+    // Get inputs after tab switch
     const emailInput = screen.getByPlaceholderText('Email')
-    const passwordInput = screen.getByPlaceholderText('Password (min 6 characters)')
+    const passwordInput = screen.getByPlaceholderText('Password')
     const submitButton = screen.getByRole('button', { name: /sign up/i })
 
     await user.type(emailInput, 'newuser@example.com')
-    await user.type(passwordInput, 'password123')
+    await user.type(passwordInput, 'Password123') // Meets new requirements: 8+ chars, uppercase, lowercase, number
     await user.click(submitButton)
 
     await waitFor(() => {
-      expect(mockSignUp).toHaveBeenCalledWith('newuser@example.com', 'password123')
+      expect(mockSignUp).toHaveBeenCalledWith('newuser@example.com', 'Password123')
     })
   })
 
@@ -159,19 +165,93 @@ describe('Auth', () => {
     const signUpTab = screen.getByText('Sign Up')
     await user.click(signUpTab)
 
+    // Wait for tab content to change
+    await waitFor(() => {
+      expect(screen.getByText('Create an account')).toBeInTheDocument()
+    })
+
+    // Get inputs after tab switch
     const emailInput = screen.getByPlaceholderText('Email')
-    const passwordInput = screen.getByPlaceholderText('Password (min 6 characters)')
+    const passwordInput = screen.getByPlaceholderText('Password')
     const submitButton = screen.getByRole('button', { name: /sign up/i })
 
     await user.type(emailInput, 'newuser@example.com')
-    await user.type(passwordInput, '12345') // Too short
+    await user.type(passwordInput, 'Pass1') // Too short (less than 8 chars)
     await user.click(submitButton)
 
     await waitFor(() => {
       expect(toast).toHaveBeenCalledWith(
         expect.objectContaining({
           title: 'Error',
-          description: 'Password must be at least 6 characters.'
+          description: 'Password must be at least 8 characters.'
+        })
+      )
+    })
+
+    expect(mockSignUp).not.toHaveBeenCalled()
+  })
+
+  it('should validate password uppercase requirement', async () => {
+    const user = userEvent.setup()
+    renderWithRouter(<Auth />)
+
+    // Switch to sign up tab
+    const signUpTab = screen.getByText('Sign Up')
+    await user.click(signUpTab)
+
+    // Wait for tab content to change
+    await waitFor(() => {
+      expect(screen.getByText('Create an account')).toBeInTheDocument()
+    })
+
+    // Get inputs after tab switch
+    const emailInput = screen.getByPlaceholderText('Email')
+    const passwordInput = screen.getByPlaceholderText('Password')
+    const submitButton = screen.getByRole('button', { name: /sign up/i })
+
+    await user.type(emailInput, 'newuser@example.com')
+    await user.type(passwordInput, 'password123') // No uppercase
+    await user.click(submitButton)
+
+    await waitFor(() => {
+      expect(toast).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: 'Error',
+          description: 'Password must contain at least one uppercase letter.'
+        })
+      )
+    })
+
+    expect(mockSignUp).not.toHaveBeenCalled()
+  })
+
+  it('should validate password number requirement', async () => {
+    const user = userEvent.setup()
+    renderWithRouter(<Auth />)
+
+    // Switch to sign up tab
+    const signUpTab = screen.getByText('Sign Up')
+    await user.click(signUpTab)
+
+    // Wait for tab content to change
+    await waitFor(() => {
+      expect(screen.getByText('Create an account')).toBeInTheDocument()
+    })
+
+    // Get inputs after tab switch
+    const emailInput = screen.getByPlaceholderText('Email')
+    const passwordInput = screen.getByPlaceholderText('Password')
+    const submitButton = screen.getByRole('button', { name: /sign up/i })
+
+    await user.type(emailInput, 'newuser@example.com')
+    await user.type(passwordInput, 'Password') // No number
+    await user.click(submitButton)
+
+    await waitFor(() => {
+      expect(toast).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: 'Error',
+          description: 'Password must contain at least one number.'
         })
       )
     })
