@@ -836,12 +836,13 @@ const ImportFamilyData: React.FC<ImportFamilyDataProps> = ({
               continue;
             }
 
+            // Note: story_members table does not have a 'role' column
+            // The role field in ImportStoryMember is kept for backward compatibility with import files
             const { error } = await supabase
               .from('story_members')
               .insert({
                 story_id: storyId,
-                family_member_id: memberId,
-                role: storyMember.role || 'participant'
+                family_member_id: memberId
               });
 
             if (!error) {
