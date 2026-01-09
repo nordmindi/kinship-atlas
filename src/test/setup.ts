@@ -70,16 +70,19 @@ vi.mock('@/integrations/supabase/client', () => ({
 }))
 
 // Mock React Router
-vi.mock('react-router-dom', () => ({
-  useNavigate: () => vi.fn(),
-  useLocation: () => ({ pathname: '/' }),
-  Navigate: (props: { to: string }) => {
-    const div = document.createElement('div');
-    div.setAttribute('data-testid', 'navigate');
-    div.setAttribute('data-to', props.to);
-    return div;
-  },
-}))
+// Note: Navigate mock returns a React element-like object
+vi.mock('react-router-dom', () => {
+  const React = require('react')
+  return {
+    useNavigate: () => vi.fn(),
+    useLocation: () => ({ pathname: '/', search: '', hash: '', state: null, key: 'default' }),
+    Navigate: ({ to }: { to: string }) => {
+      return React.createElement('div', { 'data-testid': 'navigate', 'data-to': to })
+    },
+    useParams: () => ({}),
+    useSearchParams: () => [new URLSearchParams(), vi.fn()],
+  }
+})
 
 // Mock toast
 vi.mock('@/hooks/use-toast', () => ({

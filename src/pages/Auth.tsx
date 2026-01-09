@@ -1,6 +1,5 @@
-
-import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useState, useEffect } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 
 import { Button } from "@/components/ui/button";
@@ -8,20 +7,41 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "@/hooks/use-toast";
+import { Loader2 } from "lucide-react";
 
 const Auth = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const { signIn, signUp } = useAuth();
+  const { signIn, signUp, user, isLoading: authLoading } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // Redirect if already logged in
+  useEffect(() => {
+    if (user && !authLoading) {
+      // Get the redirect path from location state, or default to home
+      const from = (location.state as { from?: string })?.from || '/';
+      navigate(from, { replace: true });
+    }
+  }, [user, authLoading, navigate, location.state]);
+
+  // Show loading while checking auth status
+  if (authLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-gradient-to-b from-heritage-purple-light to-heritage-light">
+        <div className="flex flex-col items-center">
+          <Loader2 className="h-10 w-10 animate-spin text-heritage-purple mb-4" />
+          <p className="text-heritage-dark font-medium">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('🚀 handleSignIn called');
     
     if (!email || !password) {
-      console.log('❌ Missing email or password');
       toast({
         title: "Error",
         description: "Please enter both email and password.",
@@ -30,29 +50,22 @@ const Auth = () => {
       return;
     }
     
-    console.log('⏳ Setting loading to true');
     setIsLoading(true);
     
     try {
-      console.log('🔐 Calling signIn...');
       const { error } = await signIn(email, password);
-      console.log('🔐 signIn completed, error:', error);
       
       if (error) {
-        console.log('❌ SignIn error, throwing:', error);
         throw error;
       }
       
-      console.log('✅ SignIn successful, showing toast');
       toast({
         title: "Welcome back!",
         description: "You've successfully signed in.",
       });
       
-      console.log('🧭 Navigating to home...');
       navigate("/");
     } catch (error: unknown) {
-      console.log('❌ Catch block, error:', error);
       const errorMessage = error instanceof Error ? error.message : "Please check your credentials and try again.";
       toast({
         title: "Sign in failed",
@@ -60,7 +73,6 @@ const Auth = () => {
         variant: "destructive",
       });
     } finally {
-      console.log('🏁 Finally block, setting loading to false');
       setIsLoading(false);
     }
   };
@@ -76,11 +88,53 @@ const Auth = () => {
       });
       return;
     }
-    
-    if (password.length < 6) {
+
+    // Email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
       toast({
         title: "Error",
-        description: "Password must be at least 6 characters.",
+        description: "Please enter a valid email address.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Enhanced password validation
+    if (password.length < 8) {
+      toast({
+        title: "Error",
+        description: "Password must be at least 8 characters.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Check for at least one uppercase letter
+    if (!/[A-Z]/.test(password)) {
+      toast({
+        title: "Error",
+        description: "Password must contain at least one uppercase letter.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Check for at least one lowercase letter
+    if (!/[a-z]/.test(password)) {
+      toast({
+        title: "Error",
+        description: "Password must contain at least one lowercase letter.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Check for at least one number
+    if (!/\d/.test(password)) {
+      toast({
+        title: "Error",
+        description: "Password must contain at least one number.",
         variant: "destructive",
       });
       return;
@@ -183,12 +237,15 @@ const Auth = () => {
                   <div className="space-y-2">
                     <Input 
                       type="password" 
-                      placeholder="Password (min 6 characters)" 
+                      placeholder="Password" 
                       value={password} 
                       onChange={(e) => setPassword(e.target.value)} 
                       required
-                      minLength={6}
+                      minLength={8}
                     />
+                    <p className="text-xs text-muted-foreground">
+                      At least 8 characters with uppercase, lowercase, and number.
+                    </p>
                   </div>
                 </CardContent>
                 <CardFooter>

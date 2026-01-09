@@ -44,13 +44,13 @@ describe('FamilyRelationshipManager', () => {
           // - supportsMetadataColumn is not called (only if request.metadata exists)
           // So the sequence is: checkExistingRelationship (call 1), insert (call 2)
           if (callNum === 1) {
-            // checkExistingRelationship - no existing relationship
+            // checkExistingRelationship - no existing relationship (uses maybeSingle)
             return {
               select: vi.fn().mockReturnThis(),
               eq: vi.fn().mockReturnThis(),
-              single: vi.fn().mockResolvedValue({
+              maybeSingle: vi.fn().mockResolvedValue({
                 data: null,
-                error: { code: 'PGRST116' }
+                error: null
               })
             } as any
           }
@@ -186,13 +186,13 @@ describe('FamilyRelationshipManager', () => {
         if (table === 'relations') {
           const callNum = ++relationsCallCount
           if (callNum === 1) {
-            // checkExistingRelationship
+            // checkExistingRelationship (uses maybeSingle)
             return {
               select: vi.fn().mockReturnThis(),
               eq: vi.fn().mockReturnThis(),
-              single: vi.fn().mockResolvedValue({
+              maybeSingle: vi.fn().mockResolvedValue({
                 data: null,
-                error: { code: 'PGRST116' }
+                error: null
               })
             } as any
           }

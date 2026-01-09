@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Navigate, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import MobileLayout from "@/components/layout/MobileLayout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -127,12 +127,10 @@ const Index = () => {
     )
     : stories;
 
+  // Note: Authentication is handled by ProtectedRoute in App.tsx
+  // We still show loading state for auth errors
   if (authLoading || authError) {
     return <AuthLoadingState />;
-  }
-
-  if (!user) {
-    return <Navigate to="/auth" replace />;
   }
 
   // Handle add member button
