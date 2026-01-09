@@ -10,7 +10,7 @@
 -- - All RLS policies
 -- - All indexes (will be recreated by the production migration)
 --
--- After running this, run: 20250201000000_production_update_all_changes.sql
+-- After running this, run: 20250215000000_complete_production_schema.sql
 
 BEGIN;
 
@@ -177,7 +177,7 @@ COMMIT;
 -- 
 -- All tables, functions, triggers, and policies have been dropped.
 -- You can now run the production migration:
---   20250201000000_production_update_all_changes.sql
+--   20250215000000_complete_production_schema.sql
 --
 -- This will recreate everything with the latest schema.
 --
@@ -188,6 +188,6 @@ COMMIT;
 -- After running this migration:
 -- 1. All application tables are dropped
 -- 2. All functions, triggers, and policies are removed
--- 3. Run 20250201000000_production_update_all_changes.sql to recreate everything
+-- 3. Run 20250215000000_complete_production_schema.sql to recreate everything
 -- 4. User profiles will be recreated when users sign in (via handle_new_user trigger)
 

@@ -6,6 +6,9 @@
 
 import { createClient } from '@supabase/supabase-js';
 
+// SECURITY NOTE: Fallback key is Supabase LOCAL DEVELOPMENT key only
+// It ONLY works with local Docker Compose instances, NOT production
+// Always prefer environment variables for production use
 const supabaseUrl = process.env.VITE_SUPABASE_URL || 'http://localhost:60011';
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImV4cCI6MTk4MzgxMjk5Nn0.EGIM96RAZx35lJzdJsyH-qQwv8Hdp7fsn3W0YpN81IU';
 

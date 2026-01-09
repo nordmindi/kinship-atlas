@@ -8,8 +8,9 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
-import { Edit, Trash2, Search, Filter, X } from 'lucide-react';
+import { Edit, Trash2, Search, Filter, X, UserPlus } from 'lucide-react';
 import { FamilyMember, UserProfile } from '@/types';
+import { BulkAssignToGroupDialog } from '@/components/family/BulkAssignToGroupDialog';
 
 interface FamilyMembersTabProps {
   members: FamilyMember[];
@@ -46,6 +47,7 @@ export const FamilyMembersTab: React.FC<FamilyMembersTabProps> = ({
   const navigate = useNavigate();
   const [localSearchQuery, setLocalSearchQuery] = useState('');
   const [showFilters, setShowFilters] = useState(false);
+  const [showBulkAssignDialog, setShowBulkAssignDialog] = useState(false);
   const [filters, setFilters] = useState<MemberFilters>({
     gender: 'all',
     rootMembers: 'all',
@@ -135,8 +137,8 @@ export const FamilyMembersTab: React.FC<FamilyMembersTabProps> = ({
         <div className="space-y-4">
           {/* Search and Filter Controls */}
           <div className="flex flex-col gap-4">
-            <div className="flex items-center gap-2">
-              <div className="relative flex-1">
+            <div className="flex items-center gap-2 flex-wrap">
+              <div className="relative flex-1 min-w-[200px]">
                 <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input
                   placeholder="Search by name, birth place, death place, bio, or location..."
@@ -146,6 +148,14 @@ export const FamilyMembersTab: React.FC<FamilyMembersTabProps> = ({
                   aria-label="Search family members"
                 />
               </div>
+              <Button
+                variant="default"
+                onClick={() => setShowBulkAssignDialog(true)}
+                className="flex items-center gap-2"
+              >
+                <UserPlus className="h-4 w-4" />
+                Assign to Groups
+              </Button>
               <Button
                 variant={showFilters ? "default" : "outline"}
                 onClick={() => setShowFilters(!showFilters)}
@@ -374,6 +384,17 @@ export const FamilyMembersTab: React.FC<FamilyMembersTabProps> = ({
             </TableBody>
           </Table>
           )}
+
+          {/* Bulk Assign Dialog */}
+          <BulkAssignToGroupDialog
+            isOpen={showBulkAssignDialog}
+            onClose={() => setShowBulkAssignDialog(false)}
+            members={filteredMembers}
+            onUpdate={() => {
+              // Optionally refresh data if needed
+              // The parent component can handle this
+            }}
+          />
         </div>
       </CardContent>
     </Card>

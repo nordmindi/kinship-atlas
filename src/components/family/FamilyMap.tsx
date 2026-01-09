@@ -37,8 +37,10 @@ import {
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
-// Get Mapbox token from environment variables or use a fallback
-const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN || 'pk.eyJ1IjoibG92YWJsZWFpIiwiYSI6ImNsdWs2OWdtcDA0YTYyam85OGczcmJtd2IifQ.a5Q5TBBMnJ9KJJPEiYgMpw';
+// Get Mapbox token from environment variables
+// SECURITY: Never hardcode Mapbox tokens in source code
+// Get your token from: https://account.mapbox.com/access-tokens/
+const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN;
 
 interface FamilyMapProps {
   members: FamilyMember[];
@@ -127,6 +129,17 @@ const FamilyMap: React.FC<FamilyMapProps> = ({ members, onSelectMember }) => {
   // Initialize map
   useEffect(() => {
     if (!mapContainer.current || map.current) return;
+    
+    // SECURITY: Mapbox token must be provided via environment variable
+    if (!MAPBOX_TOKEN) {
+      console.error('Mapbox token not configured. Set VITE_MAPBOX_TOKEN in .env.local');
+      toast({
+        title: "Mapbox Token Missing",
+        description: "Mapbox token is required for the Family Map feature. Please configure VITE_MAPBOX_TOKEN in your environment.",
+        variant: "destructive"
+      });
+      return;
+    }
     
     try {
       mapboxgl.accessToken = MAPBOX_TOKEN;

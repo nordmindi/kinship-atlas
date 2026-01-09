@@ -1,6 +1,10 @@
 -- Fix for GoTrue migration 20221208132122_backfill_email_last_sign_in_at
 -- This migration has a bug where it compares UUID with text: id = user_id::text
 -- We fix this by creating a custom operator that allows UUID to TEXT comparison
+--
+-- NOTE: This fix may no longer be needed in GoTrue v2.160.0+, but keeping it is safe
+-- as it's idempotent and only runs if the migration encounters the bug.
+-- If GoTrue starts successfully without this fix, it can be removed.
 
 -- Create auth schema if it doesn't exist
 CREATE SCHEMA IF NOT EXISTS auth;

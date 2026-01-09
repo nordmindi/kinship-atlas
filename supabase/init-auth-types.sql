@@ -1,5 +1,11 @@
 -- Initialize Auth Types and Tables for GoTrue
 -- This ensures all required auth schema components exist before GoTrue migrations run
+--
+-- These types and tables are required for GoTrue v2.160.0+ MFA (Multi-Factor Authentication) support.
+-- The Supabase postgres image may include these, but this script ensures they exist.
+--
+-- This is a safety net for local Docker Compose development.
+-- For production Supabase Cloud, these are managed automatically.
 
 -- Create auth.factor_type enum if it doesn't exist
 DO $$ 

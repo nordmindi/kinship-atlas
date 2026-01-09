@@ -1,12 +1,9 @@
 import '@testing-library/jest-dom'
 import { vi } from 'vitest'
 
-// Mock environment variables
-vi.mock('import.meta.env', () => ({
-  VITE_SUPABASE_URL: 'http://localhost:60001',
-  VITE_SUPABASE_ANON_KEY: 'test-anon-key',
-  VITE_MAPBOX_TOKEN: 'test-mapbox-token'
-}))
+// Mock environment variables using vi.stubEnv
+// Note: import.meta.env cannot be mocked directly, so we use vi.stubEnv
+// or access via import.meta.env in the actual code
 
 // Mock Supabase client
 vi.mock('@/integrations/supabase/client', () => ({
@@ -76,10 +73,10 @@ vi.mock('@/integrations/supabase/client', () => ({
 vi.mock('react-router-dom', () => ({
   useNavigate: () => vi.fn(),
   useLocation: () => ({ pathname: '/' }),
-  Navigate: ({ to }: { to: string }) => {
+  Navigate: (props: { to: string }) => {
     const div = document.createElement('div');
     div.setAttribute('data-testid', 'navigate');
-    div.setAttribute('data-to', to);
+    div.setAttribute('data-to', props.to);
     return div;
   },
 }))

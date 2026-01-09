@@ -8,6 +8,8 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: ['./src/test/setup.ts'],
     globals: true,
+    include: ['src/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}'],
+    exclude: ['node_modules', 'dist', 'build', 'coverage', 'src/test/setup.ts'],
     // Exit after tests complete (important for CI)
     bail: 0, // Don't bail on first failure, run all tests
     // Clear output for better readability
@@ -53,7 +55,7 @@ export default defineConfig({
     poolOptions: {
       threads: {
         singleThread: true, // Use single thread to reduce memory usage
-        isolate: false, // Disable isolation to reduce memory overhead
+        isolate: true, // Enable isolation for proper test discovery
         minThreads: 1,
         maxThreads: 1, // Force single thread
       },

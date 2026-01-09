@@ -218,7 +218,7 @@ SELECT * FROM cleanup_orphaned_locations();
 
 ## Current Migrations
 
-📖 **For a complete migration summary, see [Migration Summary](./MIGRATION_SUMMARY.md)**
+📖 **For troubleshooting migration issues, see [Troubleshooting Guide](./TROUBLESHOOTING.md)**
 
 ### Migration Categories
 
@@ -250,7 +250,7 @@ SELECT * FROM cleanup_orphaned_locations();
 
 All migration files are stored in:
 - **Primary location**: `supabase/migrations/`
-- **Documentation copies**: `docs/migrations/` (for reference)
+- **Note**: All migrations have been consolidated into the complete production schema
 
 ### Migration Tracking
 

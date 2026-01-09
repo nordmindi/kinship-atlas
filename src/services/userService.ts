@@ -26,11 +26,59 @@ export const getUserProfile = async (userId: string): Promise<UserProfile | null
         };
       }
       
+      // If profile doesn't exist (PGRST116), try to create it
+      if (error.code === 'PGRST116') {
+        console.warn('User profile not found, attempting to create it:', userId);
+        try {
+          // Call the ensure_user_profile function to create the profile
+          const { error: createError } = await supabase.rpc('ensure_user_profile', {
+            user_id: userId
+          });
+          
+          if (createError) {
+            console.error('Error creating user profile:', createError);
+            // Try to create it directly as fallback
+            const { data: newProfile, error: insertError } = await supabase
+              .from('user_profiles' as any)
+              .insert({
+                id: userId,
+                role: 'viewer',
+                display_name: null
+              })
+              .select()
+              .single();
+            
+            if (insertError) {
+              console.error('Error creating user profile directly:', insertError);
+              return null;
+            }
+            
+            return newProfile as unknown as UserProfile;
+          }
+          
+          // Retry fetching the profile after creation
+          const { data: retryData, error: retryError } = await supabase
+            .from('user_profiles' as any)
+            .select('*')
+            .eq('id', userId)
+            .single();
+          
+          if (retryError || !retryData) {
+            console.error('Error fetching profile after creation:', retryError);
+            return null;
+          }
+          
+          return retryData as unknown as UserProfile;
+        } catch (createErr) {
+          console.error('Exception creating user profile:', createErr);
+          return null;
+        }
+      }
+      
       // Critical errors that indicate the profile cannot be accessed
       // These should trigger a logout
       if (
         error.code === '42P17' || // infinite recursion detected in policy
-        error.code === 'PGRST116' || // no rows returned (profile doesn't exist)
         error.message?.includes('infinite recursion') ||
         error.message?.includes('does not exist') ||
         error.message?.includes('permission denied')
@@ -47,6 +95,25 @@ export const getUserProfile = async (userId: string): Promise<UserProfile | null
     // If no data returned, profile doesn't exist
     if (!data) {
       console.warn('User profile not found for user:', userId);
+      // Try to create it
+      try {
+        const { error: createError } = await supabase.rpc('ensure_user_profile', {
+          user_id: userId
+        });
+        
+        if (!createError) {
+          // Retry fetching
+          const { data: retryData } = await supabase
+            .from('user_profiles' as any)
+            .select('*')
+            .eq('id', userId)
+            .single();
+          
+          return retryData as unknown as UserProfile || null;
+        }
+      } catch (err) {
+        console.error('Error creating profile:', err);
+      }
       return null;
     }
 
@@ -62,12 +129,22 @@ export const getUserProfile = async (userId: string): Promise<UserProfile | null
  */
 export const updateUserProfile = async (userId: string, updates: Partial<UserProfile>): Promise<boolean> => {
   try {
+    // Map camelCase to snake_case for database
+    const dbUpdates: any = {
+      updated_at: new Date().toISOString()
+    };
+    
+    if (updates.displayName !== undefined) {
+      dbUpdates.display_name = updates.displayName;
+    }
+    
+    if (updates.role !== undefined) {
+      dbUpdates.role = updates.role;
+    }
+
     const { error } = await supabase
       .from('user_profiles' as any)
-      .update({
-        ...updates,
-        updated_at: new Date().toISOString()
-      })
+      .update(dbUpdates)
       .eq('id', userId);
 
     if (error) {

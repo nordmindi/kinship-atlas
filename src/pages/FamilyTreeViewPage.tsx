@@ -15,9 +15,10 @@ import { toast } from '@/hooks/use-toast';
 import { getFamilyMembers } from '@/services/supabaseService';
 import { useFamilyTree } from '@/contexts/FamilyTreeContext';
 import { familyGroupService } from '@/services/familyGroupService';
+import { AuthLoadingState } from "@/components/auth/AuthLoadingState";
 
 const FamilyTreeViewPage = () => {
-  const { user, isLoading: authLoading } = useAuth();
+  const { user, isLoading: authLoading, error: authError } = useAuth();
   const navigate = useNavigate();
   const [familyMembers, setFamilyMembers] = useState<FamilyMember[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -31,7 +32,7 @@ const FamilyTreeViewPage = () => {
   const [selectedGroupIds, setSelectedGroupIds] = useState<string[]>([]);
   const [filteredMemberIds, setFilteredMemberIds] = useState<string[]>([]);
   const { selectedMemberId, setSelectedMemberId } = useFamilyTree();
-  
+
   // Fetch family members data (using mock data for demonstration)
   useEffect(() => {
     const loadData = async () => {
@@ -39,24 +40,24 @@ const FamilyTreeViewPage = () => {
         setIsLoading(false);
         return;
       }
-      
+
       setIsLoading(true);
       setLoadError(null);
-      
+
       try {
         console.log('Loading family members for user:', user.id);
-        
+
         // Load real family members from Supabase
         const members = await getFamilyMembers();
         console.log('Loaded family members:', members.length, members);
-        
+
         setFamilyMembers(members);
-        
+
         // Find the current user in the family members (you may need to implement user-family member mapping)
         const currentMember = members.find(member => member.id === user.id) || members[0];
         setCurrentUserMember(currentMember || null);
         console.log('Current user member:', currentMember);
-        
+
       } catch (error) {
         console.error('Error loading family members:', error);
         setLoadError('Could not load family tree data. Please try again.');
@@ -69,7 +70,7 @@ const FamilyTreeViewPage = () => {
         setIsLoading(false);
       }
     };
-    
+
     loadData();
   }, [user, refreshKey]);
 
@@ -129,26 +130,19 @@ const FamilyTreeViewPage = () => {
 
     return familyMembers.filter(member => filteredMemberIds.includes(member.id));
   }, [familyMembers, filteredMemberIds, selectedGroupIds]);
-  
-  if (authLoading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <div className="flex flex-col items-center">
-          <Loader2 className="h-8 w-8 animate-spin text-heritage-purple" />
-          <p className="mt-2">Loading...</p>
-        </div>
-      </div>
-    );
+
+  if (authLoading || authError) {
+    return <AuthLoadingState />;
   }
-  
+
   if (!user) {
     return <Navigate to="/auth" replace />;
   }
-  
+
   const handleSelectMember = (memberId: string) => {
     console.log('Member selected:', memberId);
     setSelectedMemberId(memberId);
-    
+
     // If we're in focus mode, keep focus on the newly selected member
     if (focusMode) {
       setFocusMode(true);
@@ -159,31 +153,31 @@ const FamilyTreeViewPage = () => {
     console.log('Navigating to profile:', memberId);
     navigate(`/family-member/${memberId}`);
   };
-  
+
   const handleToggleFocusMode = () => {
     setFocusMode(!focusMode);
   };
-  
+
   const handleSearch = (query: string) => {
     setSearchQuery(query);
     // The actual search is handled in the FamilyTreeRenderer component
   };
-  
+
   const handleAddFamilyMember = () => {
     navigate('/add-family-member');
   };
 
   return (
     <MobileLayout
-      currentUser={{ 
-        name: user.email?.split('@')[0] || 'User', 
-        email: user.email || '' 
+      currentUser={{
+        name: user.email?.split('@')[0] || 'User',
+        email: user.email || ''
       }}
       title="Family Tree"
       icon={<Users className="h-5 w-5" />}
     >
       <div className="flex flex-col h-full">
-        <FamilyTreeHeader 
+        <FamilyTreeHeader
           familyMembers={familyMembers}
           selectedMemberId={selectedMemberId || ''}
           onSelectMember={handleSelectMember}
@@ -196,7 +190,7 @@ const FamilyTreeViewPage = () => {
           onToggleFocusMode={handleToggleFocusMode}
           onSearch={handleSearch}
         />
-        
+
         <div className="flex-1 p-4 h-full">
           {isLoading ? (
             <div className="flex h-[60vh] items-center justify-center">
@@ -216,19 +210,19 @@ const FamilyTreeViewPage = () => {
             </div>
           ) : familyMembers.length > 0 ? (
             <div className="flex flex-col gap-4 h-full">
-              <FamilyTreeTutorial 
+              <FamilyTreeTutorial
                 familyMembersCount={familyMembers.length}
                 recentChangesCount={0} // TODO: Implement recent changes tracking
               />
-              
+
               <FamilyGroupFilter
                 selectedGroupIds={selectedGroupIds}
                 onSelectionChange={setSelectedGroupIds}
                 className="mb-2"
               />
-              
+
               <div className="flex-1 h-[600px] min-h-[600px] bg-white rounded-lg border overflow-hidden relative">
-                <FamilyTreeGraph 
+                <FamilyTreeGraph
                   members={displayedMembers}
                   onSelectMember={handleNavToProfile}
                   rootMemberId={selectedMemberId || undefined}

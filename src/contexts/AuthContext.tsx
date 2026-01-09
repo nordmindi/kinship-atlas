@@ -12,6 +12,7 @@ type AuthContextType = {
   userProfile: UserProfile | null;
   session: Session | null;
   isLoading: boolean;
+  error: Error | null;
   isAdmin: boolean;
   isEditor: boolean;
   isViewer: boolean;
@@ -32,16 +33,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
 
   // Function to load user profile
   // If profile cannot be found, logout the user
   const loadUserProfile = async (userId: string) => {
     try {
       const profile = await getUserProfile(userId);
-      
+
       // Check if user still has an active session
       const { data: { session: currentSession } } = await supabase.auth.getSession();
-      
+
       // If profile is null and user still has an active session, logout
       if (!profile && currentSession?.user?.id === userId) {
         console.warn('User profile not found - logging out user');
@@ -52,15 +54,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         window.location.href = '/auth';
         return;
       }
-      
+
       setUserProfile(profile);
     } catch (error) {
       console.error('Error loading user profile:', error);
       setUserProfile(null);
-      
+
       // Check if user still has an active session
       const { data: { session: currentSession } } = await supabase.auth.getSession();
-      
+
       // If there's an error and user still has an active session, logout
       if (currentSession?.user?.id === userId) {
         console.warn('Error fetching user profile - logging out user');
@@ -84,63 +86,77 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     let isMounted = true;
     let subscription: { unsubscribe: () => void } | null = null;
-    
+
     // Initialize auth state from current session
     const initializeAuth = async () => {
       try {
         setIsLoading(true);
-        
+        setError(null);
+
+        // Create a timeout promise to prevent hanging indefinitely
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('Connection to authentication server timed out')), 15000)
+        );
+
         // Auto-login for development only (disabled in production)
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session && import.meta.env.DEV) {
-          // Only attempt auto-login in development mode
-          try {
-            const { data, error } = await supabase.auth.signInWithPassword({
-              email: 'test@kinship-atlas.com',
-              password: 'testpassword123'
-            });
-            if (error) {
-              // Silently fail in development - user can manually log in
-              if (error.message.includes('Invalid login credentials')) {
-                // Try to create the test user if it doesn't exist
-                await supabase.auth.signUp({
-                  email: 'test@kinship-atlas.com',
-                  password: 'testpassword123'
-                });
-                // Retry login after user creation
-                await supabase.auth.signInWithPassword({
-                  email: 'test@kinship-atlas.com',
-                  password: 'testpassword123'
-                });
+        if (import.meta.env.DEV) {
+          // We wrap the initial session check in a race with timeout
+          const sessionCheckPromise = supabase.auth.getSession();
+          const { data: { session } } = await Promise.race([sessionCheckPromise, timeoutPromise]) as { data: { session: Session | null } };
+
+          if (!session) {
+            // Only attempt auto-login in development mode
+            try {
+              const { data, error } = await supabase.auth.signInWithPassword({
+                email: 'test@kinship-atlas.com',
+                password: 'testpassword123'
+              });
+              if (error) {
+                // Silently fail in development - user can manually log in
+                if (error.message.includes('Invalid login credentials')) {
+                  // Try to create the test user if it doesn't exist
+                  await supabase.auth.signUp({
+                    email: 'test@kinship-atlas.com',
+                    password: 'testpassword123'
+                  });
+                  // Retry login after user creation
+                  await supabase.auth.signInWithPassword({
+                    email: 'test@kinship-atlas.com',
+                    password: 'testpassword123'
+                  });
+                }
               }
+            } catch (err) {
+              // Silently handle errors in development
             }
-          } catch (err) {
-            // Silently handle errors in development
           }
         }
-        
-        const { data } = await supabase.auth.getSession();
+
+        // Main session retrieval with timeout
+        const sessionPromise = supabase.auth.getSession();
+        const { data } = await Promise.race([sessionPromise, timeoutPromise]) as { data: { session: Session | null } };
+
         if (!isMounted) return;
-        
+
         setSession(data.session);
         setUser(data.session?.user || null);
-        
+
         // Load user profile if user exists
         if (data.session?.user?.id) {
           await loadUserProfile(data.session.user.id);
         }
-        
+
         if (!isMounted) return;
-        
+
         // Set up auth state listener
         const { data: { subscription: authSubscription } } = supabase.auth.onAuthStateChange(
           async (event, newSession) => {
             // Don't process auth state changes if component is unmounted
             if (!isMounted) return;
-            
+
             setSession(newSession);
             setUser(newSession?.user || null);
-            
+
             // Handle session expiration
             if (event === 'SIGNED_OUT' || event === 'TOKEN_REFRESHED') {
               if (event === 'SIGNED_OUT') {
@@ -153,7 +169,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 return;
               }
             }
-            
+
             // Load user profile for new session (but not on token refresh)
             if (newSession?.user?.id) {
               await loadUserProfile(newSession.user.id);
@@ -162,10 +178,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             }
           }
         );
-        
+
         subscription = authSubscription;
       } catch (error) {
         console.error('Error initializing auth:', error);
+        if (isMounted) {
+          setError(error instanceof Error ? error : new Error('Unknown authentication error'));
+          // Ensure we're not stuck in loading state
+          setIsLoading(false);
+        }
       } finally {
         // Always set loading to false, even if there was an error
         if (isMounted) {
@@ -173,9 +194,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       }
     };
-    
+
     initializeAuth();
-    
+
     // Clean up subscription on unmount
     return () => {
       isMounted = false;
@@ -188,19 +209,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signIn = async (email: string, password: string) => {
     try {
       // Add timeout to prevent hanging
-      const timeoutPromise = new Promise((_, reject) => 
+      const timeoutPromise = new Promise((_, reject) =>
         setTimeout(() => reject(new Error('SignIn timeout after 10 seconds')), 10000)
       );
-      
+
       const signInPromise = supabase.auth.signInWithPassword({
         email,
         password,
       });
-      
+
       const { data, error } = await Promise.race([signInPromise, timeoutPromise]) as { data: { user: { id: string } } | null; error: Error | null };
       return { error };
     } catch (err) {
-      return { error: err };
+      return { error: err as Error };
     }
   };
 
@@ -217,12 +238,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const role = userProfile?.role ?? null;
-  
+
   const value = {
     user,
     userProfile,
     session,
     isLoading,
+    error,
     isAdmin: isAdmin(role),
     isEditor: isEditor(role),
     isViewer: isViewer(role),

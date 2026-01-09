@@ -18,29 +18,30 @@ import { useFamilyTimeline } from "@/hooks/useTimeline";
 import { FamilyMember, FamilyStory } from "@/types";
 import { getYearRange } from "@/utils/dateUtils";
 import { useStorageUrl } from "@/hooks/useStorageUrl";
-import { 
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { AuthLoadingState } from "@/components/auth/AuthLoadingState";
 
 // Component for displaying family member in overview
 const FamilyMemberOverviewCard = ({ member, onClick }: { member: FamilyMember; onClick: () => void }) => {
   const accessibleAvatarUrl = useStorageUrl(member.avatar);
   const [imageError, setImageError] = useState(false);
-  
+
   return (
-    <div 
+    <div
       className="w-36 flex-shrink-0 cursor-pointer group"
       onClick={onClick}
     >
-      <div 
+      <div
         className="aspect-square rounded-xl overflow-hidden border-2 border-heritage-purple/20 group-hover:border-heritage-purple/40 transition-colors shadow-sm relative bg-heritage-purple-light"
       >
         {accessibleAvatarUrl && !imageError ? (
-          <img 
-            src={accessibleAvatarUrl} 
+          <img
+            src={accessibleAvatarUrl}
             alt={`${member.firstName} ${member.lastName}`}
             className="w-full h-full object-cover"
             onError={() => setImageError(true)}
@@ -64,19 +65,19 @@ const FamilyMemberOverviewCard = ({ member, onClick }: { member: FamilyMember; o
 };
 
 const Index = () => {
-  const { user, isLoading: authLoading, canWrite } = useAuth();
+  const { user, isLoading: authLoading, error: authError, canWrite } = useAuth();
   const { canAddFamilyMember, canCreateStory } = usePermissions();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("home");
   const [searchQuery, setSearchQuery] = useState("");
   const { selectedMemberId, setSelectedMemberId } = useFamilyTree();
-  
+
   // Use TanStack Query hooks for data fetching
   const { data: familyMembers = [], isLoading: membersLoading, error: membersError } = useFamilyMembers();
   const { data: stories = [], isLoading: storiesLoading, error: storiesError } = useStories();
   const memberIds = familyMembers.map(m => m.id);
   const { timeline = [], isLoading: timelineLoading } = useFamilyTimeline(memberIds);
-  
+
   const isLoading = authLoading || membersLoading || storiesLoading || timelineLoading;
 
   useEffect(() => {
@@ -104,45 +105,41 @@ const Index = () => {
       setSelectedMemberId(fallbackMemberId);
     }
   }, [familyMembers, selectedMemberId, setSelectedMemberId]);
-  
+
   // Get author name for stories
   const getAuthorName = (authorId: string) => {
     const member = familyMembers.find(m => m.id === authorId);
     return member ? `${member.firstName} ${member.lastName}` : "Unknown";
   };
-  
+
   // Filter family members based on search
   const filteredMembers = searchQuery
-    ? familyMembers.filter(member => 
-        `${member.firstName} ${member.lastName}`.toLowerCase().includes(searchQuery.toLowerCase())
-      )
+    ? familyMembers.filter(member =>
+      `${member.firstName} ${member.lastName}`.toLowerCase().includes(searchQuery.toLowerCase())
+    )
     : familyMembers;
-  
+
   // Filter stories based on search
   const filteredStories = searchQuery
-    ? stories.filter(story => 
-        story.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        story.content.toLowerCase().includes(searchQuery.toLowerCase())
-      )
+    ? stories.filter(story =>
+      story.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      story.content.toLowerCase().includes(searchQuery.toLowerCase())
+    )
     : stories;
-  
-  if (authLoading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <div className="animate-pulse text-heritage-purple">Loading...</div>
-      </div>
-    );
+
+  if (authLoading || authError) {
+    return <AuthLoadingState />;
   }
-  
+
   if (!user) {
     return <Navigate to="/auth" replace />;
   }
-  
+
   // Handle add member button
   const handleAddMember = () => {
     navigate('/add-family-member');
   };
-  
+
   // Handle add story button
   const handleAddStory = () => {
     navigate('/add-story');
@@ -164,10 +161,10 @@ const Index = () => {
   const handleViewStory = (storyId: string) => {
     navigate(`/story/${storyId}`);
   };
-  
+
   return (
-    <MobileLayout 
-      currentUser={user ? { 
+    <MobileLayout
+      currentUser={user ? {
         name: user.email?.split('@')[0] || 'User',
         email: user.email || ''
       } : undefined}
@@ -177,8 +174,8 @@ const Index = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" size={18} />
-            <Input 
-              placeholder="Search family members, stories..." 
+            <Input
+              placeholder="Search family members, stories..."
               className="pl-10 bg-white shadow-sm border-0 focus:ring-2 focus:ring-heritage-purple/20"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -197,7 +194,7 @@ const Index = () => {
               <TabsTrigger value="map" className="flex-1 data-[state=active]:bg-white data-[state=active]:shadow-sm">Map</TabsTrigger>
               <TabsTrigger value="stories" className="flex-1 data-[state=active]:bg-white data-[state=active]:shadow-sm">Stories</TabsTrigger>
             </TabsList>
-            
+
             <TabsContent value="home" className="pt-8 pb-20">
               <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
                 {/* Recent Stories Section */}
@@ -216,7 +213,7 @@ const Index = () => {
                       </div>
                     ) : filteredStories.length > 0 ? (
                       filteredStories.slice(0, 3).map(story => (
-                        <StoryCard 
+                        <StoryCard
                           key={story.id}
                           story={story}
                           authorName={getAuthorName(story.authorId)}
@@ -232,7 +229,7 @@ const Index = () => {
                     )}
                   </div>
                 </section>
-                
+
                 {/* Timeline Overview Section */}
                 <section className="bg-white rounded-xl shadow-sm border border-heritage-purple/10 p-6 sm:p-8">
                   <div className="flex items-center justify-between mb-6">
@@ -262,9 +259,8 @@ const Index = () => {
                             }
                           }}
                         >
-                          <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
-                            item.itemType === 'story' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'
-                          }`}>
+                          <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${item.itemType === 'story' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'
+                            }`}>
                             {item.itemType === 'story' ? (
                               <BookOpen className="h-4 w-4" />
                             ) : (
@@ -294,7 +290,7 @@ const Index = () => {
                     )}
                   </div>
                 </section>
-                
+
                 {/* Family Section */}
                 <section className="bg-white rounded-xl shadow-sm border border-heritage-purple/10 p-6 sm:p-8">
                   <div className="flex items-center justify-between mb-6">
@@ -334,7 +330,7 @@ const Index = () => {
                     )}
                   </div>
                 </section>
-                
+
                 {/* Call to Action Section */}
                 <section className="bg-gradient-to-br from-heritage-purple-light/30 to-heritage-purple-light/50 rounded-xl p-6 sm:p-8 border border-heritage-purple/10">
                   <div className="text-center">
@@ -345,7 +341,7 @@ const Index = () => {
                     <p className="text-sm text-muted-foreground mb-6 max-w-md mx-auto">
                       Invite family members or add ancestors to build your complete family history
                     </p>
-                    <Button 
+                    <Button
                       className="bg-heritage-purple hover:bg-heritage-purple-medium shadow-sm"
                       onClick={handleAddMember}
                     >
@@ -355,7 +351,7 @@ const Index = () => {
                 </section>
               </div>
             </TabsContent>
-            
+
             <TabsContent value="tree">
               <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
                 {isLoading ? (
@@ -364,7 +360,7 @@ const Index = () => {
                   </div>
                 ) : (
                   <div className="bg-white rounded-xl shadow-sm border border-heritage-purple/10 overflow-hidden">
-                    <FamilyTreeView 
+                    <FamilyTreeView
                       members={filteredMembers}
                       currentMemberId={selectedMemberId ?? ""}
                       onSelectMember={(memberId) => {
@@ -375,7 +371,7 @@ const Index = () => {
                 )}
               </div>
             </TabsContent>
-            
+
             <TabsContent value="map">
               <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
                 {isLoading ? (
@@ -384,7 +380,7 @@ const Index = () => {
                   </div>
                 ) : (
                   <div className="bg-white rounded-xl shadow-sm border border-heritage-purple/10 overflow-hidden">
-                    <FamilyMap 
+                    <FamilyMap
                       members={filteredMembers.filter(member => member.currentLocation)}
                       onSelectMember={setSelectedMemberId}
                     />
@@ -392,7 +388,7 @@ const Index = () => {
                 )}
               </div>
             </TabsContent>
-            
+
             <TabsContent value="stories" className="pt-8 pb-20">
               <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
                 {isLoading ? (
@@ -405,7 +401,7 @@ const Index = () => {
                   <div className="space-y-6">
                     {filteredStories.map(story => (
                       <div key={story.id} className="bg-white rounded-xl shadow-sm border border-heritage-purple/10 p-6 sm:p-8">
-                        <StoryCard 
+                        <StoryCard
                           story={story}
                           authorName={getAuthorName(story.authorId)}
                           onView={() => handleViewStory(story.id)}
@@ -420,10 +416,10 @@ const Index = () => {
                     <p className="text-muted-foreground mb-6">Start documenting your family's stories and memories.</p>
                   </div>
                 )}
-                
+
                 {canCreateStory() && (
                   <div className="bg-white rounded-xl shadow-sm border border-heritage-purple/10 p-6 sm:p-8">
-                    <Button 
+                    <Button
                       className="w-full bg-heritage-purple hover:bg-heritage-purple-medium shadow-sm"
                       onClick={handleAddStory}
                     >
@@ -437,7 +433,7 @@ const Index = () => {
           </Tabs>
         </div>
       </div>
-      
+
       {canWrite && (
         <div className="fixed right-6 bottom-20 z-40 md:bottom-6">
           <DropdownMenu>

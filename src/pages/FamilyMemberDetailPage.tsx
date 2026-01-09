@@ -14,15 +14,15 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { 
-  Users, 
-  MapPin, 
-  Calendar, 
-  Edit, 
-  Camera, 
-  Image as ImageIcon, 
-  Save, 
-  X, 
+import {
+  Users,
+  MapPin,
+  Calendar,
+  Edit,
+  Camera,
+  Image as ImageIcon,
+  Save,
+  X,
   Plus,
   User,
   Heart,
@@ -47,14 +47,15 @@ import { AssignMemberToGroupDialog } from '@/components/family/AssignMemberToGro
 import NewFamilyTab from '@/components/family/NewFamilyTab';
 import Timeline from '@/components/stories/Timeline';
 import { useMemberTimeline, useTimelineStats } from '@/hooks/useTimeline';
+import { AuthLoadingState } from "@/components/auth/AuthLoadingState";
 
 const FamilyMemberDetailPage = () => {
-  const { user, isLoading: authLoading, canWrite } = useAuth();
+  const { user, isLoading: authLoading, error: authError, canWrite } = useAuth();
   const { canEditFamilyMember } = usePermissions();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [member, setMember] = useState<FamilyMember | null>(null);
-  const [relatedMembers, setRelatedMembers] = useState<{[key: string]: FamilyMember[]}>({
+  const [relatedMembers, setRelatedMembers] = useState<{ [key: string]: FamilyMember[] }>({
     parents: [],
     children: [],
     siblings: [],
@@ -93,26 +94,26 @@ const FamilyMemberDetailPage = () => {
   useEffect(() => {
     const loadData = async () => {
       if (!id) return;
-      
+
       try {
         setIsLoading(true);
         console.log('🔄 Loading member data for ID:', id);
         const allMembers = await getFamilyMembers();
         const currentMember = allMembers.find(m => m.id === id);
-        
+
         if (!currentMember) {
           console.error('❌ Member not found');
           return;
         }
-        
+
         console.log('✅ Member loaded:', {
           id: currentMember.id,
           name: `${currentMember.firstName} ${currentMember.lastName}`,
           avatar: currentMember.avatar || 'no avatar'
         });
-        
+
         setMember(currentMember);
-        
+
         // Populate edit form with current member data
         setEditForm({
           firstName: currentMember.firstName || '',
@@ -123,17 +124,17 @@ const FamilyMemberDetailPage = () => {
           bio: currentMember.bio || '',
           currentLocation: currentMember.currentLocation?.description || ''
         });
-        
+
         // Get related members by relation type
         const parents: FamilyMember[] = [];
         const children: FamilyMember[] = [];
         const siblings: FamilyMember[] = [];
         const spouses: FamilyMember[] = [];
-        
+
         currentMember.relations.forEach(relation => {
           const relatedMember = allMembers.find(m => m.id === relation.personId);
           if (relatedMember) {
-            switch(relation.type) {
+            switch (relation.type) {
               case 'parent':
                 parents.push(relatedMember);
                 break;
@@ -149,21 +150,21 @@ const FamilyMemberDetailPage = () => {
             }
           }
         });
-        
+
         setRelatedMembers({
           parents,
           children,
           siblings,
           spouses
         });
-        
+
       } catch (error) {
         console.error('Error loading member data:', error);
       } finally {
         setIsLoading(false);
       }
     };
-    
+
     if (user) {
       loadData();
     }
@@ -205,15 +206,11 @@ const FamilyMemberDetailPage = () => {
     window.addEventListener('focus', handleFocus);
     return () => window.removeEventListener('focus', handleFocus);
   }, [id, user, member]);
-  
-  if (authLoading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <div className="animate-pulse text-heritage-purple">Loading...</div>
-      </div>
-    );
+
+  if (authLoading || authError) {
+    return <AuthLoadingState />;
   }
-  
+
   if (!user) {
     return <Navigate to="/auth" replace />;
   }
@@ -245,29 +242,29 @@ const FamilyMemberDetailPage = () => {
     if (id) {
       try {
         console.log('🔄 Reloading member data after relationship addition...');
-        
+
         // Force a fresh fetch by adding a timestamp to bypass any caching
         const allMembers = await getFamilyMembers();
         console.log('📊 All members loaded:', allMembers.length);
-        
+
         const updatedMember = allMembers.find(m => m.id === id);
         console.log('👤 Updated member found:', updatedMember?.firstName, updatedMember?.lastName);
         console.log('🔗 Member relations:', updatedMember?.relations);
-        
+
         if (updatedMember) {
           setMember(updatedMember);
-          
+
           // Update related members
           const parents: FamilyMember[] = [];
           const children: FamilyMember[] = [];
           const siblings: FamilyMember[] = [];
           const spouses: FamilyMember[] = [];
-          
+
           updatedMember.relations.forEach(relation => {
             const relatedMember = allMembers.find(m => m.id === relation.personId);
             console.log(`🔍 Processing relation: ${relation.type} -> ${relatedMember?.firstName} ${relatedMember?.lastName}`);
             if (relatedMember) {
-              switch(relation.type) {
+              switch (relation.type) {
                 case 'parent':
                   parents.push(relatedMember);
                   break;
@@ -283,16 +280,16 @@ const FamilyMemberDetailPage = () => {
               }
             }
           });
-          
+
           console.log('👨‍👩‍👧‍👦 Updated related members:', { parents: parents.length, children: children.length, siblings: siblings.length, spouses: spouses.length });
-          
+
           setRelatedMembers({
             parents,
             children,
             siblings,
             spouses
           });
-          
+
           // Show success message
           toast({
             title: "Family Updated",
@@ -329,9 +326,9 @@ const FamilyMemberDetailPage = () => {
 
   const handleImageUpload = async (imageUrl: string) => {
     if (!member || !id) return;
-    
+
     console.log('📸 Handling image upload for member:', member.id, 'URL:', imageUrl);
-    
+
     if (!imageUrl) {
       console.warn('⚠️  Empty image URL provided, clearing avatar');
       const success = await updateFamilyMemberAvatar(member.id, '');
@@ -340,19 +337,19 @@ const FamilyMemberDetailPage = () => {
       }
       return;
     }
-    
+
     const success = await updateFamilyMemberAvatar(member.id, imageUrl);
     if (success) {
       console.log('✅ Avatar update successful, updating local state with URL:', imageUrl);
       // Update local state immediately for instant feedback
       setMember(prev => prev ? { ...prev, avatar: imageUrl } : null);
-      
+
       // Also refresh data from database to ensure consistency
       try {
         console.log('🔄 Refreshing member data after avatar update...');
         const allMembers = await getFamilyMembers();
         const updatedMember = allMembers.find(m => m.id === id);
-        
+
         if (updatedMember) {
           console.log('✅ Updated member data - avatar URL:', updatedMember.avatar);
           console.log('   Member ID:', updatedMember.id);
@@ -407,7 +404,7 @@ const FamilyMemberDetailPage = () => {
 
   const handleSaveChanges = async () => {
     if (!member) return;
-    
+
     setIsSaving(true);
     try {
       const memberData = {
@@ -427,7 +424,7 @@ const FamilyMemberDetailPage = () => {
       } : undefined;
 
       const updatedMember = await updateFamilyMember(member.id, memberData, location);
-      
+
       if (updatedMember) {
         setMember(updatedMember);
         setIsEditing(false);
@@ -465,10 +462,10 @@ const FamilyMemberDetailPage = () => {
   };
 
   return (
-    <MobileLayout 
-      currentUser={{ 
-        name: user.email?.split('@')[0] || 'User', 
-        email: user.email || '' 
+    <MobileLayout
+      currentUser={{
+        name: user.email?.split('@')[0] || 'User',
+        email: user.email || ''
       }}
       showBackButton
       title={member ? `${member.firstName} ${member.lastName}` : 'Family Member'}
@@ -489,7 +486,7 @@ const FamilyMemberDetailPage = () => {
               </TabsTrigger>
               <TabsTrigger value="media" className="text-sm py-2 px-4">Media</TabsTrigger>
             </TabsList>
-            
+
             <TabsContent value="profile" className="flex-1 overflow-auto">
               <div className="p-6 pb-20 space-y-8">
                 {/* Header with Avatar and Basic Info */}
@@ -507,13 +504,13 @@ const FamilyMemberDetailPage = () => {
                         size="sm"
                         variant="secondary"
                         className="absolute -bottom-2 -right-2 h-8 w-8 rounded-full p-0"
-                        onClick={() => {/* Focus on image upload */}}
+                        onClick={() => {/* Focus on image upload */ }}
                       >
                         <Camera className="h-4 w-4" />
                       </Button>
                     )}
                   </div>
-                  
+
                   {isEditing ? (
                     <div className="w-full max-w-sm space-y-3">
                       <div className="grid grid-cols-2 gap-2">
@@ -536,7 +533,7 @@ const FamilyMemberDetailPage = () => {
                       {member.firstName} {member.lastName}
                     </h1>
                   )}
-                  
+
                   <div className="flex items-center text-sm text-heritage-neutral mt-1">
                     <Calendar className="h-4 w-4 mr-1" />
                     {isEditing ? (
@@ -559,7 +556,7 @@ const FamilyMemberDetailPage = () => {
                       <span>{getYearRange(member.birthDate, member.deathDate)}</span>
                     )}
                   </div>
-                  
+
                   <div className="flex items-center text-sm text-heritage-neutral mt-1">
                     <MapPin className="h-4 w-4 mr-1" />
                     {isEditing ? (
@@ -573,7 +570,7 @@ const FamilyMemberDetailPage = () => {
                       <span>{member.currentLocation?.description || 'No location set'}</span>
                     )}
                   </div>
-                  
+
                   {/* Edit Controls */}
                   {canWrite && (
                     <div className="flex gap-2 mt-4">
@@ -619,7 +616,7 @@ const FamilyMemberDetailPage = () => {
                     </div>
                   )}
                 </div>
-                
+
                 {/* Biography Section */}
                 <Card>
                   <CardHeader>
@@ -668,7 +665,7 @@ const FamilyMemberDetailPage = () => {
                         </p>
                       )}
                     </div>
-                    
+
                     <div className="flex items-center gap-2">
                       <Badge variant="secondary" className="flex items-center gap-1">
                         <User className="h-3 w-3" />
@@ -683,9 +680,9 @@ const FamilyMemberDetailPage = () => {
                     </div>
                   </CardContent>
                 </Card>
-                
+
                 {/* View Family Tree Button */}
-                <Button 
+                <Button
                   className="w-full bg-heritage-purple hover:bg-heritage-purple-medium"
                   onClick={() => navigate('/family-tree')}
                 >
@@ -693,16 +690,16 @@ const FamilyMemberDetailPage = () => {
                 </Button>
               </div>
             </TabsContent>
-            
+
             <TabsContent value="family" className="flex-1 overflow-auto">
               <div className="p-6">
-                <NewFamilyTab 
+                <NewFamilyTab
                   currentMember={member!}
                   onMemberChanged={handleRelationshipAdded}
                 />
               </div>
             </TabsContent>
-            
+
             <TabsContent value="timeline" className="flex-1 overflow-auto">
               <div className="p-6">
                 <div className="mb-6">
@@ -713,7 +710,7 @@ const FamilyMemberDetailPage = () => {
                     Stories, events, and milestones in chronological order
                   </p>
                 </div>
-                
+
                 {/* Timeline Stats */}
                 {timelineStats && (timelineStats.totalStories > 0 || timelineStats.totalEvents > 0) && (
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
@@ -767,7 +764,7 @@ const FamilyMemberDetailPage = () => {
                     )}
                   </div>
                 )}
-                
+
                 {timelineError && (
                   <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
                     <p className="text-red-800 text-sm">
@@ -775,7 +772,7 @@ const FamilyMemberDetailPage = () => {
                     </p>
                   </div>
                 )}
-                
+
                 <Timeline
                   timeline={timeline || []}
                   isLoading={timelineLoading}
@@ -792,7 +789,7 @@ const FamilyMemberDetailPage = () => {
                 />
               </div>
             </TabsContent>
-            
+
             <TabsContent value="media" className="flex-1 flex flex-col">
               <div className="p-6 flex-1">
                 <div className="mb-4">
@@ -804,7 +801,7 @@ const FamilyMemberDetailPage = () => {
                     <Button
                       size="sm"
                       variant="outline"
-                      onClick={() => {/* Open media upload */}}
+                      onClick={() => {/* Open media upload */ }}
                     >
                       <Upload className="h-4 w-4 mr-2" />
                       Upload
@@ -814,8 +811,8 @@ const FamilyMemberDetailPage = () => {
                     Manage photos and documents for {member.firstName} {member.lastName}
                   </p>
                 </div>
-                
-                <MediaManager 
+
+                <MediaManager
                   onSelectMedia={handleMediaSelect}
                   selectedMediaId={selectedMedia?.id}
                   filterByType="image"
@@ -827,7 +824,7 @@ const FamilyMemberDetailPage = () => {
       ) : (
         <div className="p-4 text-center">
           <p className="text-heritage-neutral">Family member not found</p>
-          <Button 
+          <Button
             className="mt-4 bg-heritage-purple hover:bg-heritage-purple-medium"
             onClick={() => navigate('/family-tree')}
           >
