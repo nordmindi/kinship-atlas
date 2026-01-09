@@ -17,6 +17,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { usePermissions } from '@/hooks/usePermissions';
 import { 
   Users, 
   UserPlus, 
@@ -36,6 +37,7 @@ const NewFamilyTab: React.FC<NewFamilyTabProps> = ({
   currentMember,
   onMemberChanged
 }) => {
+  const { canAddFamilyMember } = usePermissions();
   const [allMembers, setAllMembers] = useState<FamilyMember[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -134,10 +136,12 @@ const NewFamilyTab: React.FC<NewFamilyTabProps> = ({
             <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
-          <Button onClick={() => setShowAddMemberForm(true)} className="px-4 py-2">
-            <UserPlus className="h-4 w-4 mr-2" />
-            Add Family Member
-          </Button>
+          {canAddFamilyMember() && (
+            <Button onClick={() => setShowAddMemberForm(true)} className="px-4 py-2">
+              <UserPlus className="h-4 w-4 mr-2" />
+              Add Family Member
+            </Button>
+          )}
         </div>
       </div>
 
@@ -183,6 +187,7 @@ const NewFamilyTab: React.FC<NewFamilyTabProps> = ({
             currentMember={currentMember}
             allMembers={allMembers}
             onRelationshipChanged={handleRelationshipChanged}
+            canAddRelationship={canAddFamilyMember()}
           />
         </TabsContent>
         

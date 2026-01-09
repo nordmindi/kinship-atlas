@@ -38,6 +38,7 @@ interface RelationshipManagerProps {
   currentMember: FamilyMember;
   allMembers: FamilyMember[];
   onRelationshipChanged: () => void;
+  canAddRelationship?: boolean;
 }
 
 interface RelationshipSuggestion {
@@ -83,7 +84,8 @@ const buildRelationshipSuccessMessage = (
 const RelationshipManager: React.FC<RelationshipManagerProps> = ({
   currentMember,
   allMembers,
-  onRelationshipChanged
+  onRelationshipChanged,
+  canAddRelationship = true
 }) => {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [selectedMember, setSelectedMember] = useState<FamilyMember | null>(null);
@@ -370,13 +372,14 @@ const RelationshipManager: React.FC<RelationshipManagerProps> = ({
       </Card>
 
       {/* Add Relationship Dialog */}
-      <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-        <DialogTrigger asChild>
-          <Button className="w-full py-3 text-base">
-            <UserPlus className="h-5 w-5 mr-2" />
-            Add Relationship
-          </Button>
-        </DialogTrigger>
+      {canAddRelationship && (
+        <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+          <DialogTrigger asChild>
+            <Button className="w-full py-3 text-base">
+              <UserPlus className="h-5 w-5 mr-2" />
+              Add Relationship
+            </Button>
+          </DialogTrigger>
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Add Relationship</DialogTitle>
@@ -455,6 +458,7 @@ const RelationshipManager: React.FC<RelationshipManagerProps> = ({
           </div>
         </DialogContent>
       </Dialog>
+      )}
 
       {/* Relationship Suggestions */}
       {suggestions.length > 0 && (
