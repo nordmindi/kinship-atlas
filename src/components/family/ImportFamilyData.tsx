@@ -70,6 +70,13 @@ interface ImportStoryMember {
   role: string;
 }
 
+interface ImportStoryArtifact {
+  storyId?: string;
+  storyTitle?: string;
+  artifactId?: string;
+  artifactName?: string;
+}
+
 interface ImportData {
   familyMembers: FamilyMember[];
   relationships: Relation[];
@@ -78,6 +85,7 @@ interface ImportData {
   media?: ImportMedia[];
   artifacts?: ImportArtifact[];
   storyMembers?: ImportStoryMember[];
+  storyArtifacts?: ImportStoryArtifact[];
 }
 
 interface ImportResult {
@@ -90,6 +98,7 @@ interface ImportResult {
     media: number;
     artifacts: number;
     storyMembers: number;
+    storyArtifacts: number;
   };
   errors: string[];
   warnings: string[];
@@ -119,6 +128,7 @@ const ImportFamilyData: React.FC<ImportFamilyDataProps> = ({
     const media: ImportMedia[] = [];
     const artifacts: ImportArtifact[] = [];
     const storyMembers: ImportStoryMember[] = [];
+    const storyArtifacts: ImportStoryArtifact[] = [];
 
     // Helpers to normalize dates from Excel
     const toISODate = (d: Date) => {
@@ -264,6 +274,15 @@ const ImportFamilyData: React.FC<ImportFamilyDataProps> = ({
               role: rowData.role || 'participant'
             });
           }
+        } else if (sheetName === 'Story Artifacts' || sheetName.toLowerCase().includes('story artifact')) {
+          if (rowData.story_id || rowData.artifact_id) {
+            storyArtifacts.push({
+              storyId: rowData.story_id,
+              storyTitle: rowData.story_title,
+              artifactId: rowData.artifact_id,
+              artifactName: rowData.artifact_name
+            });
+          }
         }
       }
     };
@@ -295,7 +314,7 @@ const ImportFamilyData: React.FC<ImportFamilyDataProps> = ({
             parseSheet(worksheet, sheetName);
           });
 
-          resolve({ familyMembers, relationships, stories, locations, media, artifacts, storyMembers });
+          resolve({ familyMembers, relationships, stories, locations, media, artifacts, storyMembers, storyArtifacts });
         } catch (error) {
           reject(error);
         }
@@ -324,7 +343,8 @@ const ImportFamilyData: React.FC<ImportFamilyDataProps> = ({
       locations: data.locations || [],
       media: data.media || [],
       artifacts: data.artifacts || [],
-      storyMembers: data.storyMembers || []
+      storyMembers: data.storyMembers || [],
+      storyArtifacts: data.storyArtifacts || []
     };
   }, []);
 
@@ -405,7 +425,7 @@ const ImportFamilyData: React.FC<ImportFamilyDataProps> = ({
     setImportProgress(0);
     const result: ImportResult = {
       success: true,
-      imported: { members: 0, relationships: 0, stories: 0, locations: 0, media: 0, artifacts: 0, storyMembers: 0 },
+      imported: { members: 0, relationships: 0, stories: 0, locations: 0, media: 0, artifacts: 0, storyMembers: 0, storyArtifacts: 0 },
       errors: [],
       warnings: []
     };
@@ -421,7 +441,8 @@ const ImportFamilyData: React.FC<ImportFamilyDataProps> = ({
                         (importData.locations?.length || 0) +
                         (importData.media?.length || 0) +
                         (importData.artifacts?.length || 0) +
-                        (importData.storyMembers?.length || 0);
+                        (importData.storyMembers?.length || 0) +
+                        (importData.storyArtifacts?.length || 0);
       let processedItems = 0;
       
       // Create maps for ID translation
@@ -474,28 +495,23 @@ const ImportFamilyData: React.FC<ImportFamilyDataProps> = ({
             // Check if error is about duplicate
             if (response.error?.includes('already exists') && currentUserIdForMembers) {
               // Try to find the existing member
-              // @ts-expect-error - TypeScript has issues with conditional Supabase query chaining
-              let findResult: any;
-              if (member.birthDate) {
-                // @ts-expect-error - TypeScript has issues with conditional Supabase query chaining
-                findResult = await supabase
-                  .from('family_members')
-                  .select('id')
-                  .eq('created_by', currentUserIdForMembers)
-                  .ilike('first_name', member.firstName.trim())
-                  .ilike('last_name', member.lastName.trim())
-                  .eq('birth_date', member.birthDate)
-                  .limit(1);
-              } else {
-                // @ts-expect-error - TypeScript has issues with conditional Supabase query chaining
-                findResult = await supabase
-                  .from('family_members')
-                  .select('id')
-                  .eq('created_by', currentUserIdForMembers)
-                  .ilike('first_name', member.firstName.trim())
-                  .ilike('last_name', member.lastName.trim())
-                  .limit(1);
-              }
+              // Using separate queries to avoid TypeScript type inference issues
+              const findResult = member.birthDate
+                ? await (supabase as any)
+                    .from('family_members')
+                    .select('id')
+                    .eq('created_by', currentUserIdForMembers)
+                    .ilike('first_name', member.firstName.trim())
+                    .ilike('last_name', member.lastName.trim())
+                    .eq('birth_date', member.birthDate)
+                    .limit(1)
+                : await (supabase as any)
+                    .from('family_members')
+                    .select('id')
+                    .eq('created_by', currentUserIdForMembers)
+                    .ilike('first_name', member.firstName.trim())
+                    .ilike('last_name', member.lastName.trim())
+                    .limit(1);
               
               if (findResult.data && findResult.data.length > 0) {
                 newMemberId = findResult.data[0].id;
@@ -859,6 +875,87 @@ const ImportFamilyData: React.FC<ImportFamilyDataProps> = ({
         }
       }
 
+      // Import story-artifacts connections
+      if (importData.storyArtifacts && importData.storyArtifacts.length > 0) {
+        // Create a map of artifact names to IDs for lookup
+        const artifactNameToId: Record<string, string> = {};
+        const { data: allArtifacts } = await supabase
+          .from('artifacts')
+          .select('id, name');
+        if (allArtifacts) {
+          allArtifacts.forEach((artifact: any) => {
+            artifactNameToId[artifact.name] = artifact.id;
+          });
+        }
+
+        for (const storyArtifact of importData.storyArtifacts) {
+          try {
+            let storyId = storyArtifact.storyId;
+            let artifactId = storyArtifact.artifactId;
+            
+            // Map old story ID to new ID if it exists
+            if (storyId && oldStoryIdToNewId[storyId]) {
+              storyId = oldStoryIdToNewId[storyId];
+            } else if (storyId) {
+              // Try to find by title if ID not found
+              if (storyArtifact.storyTitle) {
+                const mappedId = storyTitleToId[storyArtifact.storyTitle];
+                if (mappedId) {
+                  storyId = mappedId;
+                } else {
+                  result.warnings.push(`Skipping story-artifact connection - story ID "${storyId}" not found in imported stories`);
+                  processedItems++;
+                  setImportProgress((processedItems / totalItems) * 100);
+                  continue;
+                }
+              } else {
+                result.warnings.push(`Skipping story-artifact connection - story ID "${storyId}" not found in imported stories`);
+                processedItems++;
+                setImportProgress((processedItems / totalItems) * 100);
+                continue;
+              }
+            } else if (storyArtifact.storyTitle) {
+              storyId = storyTitleToId[storyArtifact.storyTitle];
+            }
+            
+            // Find artifact by ID or name
+            if (!artifactId && storyArtifact.artifactName) {
+              artifactId = artifactNameToId[storyArtifact.artifactName];
+            }
+            
+            if (!storyId || !artifactId) {
+              result.warnings.push(`Skipping story-artifact connection - story or artifact not found`);
+              processedItems++;
+              setImportProgress((processedItems / totalItems) * 100);
+              continue;
+            }
+
+            const { error } = await supabase
+              .from('story_artifacts')
+              .insert({
+                story_id: storyId,
+                artifact_id: artifactId
+              });
+
+            if (!error) {
+              result.imported.storyArtifacts++;
+            } else {
+              // Check if it's a duplicate (unique constraint violation)
+              if (error.code === '23505' || error.message?.includes('duplicate') || error.message?.includes('unique')) {
+                result.warnings.push(`Skipped duplicate story-artifact connection: ${storyArtifact.storyTitle || storyId} - ${storyArtifact.artifactName || artifactId}`);
+              } else {
+                result.errors.push(`Failed to import story-artifact connection: ${error.message}`);
+              }
+            }
+          } catch (error) {
+            result.errors.push(`Error importing story-artifact connection: ${error}`);
+          }
+
+          processedItems++;
+          setImportProgress((processedItems / totalItems) * 100);
+        }
+      }
+
       // Note: Media import is handled separately as it requires file uploads
       // Media references in the export are informational - actual media files
       // would need to be uploaded separately
@@ -873,7 +970,7 @@ const ImportFamilyData: React.FC<ImportFamilyDataProps> = ({
       if (result.success) {
         toast({
           title: "Import Successful",
-          description: `Imported ${result.imported.members} members, ${result.imported.relationships} relationships, ${result.imported.stories} stories, ${result.imported.locations} locations, ${result.imported.artifacts} artifacts, and ${result.imported.storyMembers} story-member connections.`
+          description: `Imported ${result.imported.members} members, ${result.imported.relationships} relationships, ${result.imported.stories} stories, ${result.imported.locations} locations, ${result.imported.artifacts} artifacts, ${result.imported.storyMembers} story-member connections, and ${result.imported.storyArtifacts} story-artifact connections.`
         });
       } else {
         toast({

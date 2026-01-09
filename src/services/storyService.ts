@@ -201,7 +201,6 @@ class StoryService {
           story_members (
             id,
             family_member_id,
-            role,
             family_members (
               id,
               first_name,
@@ -243,7 +242,6 @@ class StoryService {
             story_members (
               id,
               family_member_id,
-              role,
               family_members (
                 id,
                 first_name,
@@ -479,7 +477,6 @@ class StoryService {
           story_members (
             id,
             family_member_id,
-            role,
             family_members (
               id,
               first_name,
