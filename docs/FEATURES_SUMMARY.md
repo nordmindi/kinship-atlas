@@ -293,7 +293,7 @@ Comprehensive documentation available:
 - [Family Tree Connector Improvements](./FAMILY_TREE_CONNECTOR_IMPROVEMENTS.md)
 - [Family Data Import System](./FAMILY_DATA_IMPORT_SYSTEM.md)
 - [Database Migrations](./DATABASE_MIGRATIONS.md)
-- [Migration Summary](./MIGRATION_SUMMARY.md)
+- [Troubleshooting Guide](./TROUBLESHOOTING.md)
 - [Testing Guide](./TESTING_GUIDE.md)
 - [Security Implementation](./SECURITY_AND_ROBUSTNESS.md)
 

@@ -5,7 +5,7 @@ import MobileLayout from "@/components/layout/MobileLayout";
 import { useAuth } from "@/contexts/AuthContext";
 import { FamilyMember } from '@/types';
 import FamilyTreeView from '@/components/family/FamilyTreeView';
-import { Users, Loader2, Search, Filter, X } from 'lucide-react';
+import { Users, Loader2, Search, Filter, X, UserPlus } from 'lucide-react';
 import { getFamilyMembers } from '@/services/supabaseService';
 import { useFamilyTree } from '@/contexts/FamilyTreeContext';
 import { Input } from '@/components/ui/input';
@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
+import { BulkAssignToGroupDialog } from '@/components/family/BulkAssignToGroupDialog';
 
 interface MemberFilters {
   gender: 'all' | 'male' | 'female' | 'other';
@@ -33,6 +34,7 @@ const AllFamilyMembersPage = () => {
     rootMembers: 'all',
     relations: 'all',
   });
+  const [showBulkAssignDialog, setShowBulkAssignDialog] = useState(false);
   const { setSelectedMemberId } = useFamilyTree();
   const isLoadingRef = useRef(false);
   const lastLoadTimeRef = useRef<number>(0);
@@ -286,8 +288,8 @@ const AllFamilyMembersPage = () => {
           <>
             {/* Search and Filter Controls */}
             <div className="space-y-4 mb-4">
-              <div className="flex items-center gap-2">
-                <div className="relative flex-1">
+              <div className="flex items-center gap-2 flex-wrap">
+                <div className="relative flex-1 min-w-[200px]">
                   <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
                   <Input
                     placeholder="Search by name, birth place, bio..."
@@ -297,6 +299,15 @@ const AllFamilyMembersPage = () => {
                     aria-label="Search family members"
                   />
                 </div>
+                <Button
+                  variant="default"
+                  onClick={() => setShowBulkAssignDialog(true)}
+                  className="flex items-center gap-2"
+                  size="sm"
+                >
+                  <UserPlus className="h-4 w-4" />
+                  Assign to Groups
+                </Button>
                 <Button
                   variant={showFilters ? "default" : "outline"}
                   onClick={() => setShowFilters(!showFilters)}
@@ -421,6 +432,14 @@ const AllFamilyMembersPage = () => {
                 onMemberDeleted={handleMemberDeleted}
               />
             </div>
+
+            {/* Bulk Assign Dialog */}
+            <BulkAssignToGroupDialog
+              isOpen={showBulkAssignDialog}
+              onClose={() => setShowBulkAssignDialog(false)}
+              members={filteredMembers}
+              onUpdate={handleMemberDeleted}
+            />
           </>
         )}
       </div>

@@ -202,7 +202,6 @@ const ExportFamilyData: React.FC<ExportFamilyDataProps> = ({ onClose }) => {
         .select(`
           story_id,
           family_member_id,
-          role,
           family_stories!inner(title),
           family_members!inner(first_name, last_name)
         `);
@@ -316,7 +315,7 @@ const ExportFamilyData: React.FC<ExportFamilyDataProps> = ({ onClose }) => {
         familyMemberName: sm.family_members
           ? `${sm.family_members.first_name} ${sm.family_members.last_name}`
           : 'Unknown',
-        role: sm.role
+        role: 'participant' // Default role since story_members table doesn't have a role column
       }));
 
       // Fetch all albums with relationships

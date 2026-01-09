@@ -385,7 +385,7 @@ Comprehensive documentation is available in the `docs/` directory:
 
 ### Database & Migrations
 - **[Database Migrations](./docs/DATABASE_MIGRATIONS.md)** - Migration system and workflow
-- **[Migration Summary](./docs/MIGRATION_SUMMARY.md)** - Complete list of all migrations
+- **[Troubleshooting Guide](./docs/TROUBLESHOOTING.md)** - Common issues and solutions
 
 ### Development & Operations
 - **[CI/CD Pipeline](./docs/CI_CD_PIPELINE.md)** - Continuous integration and deployment

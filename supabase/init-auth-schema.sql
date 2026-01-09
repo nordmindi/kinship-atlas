@@ -1,7 +1,10 @@
 -- Initialize Supabase Auth Schema
 -- This script ensures the auth schema exists before GoTrue migrations run
--- The Supabase postgres image should already include the auth schema,
--- but this ensures it's created if missing
+-- The Supabase postgres image (supabase/postgres:15.1.1.78) should already include 
+-- the auth schema, but this ensures it's created if missing.
+--
+-- This is a safety net for local Docker Compose development.
+-- For production Supabase Cloud, the auth schema is managed automatically.
 
 -- Create auth schema if it doesn't exist
 CREATE SCHEMA IF NOT EXISTS auth;

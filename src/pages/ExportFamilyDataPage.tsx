@@ -29,9 +29,9 @@ const ExportFamilyDataPage = () => {
 
   if (!isAdmin) {
     return (
-      <MobileLayout 
-        currentUser={{ 
-          name: user.email?.split('@')[0] || 'User', 
+      <MobileLayout
+        currentUser={{
+          name: user.email?.split('@')[0] || 'User',
           email: user.email || ''
         }}
         showBackButton
@@ -53,9 +53,9 @@ const ExportFamilyDataPage = () => {
   }
 
   return (
-    <MobileLayout 
-      currentUser={{ 
-        name: user.email?.split('@')[0] || 'User', 
+    <MobileLayout
+      currentUser={{
+        name: user.email?.split('@')[0] || 'User',
         email: user.email || ''
       }}
       showBackButton
@@ -64,7 +64,7 @@ const ExportFamilyDataPage = () => {
     >
       <div className="flex flex-col h-full">
         <div className="flex-1 overflow-auto">
-          <ExportFamilyData 
+          <ExportFamilyData
             onClose={handleClose}
           />
         </div>

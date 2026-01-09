@@ -64,11 +64,11 @@ const UserProfilePage = () => {
 
         {/* Profile Content */}
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <UserProfile 
-            variant="page" 
+          <UserProfile
+            variant="page"
             onProfileClick={handleAccountSettings}
           />
-          
+
           {/* Additional Profile Sections */}
           <div className="mt-8 space-y-8">
             {/* Account Information */}

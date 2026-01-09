@@ -36,3 +36,7 @@ docker-data/
 coverage/
 *.lcov
 .nyc_output/
+test-results.json
+
+# TypeScript build info
+*.tsbuildinfo

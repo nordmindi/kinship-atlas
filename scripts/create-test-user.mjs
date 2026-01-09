@@ -5,7 +5,10 @@
 
 import { createClient } from '@supabase/supabase-js';
 
-// Use hardcoded local development values
+// SECURITY NOTE: These are Supabase LOCAL DEVELOPMENT keys only
+// They are well-known demo keys that ONLY work with local Docker Compose instances
+// They CANNOT be used to access production or remote Supabase projects
+// For production, use environment variables with real keys from Supabase dashboard
 const supabaseUrl = 'http://127.0.0.1:54321';
 const supabaseServiceKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImV4cCI6MTk4MzgxMjk5Nn0.EGIM96RAZx35lJzdJsyH-qQwv8Hdp7fsn3W0YpN81IU';
 
@@ -15,7 +18,9 @@ async function createTestUser() {
   try {
     console.log('🚀 Creating test user...');
     
-    // Test user credentials
+    // SECURITY NOTE: These are LOCAL DEVELOPMENT test credentials only
+    // This script only works with local Docker Compose Supabase instances
+    // Never use these credentials in production
     const testEmail = 'test@kinship-atlas.com';
     const testPassword = 'testpassword123';
     
