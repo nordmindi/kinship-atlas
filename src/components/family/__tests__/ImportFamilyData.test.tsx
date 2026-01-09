@@ -5,6 +5,7 @@ import userEvent from '@testing-library/user-event'
 import ImportFamilyData from '../ImportFamilyData'
 import { familyMemberService } from '@/services/familyMemberService'
 import { familyRelationshipManager } from '@/services/familyRelationshipManager'
+import { storyService } from '@/services/storyService'
 import { supabase } from '@/integrations/supabase/client'
 import { toast } from '@/hooks/use-toast'
 import * as XLSX from 'xlsx'
@@ -12,6 +13,7 @@ import * as XLSX from 'xlsx'
 // Mock the services
 vi.mock('@/services/familyMemberService')
 vi.mock('@/services/familyRelationshipManager')
+vi.mock('@/services/storyService')
 vi.mock('@/integrations/supabase/client')
 vi.mock('@/hooks/use-toast')
 
@@ -525,7 +527,8 @@ describe('ImportFamilyData', () => {
             locations: 0,
             media: 0,
             artifacts: 0,
-            storyMembers: 0
+            storyMembers: 0,
+            storyArtifacts: 0
           },
           errors: [],
           warnings: []
@@ -621,7 +624,8 @@ describe('ImportFamilyData', () => {
             locations: 0,
             media: 0,
             artifacts: 0,
-            storyMembers: 0
+            storyMembers: 0,
+            storyArtifacts: 0
           },
           errors: ['Failed to import John Smith: Database error'],
           warnings: []
@@ -821,6 +825,286 @@ describe('ImportFamilyData', () => {
           })
         )
       }, { timeout: 5000 })
+    })
+  })
+
+  describe('Story-Artifacts Connections', () => {
+    it('should parse story-artifacts from JSON file', async () => {
+      const mockJsonData = {
+        familyMembers: [
+          { firstName: 'John', lastName: 'Smith', gender: 'male' }
+        ],
+        stories: [
+          {
+            id: 'story-1',
+            title: 'Test Story',
+            content: 'Test content',
+            authorId: 'user-1',
+            relatedMembers: []
+          }
+        ],
+        artifacts: [
+          {
+            name: 'Family Photo',
+            artifactType: 'photo',
+            description: 'Old family photo'
+          }
+        ],
+        storyArtifacts: [
+          {
+            storyId: 'story-1',
+            artifactId: 'artifact-1'
+          }
+        ],
+        relationships: []
+      }
+
+      const mockFile = new File(
+        [JSON.stringify(mockJsonData)],
+        'test.json',
+        { type: 'application/json' }
+      )
+
+      render(
+        <ImportFamilyData 
+          onImportComplete={mockOnImportComplete}
+          onClose={mockOnClose}
+        />
+      )
+
+      const dropzone = screen.getByText('Drag and drop your file here, or click to select').closest('div')
+      
+      const fileList = {
+        0: mockFile,
+        length: 1,
+        item: (index: number) => (index === 0 ? mockFile : null),
+        [Symbol.iterator]: function* () {
+          yield mockFile
+        }
+      } as unknown as FileList
+
+      const dataTransfer = {
+        files: fileList,
+        items: [mockFile],
+        types: ['Files'],
+        preventDefault: vi.fn(),
+        stopPropagation: vi.fn()
+      } as unknown as DataTransfer
+
+      fireEvent.drop(dropzone!, {
+        dataTransfer,
+        preventDefault: vi.fn(),
+        stopPropagation: vi.fn()
+      })
+
+      await waitFor(() => {
+        expect(toast).toHaveBeenCalledWith(
+          expect.objectContaining({
+            title: 'File Parsed Successfully'
+          })
+        )
+      }, { timeout: 5000 })
+    })
+
+    it('should parse story-artifacts from Excel file', async () => {
+      const mockWorkbook = {
+        SheetNames: ['Story Artifacts'],
+        Sheets: {
+          'Story Artifacts': {}
+        }
+      }
+
+      const mockJsonData = [
+        ['story_id', 'story_title', 'artifact_id', 'artifact_name'],
+        ['story-1', 'Test Story', 'artifact-1', 'Family Photo']
+      ]
+
+      vi.mocked(XLSX.read).mockReturnValue(mockWorkbook as unknown as XLSX.WorkBook)
+      vi.mocked(XLSX.utils.sheet_to_json).mockReturnValue(mockJsonData as unknown as XLSX.WorkSheet)
+
+      const mockFile = new File(
+        ['mock excel content'],
+        'test.xlsx',
+        { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }
+      )
+
+      render(
+        <ImportFamilyData 
+          onImportComplete={mockOnImportComplete}
+          onClose={mockOnClose}
+        />
+      )
+
+      const dropzone = screen.getByText('Drag and drop your file here, or click to select').closest('div')
+      
+      const fileList = {
+        0: mockFile,
+        length: 1,
+        item: (index: number) => (index === 0 ? mockFile : null),
+        [Symbol.iterator]: function* () {
+          yield mockFile
+        }
+      } as unknown as FileList
+
+      const dataTransfer = {
+        files: fileList,
+        items: [mockFile],
+        types: ['Files'],
+        preventDefault: vi.fn(),
+        stopPropagation: vi.fn()
+      } as unknown as DataTransfer
+
+      fireEvent.drop(dropzone!, {
+        dataTransfer,
+        preventDefault: vi.fn(),
+        stopPropagation: vi.fn()
+      })
+
+      await waitFor(() => {
+        expect(toast).toHaveBeenCalledWith(
+          expect.objectContaining({
+            title: 'File Parsed Successfully'
+          })
+        )
+      }, { timeout: 5000 })
+    })
+
+    it('should import story-artifacts connections successfully', async () => {
+      const user = userEvent.setup()
+      
+      // Mock user for auth
+      vi.mocked(supabase.auth.getUser).mockResolvedValue({
+        data: { user: { id: 'test-user-id' } },
+        error: null
+      })
+
+      // Mock story service to handle story creation
+      vi.mocked(storyService.createStory).mockResolvedValue({
+        success: true,
+        story: {
+          id: 'new-story-id',
+          title: 'Test Story',
+          content: 'Test content',
+          authorId: 'test-user-id',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          relatedMembers: [],
+          media: [],
+          artifacts: []
+        }
+      } as any)
+
+      // Mock artifact creation
+      vi.mocked(storyService.createArtifact).mockResolvedValue({
+        success: true,
+        artifact: {
+          id: 'new-artifact-id',
+          name: 'Family Photo',
+          artifactType: 'photo',
+          description: 'Old family photo',
+          media: []
+        }
+      } as any)
+
+      // Mock supabase.from for story_artifacts insert
+      vi.mocked(supabase.from).mockImplementation((table: string) => {
+        if (table === 'story_artifacts') {
+          return {
+            insert: vi.fn().mockResolvedValue({ error: null })
+          } as any
+        }
+        // Default mock for lookups
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockResolvedValue({
+              data: [],
+              error: null
+            })
+          })
+        } as any
+      })
+
+      const mockJsonData = {
+        familyMembers: [],
+        relationships: [],
+        stories: [
+          {
+            id: 'story-1',
+            title: 'Test Story',
+            content: 'Test content',
+            authorId: 'test-user-id',
+            relatedMembers: []
+          }
+        ],
+        artifacts: [
+          {
+            name: 'Family Photo',
+            artifactType: 'photo',
+            description: 'Old family photo'
+          }
+        ],
+        storyArtifacts: [
+          {
+            storyId: 'story-1',
+            artifactId: 'artifact-1',
+            storyTitle: 'Test Story',
+            artifactName: 'Family Photo'
+          }
+        ]
+      }
+
+      const mockFile = new File(
+        [JSON.stringify(mockJsonData)],
+        'test.json',
+        { type: 'application/json' }
+      )
+
+      render(
+        <ImportFamilyData 
+          onImportComplete={mockOnImportComplete}
+          onClose={mockOnClose}
+        />
+      )
+
+      const dropzone = screen.getByText('Drag and drop your file here, or click to select').closest('div')
+      
+      const fileList = {
+        0: mockFile,
+        length: 1,
+        item: (index: number) => (index === 0 ? mockFile : null),
+        [Symbol.iterator]: function* () {
+          yield mockFile
+        }
+      } as unknown as FileList
+
+      const dataTransfer = {
+        files: fileList,
+        items: [mockFile],
+        types: ['Files'],
+        preventDefault: vi.fn(),
+        stopPropagation: vi.fn()
+      } as unknown as DataTransfer
+
+      fireEvent.drop(dropzone!, {
+        dataTransfer,
+        preventDefault: vi.fn(),
+        stopPropagation: vi.fn()
+      })
+
+      await waitFor(() => {
+        const startImportButton = screen.queryByText('Start Import')
+        expect(startImportButton).toBeInTheDocument()
+      }, { timeout: 5000 })
+
+      const startImportButton = screen.getByText('Start Import')
+      await user.click(startImportButton)
+
+      // Wait for import to complete - story-artifacts should be imported
+      // Note: This test may timeout if the import process is complex
+      // The import process involves creating stories, artifacts, and linking them
+      await waitFor(() => {
+        expect(mockOnImportComplete).toHaveBeenCalled()
+      }, { timeout: 20000 })
     })
   })
 })

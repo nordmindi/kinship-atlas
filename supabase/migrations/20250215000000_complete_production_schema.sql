@@ -11,14 +11,15 @@
 -- 3. Family members, relations, locations
 -- 4. Family stories, story members, story groups
 -- 5. Family events and participants
--- 6. Media and media relationships
--- 7. Artifacts and artifact relationships
--- 8. Family groups and member groups
--- 9. Albums system
--- 10. User tree layouts
--- 11. Admin functions
--- 12. Complete RLS policies (including import fix)
--- 13. Indexes and triggers
+-- 6. v_member_timeline view (unified timeline for stories and events)
+-- 7. Media and media relationships
+-- 8. Artifacts and artifact relationships
+-- 9. Family groups and member groups
+-- 10. Albums system
+-- 11. User tree layouts
+-- 12. Admin functions
+-- 13. Complete RLS policies (including import fix)
+-- 14. Indexes and triggers
 
 BEGIN;
 
@@ -222,21 +223,20 @@ CREATE POLICY "Users can view all family members" ON public.family_members
 
 DROP POLICY IF EXISTS "Admins and editors can insert family members" ON public.family_members;
 DROP POLICY IF EXISTS "Users can insert family members" ON public.family_members;
-CREATE POLICY "Users can insert family members" ON public.family_members
+-- NOTE: This policy was updated in migration 20250216000000_fix_viewer_insert_permissions.sql
+-- to restrict INSERT to only admins and editors (viewers are read-only)
+CREATE POLICY "Admins and editors can insert family members" ON public.family_members
     FOR INSERT WITH CHECK (
-        -- FIRST: Any authenticated user can insert when created_by = auth.uid()
-        -- This allows users with 'viewer' role or any role to create their own family members
-        -- This is the simplest check and should work for all imports
-        (auth.uid() IS NOT NULL AND created_by = auth.uid()) OR
         -- Admins can insert anywhere (even if created_by doesn't match)
         public.is_user_admin(auth.uid()) OR
-        -- Editors can insert in their branch (when branch_root is set and matches their branch)
+        -- Editors can insert when created_by = auth.uid() or in their branch
         (
-            public.is_user_editor(auth.uid()) AND
-            branch_root IS NOT NULL AND
-            branch_root IN (
-                SELECT id FROM public.family_members 
-                WHERE created_by = auth.uid() OR is_root_member = TRUE
+            public.is_user_editor(auth.uid()) AND (
+                created_by = auth.uid() OR
+                branch_root IN (
+                    SELECT id FROM public.family_members 
+                    WHERE created_by = auth.uid() OR is_root_member = TRUE
+                )
             )
         )
     );
@@ -518,6 +518,50 @@ CREATE POLICY "Users can delete event participants for their events" ON public.e
             WHERE id = event_id AND creator_id = auth.uid()
         )
     );
+
+-- Create v_member_timeline view (combines stories and events for timeline display)
+DROP VIEW IF EXISTS public.v_member_timeline;
+CREATE VIEW public.v_member_timeline AS
+-- Stories with their associated members
+SELECT 
+    sm.family_member_id AS member_id,
+    'story'::TEXT AS item_type,
+    s.id::TEXT AS item_id,
+    s.title,
+    s.date,
+    s.content,
+    NULL::TEXT AS description,
+    s.location,
+    s.lat,
+    s.lng
+FROM public.family_stories s
+INNER JOIN public.story_members sm ON sm.story_id = s.id
+WHERE s.date IS NOT NULL
+
+UNION ALL
+
+-- Events with their associated members
+SELECT 
+    ep.family_member_id AS member_id,
+    'event'::TEXT AS item_type,
+    e.id::TEXT AS item_id,
+    e.title,
+    e.event_date AS date,
+    NULL::TEXT AS content,
+    e.description,
+    e.location,
+    e.lat,
+    e.lng
+FROM public.family_events e
+INNER JOIN public.event_participants ep ON ep.event_id = e.id
+WHERE e.event_date IS NOT NULL;
+
+-- Grant SELECT permission to authenticated users
+GRANT SELECT ON public.v_member_timeline TO authenticated;
+
+-- Add comment
+COMMENT ON VIEW public.v_member_timeline IS 
+'Unified timeline view combining stories and events for family members. Each row represents a timeline item (story or event) associated with a family member.';
 
 -- ============================================================================
 -- 6. MEDIA
@@ -1417,6 +1461,7 @@ COMMIT;
 -- ✓ Family members, relations, locations
 -- ✓ Family stories, story members, story groups
 -- ✓ Family events and participants
+-- ✓ v_member_timeline view (unified timeline combining stories and events)
 -- ✓ Media and media relationships
 -- ✓ Artifacts and artifact relationships
 -- ✓ Family groups and member groups
@@ -1429,6 +1474,6 @@ COMMIT;
 -- The migration is idempotent and can be safely run multiple times.
 -- All changes use IF NOT EXISTS, IF EXISTS, and DROP ... IF EXISTS to prevent errors.
 --
--- IMPORTANT: The family_members INSERT policy allows ANY authenticated user
--- to create family members when created_by = auth.uid(), which fixes the
--- import issue where users with 'viewer' role couldn't import data.
+-- NOTE: The family_members INSERT policy was updated in migration 
+-- 20250216000000_fix_viewer_insert_permissions.sql to restrict INSERT to 
+-- only admins and editors (viewers are read-only).
