@@ -1107,4 +1107,156 @@ describe('ImportFamilyData', () => {
       }, { timeout: 20000 })
     })
   })
+
+  describe('Relationship Reciprocal Creation', () => {
+    it('should create reciprocal relationship when importing parent-child relationship', async () => {
+      const user = userEvent.setup()
+      
+      // Mock user for auth
+      vi.mocked(supabase.auth.getUser).mockResolvedValue({
+        data: { user: { id: 'test-user-id' } },
+        error: null
+      } as any)
+      
+      // Mock successful family member creation
+      vi.mocked(familyMemberService.createFamilyMember)
+        .mockResolvedValueOnce({
+          success: true,
+          member: {
+            id: 'new-parent-id',
+            firstName: 'John',
+            lastName: 'Smith',
+            gender: 'male',
+            relations: []
+          }
+        })
+        .mockResolvedValueOnce({
+          success: true,
+          member: {
+            id: 'new-child-id',
+            firstName: 'David',
+            lastName: 'Smith',
+            gender: 'male',
+            relations: []
+          }
+        })
+      
+      // Mock successful relationship creation
+      vi.mocked(familyRelationshipManager.createRelationship).mockResolvedValue({
+        success: true,
+        relationshipId: 'rel-123'
+      })
+      
+      // Track insert calls to verify reciprocal creation
+      const insertCalls: any[] = []
+      const mockInsert = vi.fn().mockImplementation((data) => {
+        insertCalls.push(data)
+        return Promise.resolve({ data: null, error: null })
+      })
+      
+      vi.mocked(supabase.from).mockImplementation((table: string) => {
+        if (table === 'relations') {
+          return {
+            insert: mockInsert
+          } as any
+        }
+        return {} as any
+      })
+
+      const mockJsonData = {
+        familyMembers: [
+          {
+            id: 'old-parent-id',
+            firstName: 'John',
+            lastName: 'Smith',
+            gender: 'male'
+          },
+          {
+            id: 'old-child-id',
+            firstName: 'David',
+            lastName: 'Smith',
+            gender: 'male'
+          }
+        ],
+        relationships: [
+          {
+            fromMemberId: 'old-parent-id',
+            toMemberId: 'old-child-id',
+            relationshipType: 'parent'
+          }
+        ],
+        stories: []
+      }
+
+      const mockFile = new File(
+        [JSON.stringify(mockJsonData)],
+        'test.json',
+        { type: 'application/json' }
+      )
+
+      render(
+        <ImportFamilyData 
+          onImportComplete={mockOnImportComplete}
+          onClose={mockOnClose}
+        />
+      )
+
+      // Upload file
+      const dropzone = screen.getByText('Drag and drop your file here, or click to select').closest('div')
+      
+      const fileList = {
+        0: mockFile,
+        length: 1,
+        item: (index: number) => (index === 0 ? mockFile : null),
+        [Symbol.iterator]: function* () {
+          yield mockFile
+        }
+      } as unknown as FileList
+
+      const dataTransfer = {
+        files: fileList,
+        items: [mockFile],
+        types: ['Files'],
+        preventDefault: vi.fn(),
+        stopPropagation: vi.fn()
+      } as unknown as DataTransfer
+
+      fireEvent.drop(dropzone!, {
+        dataTransfer,
+        preventDefault: vi.fn(),
+        stopPropagation: vi.fn()
+      })
+
+      // Wait for Start Import button
+      await waitFor(() => {
+        const startImportButton = screen.queryByText('Start Import')
+        expect(startImportButton).toBeInTheDocument()
+        expect(startImportButton).not.toBeDisabled()
+      }, { timeout: 5000 })
+
+      // Start import
+      const startImportButton = screen.getByText('Start Import')
+      await user.click(startImportButton)
+
+      // Verify relationship creation was called
+      await waitFor(() => {
+        expect(familyRelationshipManager.createRelationship).toHaveBeenCalled()
+      }, { timeout: 10000 })
+
+      // Verify that the reciprocal insert was attempted (child -> parent with type 'child')
+      await waitFor(() => {
+        expect(mockInsert).toHaveBeenCalled()
+        
+        // Check that reciprocal was created with correct type
+        const reciprocalCall = insertCalls.find((call) => 
+          call.relation_type === 'child'
+        )
+        
+        expect(reciprocalCall).toBeDefined()
+        expect(reciprocalCall.from_member_id).toBe('new-child-id')
+        expect(reciprocalCall.to_member_id).toBe('new-parent-id')
+        expect(reciprocalCall.relation_type).toBe('child')
+      }, { timeout: 10000 })
+    })
+  })
 })

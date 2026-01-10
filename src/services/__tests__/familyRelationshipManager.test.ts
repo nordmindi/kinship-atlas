@@ -216,7 +216,7 @@ describe('FamilyRelationshipManager', () => {
   })
 
   describe('deleteRelationship', () => {
-    it('should delete a relationship successfully', async () => {
+    it('should delete a relationship and its reciprocal successfully', async () => {
       let callCount = 0
       vi.mocked(supabase.from).mockImplementation((table: string) => {
         if (table === 'relations') {
@@ -227,18 +227,20 @@ describe('FamilyRelationshipManager', () => {
               select: vi.fn().mockReturnThis(),
               eq: vi.fn().mockReturnThis(),
               single: vi.fn().mockResolvedValue({
-                data: { id: 'rel-123' },
+                data: { 
+                  id: 'rel-123',
+                  from_member_id: 'member-1',
+                  to_member_id: 'member-2',
+                  relation_type: 'parent'
+                },
                 error: null
               })
             } as any
           }
-          // Delete relationship
+          // Delete relationship (both primary and reciprocal)
           return {
             delete: vi.fn().mockReturnThis(),
-            eq: vi.fn().mockResolvedValue({
-              data: null,
-              error: null
-            })
+            eq: vi.fn().mockReturnThis()
           } as any
         }
         return {} as any
@@ -277,20 +279,28 @@ describe('FamilyRelationshipManager', () => {
         if (table === 'relations') {
           callCount++
           if (callCount === 1) {
+            // First call: fetch the relationship
             return {
               select: vi.fn().mockReturnThis(),
               eq: vi.fn().mockReturnThis(),
               single: vi.fn().mockResolvedValue({
-                data: { id: 'rel-123' },
+                data: { 
+                  id: 'rel-123',
+                  from_member_id: 'member-1',
+                  to_member_id: 'member-2',
+                  relation_type: 'parent'
+                },
                 error: null
               })
             } as any
           }
+          // Second call: delete the primary relationship - mock to return an error
+          // Create a proper chainable mock that returns the error properly
           return {
             delete: vi.fn().mockReturnThis(),
             eq: vi.fn().mockResolvedValue({
               data: null,
-              error: new Error('Database error')
+              error: { message: 'Database error' }
             })
           } as any
         }
