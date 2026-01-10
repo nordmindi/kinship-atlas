@@ -612,11 +612,35 @@ const ImportFamilyData: React.FC<ImportFamilyDataProps> = ({
           if (response.success) {
             result.imported.relationships++;
             processedRelationships.add(relationshipKey);
-            // Also add the reverse key for parent-child relationships (since DB creates reciprocal)
+            
+            // Explicitly create the reciprocal relationship since DB triggers may not exist
+            // This ensures both directions of the relationship are stored
+            const reciprocalType = relationshipType === 'parent' ? 'child' 
+              : relationshipType === 'child' ? 'parent' 
+              : relationshipType; // spouse and sibling are symmetric
+            
+            // Insert reciprocal directly to avoid validation loops
+            const { error: reciprocalError } = await supabase
+              .from('relations')
+              .insert({
+                from_member_id: toMemberId,
+                to_member_id: fromMemberId,
+                relation_type: reciprocalType
+              });
+            
+            if (reciprocalError) {
+              // Log but don't fail - reciprocal might already exist or have constraint issues
+              console.warn('Could not create reciprocal relationship:', reciprocalError.message);
+            }
+            
+            // Add reverse key to prevent duplicate processing
             if (relationshipType === 'parent') {
               processedRelationships.add(`${toMemberId}-child-${fromMemberId}`);
             } else if (relationshipType === 'child') {
               processedRelationships.add(`${toMemberId}-parent-${fromMemberId}`);
+            } else {
+              // For spouse/sibling, add the reverse sorted key
+              processedRelationships.add(`${[toMemberId, fromMemberId].sort()[0]}-${relationshipType}-${[toMemberId, fromMemberId].sort()[1]}`);
             }
           } else {
             // Check if it's a duplicate relationship error

@@ -230,7 +230,8 @@ const ExportFamilyData: React.FC<ExportFamilyDataProps> = ({ onClose }) => {
         console.error('Error fetching story-artifacts links:', storyArtifactsError);
       }
 
-      // Format relationships with member names
+      // Format relationships with member names, deduplicating reciprocals
+      // We only want to export one direction per relationship to avoid confusion during import
       interface RelationWithMembers {
         id: string;
         from_member_id: string;
@@ -239,17 +240,48 @@ const ExportFamilyData: React.FC<ExportFamilyDataProps> = ({ onClose }) => {
         from_member: { first_name: string; last_name: string } | null;
         to_member: { first_name: string; last_name: string } | null;
       }
-      const formattedRelations = (relations || []).map((rel: RelationWithMembers) => ({
-        fromMemberId: rel.from_member_id,
-        fromMemberName: rel.from_member 
-          ? `${rel.from_member.first_name} ${rel.from_member.last_name}`
-          : 'Unknown',
-        toMemberId: rel.to_member_id,
-        toMemberName: rel.to_member
-          ? `${rel.to_member.first_name} ${rel.to_member.last_name}`
-          : 'Unknown',
-        relationshipType: rel.relation_type
-      }));
+      
+      // Track which relationship pairs we've already exported to avoid duplicates
+      const exportedPairs = new Set<string>();
+      
+      const formattedRelations = (relations || [])
+        .filter((rel: RelationWithMembers) => {
+          // Create a normalized key for this relationship pair
+          // For parent/child, we normalize to parent direction
+          // For spouse/sibling, we use sorted IDs
+          let normalizedKey: string;
+          
+          if (rel.relation_type === 'parent') {
+            // Parent relationship: from_member is parent of to_member
+            normalizedKey = `${rel.from_member_id}-parent-${rel.to_member_id}`;
+          } else if (rel.relation_type === 'child') {
+            // Child relationship: from_member is child of to_member
+            // Normalize to parent direction: to_member is parent of from_member
+            normalizedKey = `${rel.to_member_id}-parent-${rel.from_member_id}`;
+          } else {
+            // Spouse/sibling: use sorted IDs
+            const sortedIds = [rel.from_member_id, rel.to_member_id].sort();
+            normalizedKey = `${sortedIds[0]}-${rel.relation_type}-${sortedIds[1]}`;
+          }
+          
+          if (exportedPairs.has(normalizedKey)) {
+            return false; // Skip this duplicate
+          }
+          
+          exportedPairs.add(normalizedKey);
+          return true;
+        })
+        .map((rel: RelationWithMembers) => ({
+          fromMemberId: rel.from_member_id,
+          fromMemberName: rel.from_member 
+            ? `${rel.from_member.first_name} ${rel.from_member.last_name}`
+            : 'Unknown',
+          toMemberId: rel.to_member_id,
+          toMemberName: rel.to_member
+            ? `${rel.to_member.first_name} ${rel.to_member.last_name}`
+            : 'Unknown',
+          relationshipType: rel.relation_type
+        }));
 
       // Format locations
       const formattedLocations: Location[] = (locationsData || []).map((loc: any) => ({

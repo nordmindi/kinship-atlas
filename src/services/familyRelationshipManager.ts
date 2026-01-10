@@ -410,11 +410,19 @@ class FamilyRelationshipManager {
         .single();
 
       if (fetchError || !relationship) {
+        console.error('❌ Relationship not found:', relationshipId, fetchError);
         return {
           success: false,
           error: 'Relationship not found'
         };
       }
+
+      console.log('🗑️ Deleting relationship:', {
+        id: relationshipId,
+        from: relationship.from_member_id,
+        to: relationship.to_member_id,
+        type: relationship.relation_type
+      });
 
       // Delete the relationship
       const { error: deleteError } = await supabase
@@ -423,14 +431,40 @@ class FamilyRelationshipManager {
         .eq('id', relationshipId);
 
       if (deleteError) {
+        console.error('❌ Failed to delete relationship:', deleteError);
         return {
           success: false,
           error: 'Failed to delete relationship'
         };
       }
 
-      // Note: Reciprocal relationships are now automatically deleted by database triggers
+      // Also delete the reciprocal relationship manually (in case DB trigger doesn't work)
+      // The reciprocal is where from/to are swapped
+      const reciprocalType = this.getReciprocalRelationshipType(relationship.relation_type as RelationshipType);
+      
+      if (reciprocalType) {
+        console.log('🗑️ Deleting reciprocal relationship:', {
+          from: relationship.to_member_id,
+          to: relationship.from_member_id,
+          type: reciprocalType
+        });
 
+        const { error: reciprocalDeleteError } = await supabase
+          .from('relations')
+          .delete()
+          .eq('from_member_id', relationship.to_member_id)
+          .eq('to_member_id', relationship.from_member_id)
+          .eq('relation_type', reciprocalType);
+
+        if (reciprocalDeleteError) {
+          // Log but don't fail - the main relationship was deleted
+          console.warn('⚠️ Could not delete reciprocal relationship:', reciprocalDeleteError);
+        } else {
+          console.log('✅ Reciprocal relationship deleted');
+        }
+      }
+
+      console.log('✅ Relationship deleted successfully');
       return { success: true };
 
     } catch (error) {
@@ -553,23 +587,44 @@ class FamilyRelationshipManager {
     reason: string;
   }>> {
     try {
-      const { data: member, error } = await supabase
-        .from('family_members')
-        .select('*')
-        .eq('id', memberId)
-        .single();
+      // Fetch member and all other members in parallel
+      const [memberResult, allMembersResult, existingRelationsResult] = await Promise.all([
+        supabase
+          .from('family_members')
+          .select('*')
+          .eq('id', memberId)
+          .single(),
+        supabase
+          .from('family_members')
+          .select('*')
+          .neq('id', memberId),
+        // Fetch ALL existing relations for this member in ONE query (fixes N+1 problem)
+        supabase
+          .from('relations')
+          .select('from_member_id, to_member_id')
+          .or(`from_member_id.eq.${memberId},to_member_id.eq.${memberId}`)
+      ]);
 
-      if (error || !member) {
+      if (memberResult.error || !memberResult.data) {
         return [];
       }
 
-      const { data: allMembers, error: membersError } = await supabase
-        .from('family_members')
-        .select('*')
-        .neq('id', memberId);
-
-      if (membersError || !allMembers) {
+      if (allMembersResult.error || !allMembersResult.data) {
         return [];
+      }
+
+      const member = memberResult.data;
+      const allMembers = allMembersResult.data;
+      const existingRelations = existingRelationsResult.data || [];
+
+      // Build a Set of member IDs that already have a relationship with this member
+      const relatedMemberIds = new Set<string>();
+      for (const rel of existingRelations) {
+        if (rel.from_member_id === memberId) {
+          relatedMemberIds.add(rel.to_member_id);
+        } else {
+          relatedMemberIds.add(rel.from_member_id);
+        }
       }
 
       const suggestions: Array<{
@@ -580,9 +635,8 @@ class FamilyRelationshipManager {
       }> = [];
 
       for (const otherMember of allMembers) {
-        // Check if relationship already exists
-        const existingRelationship = await this.checkExistingRelationship(memberId, otherMember.id);
-        if (existingRelationship) continue;
+        // Skip if relationship already exists (using the pre-fetched Set)
+        if (relatedMemberIds.has(otherMember.id)) continue;
 
         // Age-based suggestions
         if (member.birth_date && otherMember.birth_date) {
