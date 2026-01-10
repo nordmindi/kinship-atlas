@@ -36,6 +36,7 @@ import {
   Circle as DotIcon,
   ArrowUpDown as PedigreeIcon,
   TrendingDown as DescendantIcon,
+  Sparkles as SparklesIcon,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
@@ -335,6 +336,22 @@ const FamilyTreeRenderer: React.FC<FamilyTreeRendererProps> = ({
   const [highlightedPath, setHighlightedPath] = React.useState<string[]>([]);
   const [pathStartMember, setPathStartMember] = React.useState<string | null>(null);
   
+  // Calculate selected nodes count
+  const selectedNodesCount = useMemo(() => {
+    return nodesState.filter(n => n.selected).length;
+  }, [nodesState]);
+  
+  // Clear all selections
+  const handleClearSelection = useCallback(() => {
+    setNodes((nds) => {
+      const updated = nds.map((n) => ({
+        ...n,
+        selected: false,
+      }));
+      return restoreCallbacks(updated);
+    });
+  }, [setNodes, restoreCallbacks]);
+  
   // Helper functions to find related family members
   const findChildren = useCallback((memberId: string): string[] => {
     if (!familyMembers) return [];
@@ -500,7 +517,8 @@ const FamilyTreeRenderer: React.FC<FamilyTreeRendererProps> = ({
           hiddenDescendantCount: getHiddenDescendantCount(node.id),
           onToggleCollapse: () => toggleCollapse(node.id),
           isPathHighlighted: highlightedPath.includes(node.id),
-          isPathStart: pathStartMember === node.id
+          isPathStart: pathStartMember === node.id,
+          isPathFindingMode: pathStartMember !== null
         },
         style: {
           ...node.style,
@@ -776,164 +794,127 @@ const FamilyTreeRenderer: React.FC<FamilyTreeRendererProps> = ({
     });
   }, [getActiveInstance, nodesState, familyMembers, setNodes, restoreCallbacks]);
   
+  const handleBeautifyLayout = useCallback(() => {
+    const instance = getActiveInstance();
+    if (!instance || !familyMembers.length) {
+      console.warn('Cannot apply beautify layout: instance or members missing');
+      return;
+    }
+    
+    // Import the beautify layout algorithm
+    import('./utils/beautifyLayout').then(({ calculateBeautifyLayout }) => {
+      const positions = calculateBeautifyLayout(familyMembers);
+      
+      console.log('Beautify layout calculated:', {
+        totalPositions: positions.size,
+        positions: Array.from(positions.entries()).slice(0, 5)
+      });
+      
+      // Update node positions with smooth animation
+      const updatedNodes = nodesState.map(node => {
+        const position = positions.get(node.id);
+        if (position) {
+          return {
+            ...node,
+            position,
+            style: {
+              ...node.style,
+              transition: 'all 0.6s ease-in-out'
+            }
+          };
+        }
+        // If node not in positions, keep current position but log warning
+        if (import.meta.env.DEV) {
+          console.warn(`Node ${node.id} not found in beautify layout positions`);
+        }
+        return node;
+      });
+      
+      // CRITICAL FIX: Preserve callbacks when updating nodes
+      setNodes(restoreCallbacks(updatedNodes));
+      
+      // Fit view after layout with proper timing
+      requestAnimationFrame(() => {
+        setTimeout(() => {
+          const currentInstance = getActiveInstance();
+          if (currentInstance) {
+            console.log('Fitting view to beautified layout...');
+            currentInstance.fitView({ 
+              padding: 0.2,
+              includeHiddenNodes: false,
+              maxZoom: 1.5,
+              minZoom: 0.1,
+              duration: 800
+            });
+            
+            // Second fit after animation completes
+            setTimeout(() => {
+              const finalInstance = getActiveInstance();
+              if (finalInstance) {
+                finalInstance.fitView({ 
+                  padding: 0.15,
+                  includeHiddenNodes: false,
+                  maxZoom: 2,
+                  minZoom: 0.1,
+                  duration: 400
+                });
+              }
+            }, 700);
+          }
+        }, 100);
+      });
+      
+      toast.success('Tree beautified! Layout optimized for clarity.');
+    }).catch(error => {
+      console.error('Error loading beautify layout:', error);
+      toast.error('Failed to apply beautify layout');
+    });
+  }, [getActiveInstance, nodesState, familyMembers, setNodes, restoreCallbacks]);
+  
   const handleGenealogicalLayout = useCallback(() => {
     const instance = getActiveInstance();
     if (!instance || !familyMembers.length) return;
     
-    // Create a traditional genealogical tree layout
-    const memberMap = new Map<string, FamilyMember>();
-    familyMembers.forEach(member => memberMap.set(member.id, member));
-    
-    // Find the root person (current user or first person)
-    const rootPerson = familyMembers.find(member => member.id === nodesState[0]?.data?.id) || familyMembers[0];
-    if (!rootPerson) return;
-    
-    // Build generations using a traditional genealogical approach
-    const generations = new Map<number, string[]>();
-    const memberGenerations = new Map<string, number>();
-    const processed = new Set<string>();
-    
-    // Start with root person at generation 0
-    memberGenerations.set(rootPerson.id, 0);
-    if (!generations.has(0)) generations.set(0, []);
-    generations.get(0)!.push(rootPerson.id);
-    
-    // Build ancestors going up (negative generations)
-    const buildAncestors = (memberId: string, currentGen: number) => {
-      if (processed.has(memberId)) return;
-      processed.add(memberId);
-      
-      const member = memberMap.get(memberId);
-      if (!member) return;
-      
-      // Find parents
-      const parents = familyMembers.filter(parent => 
-        member.relations?.some(rel => 
-          rel.type === 'parent' && rel.personId === parent.id
-        )
+    // Import the genealogy layout algorithm
+    import('./utils/genealogyLayout').then(({ calculateGenealogyLayout }) => {
+      const positions = calculateGenealogyLayout(
+        familyMembers,
+        undefined, // No focus member - layout entire tree
+        treeOrientation
       );
       
-      parents.forEach(parent => {
-        const parentGen = currentGen - 1;
-        memberGenerations.set(parent.id, parentGen);
-        if (!generations.has(parentGen)) generations.set(parentGen, []);
-        if (!generations.get(parentGen)!.includes(parent.id)) {
-          generations.get(parentGen)!.push(parent.id);
+      console.log('Genealogy layout calculated:', {
+        totalPositions: positions.size,
+        positions: Array.from(positions.entries()).slice(0, 5)
+      });
+      
+      // Update node positions
+      const updatedNodes = nodesState.map(node => {
+        const pos = positions.get(node.id);
+        if (pos) {
+          return {
+            ...node,
+            position: { x: pos.x, y: pos.y }
+          };
         }
-        buildAncestors(parent.id, parentGen);
+        return node;
       });
-    };
-    
-    // Build descendants going down (positive generations)
-    const buildDescendants = (memberId: string, currentGen: number) => {
-      if (processed.has(memberId)) return;
-      processed.add(memberId);
       
-      const member = memberMap.get(memberId);
-      if (!member) return;
+      // CRITICAL FIX: Preserve callbacks when updating nodes
+      setNodes(restoreCallbacks(updatedNodes));
       
-      // Find children
-      const children = familyMembers.filter(child => 
-        child.relations?.some(rel => 
-          rel.type === 'parent' && rel.personId === memberId
-        )
-      );
-      
-      children.forEach(child => {
-        const childGen = currentGen + 1;
-        memberGenerations.set(child.id, childGen);
-        if (!generations.has(childGen)) generations.set(childGen, []);
-        if (!generations.get(childGen)!.includes(child.id)) {
-          generations.get(childGen)!.push(child.id);
+      // Fit view after layout
+      setTimeout(() => {
+        const instance = getActiveInstance();
+        if (instance) {
+          instance.fitView({ padding: 0.2 });
+          toast.success("Genealogy layout applied!");
         }
-        buildDescendants(child.id, childGen);
-      });
-    };
-    
-    // Build the complete tree
-    buildAncestors(rootPerson.id, 0);
-    buildDescendants(rootPerson.id, 0);
-    
-    console.log('Genealogical tree generations:', { 
-      generations: Array.from(generations.entries()).map(([level, members]) => ({
-        level,
-        members: members.map(id => {
-          const member = memberMap.get(id);
-          return `${member?.firstName} ${member?.lastName} (${member?.birthDate ? new Date(member.birthDate).getFullYear() : 'Unknown'})`;
-        })
-      }))
+      }, 100);
+    }).catch(error => {
+      console.error("Failed to load genealogy layout algorithm:", error);
+      toast.error("Failed to apply genealogy layout.");
     });
-    
-    // Create position map for each generation
-    const memberPositions = new Map<string, number>();
-    const maxGeneration = Math.max(...Array.from(generations.keys()));
-    const minGeneration = Math.min(...Array.from(generations.keys()));
-    
-    generations.forEach((memberIds, generation) => {
-      // Sort members within generation by birth year
-      const sortedMembers = memberIds.sort((a, b) => {
-        const memberA = memberMap.get(a);
-        const memberB = memberMap.get(b);
-        const yearA = memberA?.birthDate ? new Date(memberA.birthDate).getFullYear() : 1900;
-        const yearB = memberB?.birthDate ? new Date(memberB.birthDate).getFullYear() : 1900;
-        return yearA - yearB;
-      });
-      
-      sortedMembers.forEach((memberId, index) => {
-        memberPositions.set(memberId, index);
-      });
-    });
-    
-    // Update node positions based on genealogical layout
-    const updatedNodes = nodesState.map(node => {
-      const generation = memberGenerations.get(node.id);
-      const positionInGeneration = memberPositions.get(node.id) || 0;
-      
-      if (generation === undefined) {
-        // If member not in hierarchy, put them at the bottom
-        const bottomGeneration = maxGeneration + 1;
-        return {
-          ...node,
-          position: {
-            x: 0,
-            y: treeOrientation === 'top-down' ? bottomGeneration * 200 : -bottomGeneration * 200
-          }
-        };
-      }
-      
-      // Calculate position with proper spacing
-      const generationSize = generations.get(generation)?.length || 1;
-      const centerOffset = (generationSize - 1) * 300 / 2;
-      
-      // Determine Y position based on orientation
-      let yPosition;
-      if (treeOrientation === 'top-down') {
-        // Top-down: ancestors at top (negative generations), descendants at bottom
-        yPosition = (generation - minGeneration) * 200;
-      } else {
-        // Bottom-up: ancestors at bottom (negative generations), descendants at top
-        yPosition = (maxGeneration - generation) * 200;
-      }
-      
-      return {
-        ...node,
-        position: {
-          x: (positionInGeneration * 300) - centerOffset,
-          y: yPosition
-        }
-      };
-    });
-    
-    // CRITICAL FIX: Preserve callbacks when updating nodes
-    setNodes(restoreCallbacks(updatedNodes));
-    
-    // Fit view after layout
-    setTimeout(() => {
-      const instance = getActiveInstance();
-      if (instance) {
-        instance.fitView({ padding: 0.2 });
-      }
-    }, 100);
   }, [getActiveInstance, nodesState, familyMembers, setNodes, treeOrientation, restoreCallbacks]);
 
   const handleToggleOrientation = useCallback(() => {
@@ -1514,25 +1495,13 @@ const FamilyTreeRenderer: React.FC<FamilyTreeRendererProps> = ({
       return;
     }
     
-    // Check if the click target is a button or interactive element
-    // If so, don't process as relationship finder click - let the button handle it
-    const target = event.target as HTMLElement;
-    const isButtonClick = target.closest('button') !== null || 
-                         target.closest('[role="button"]') !== null ||
-                         target.tagName === 'BUTTON' ||
-                         target.closest('a') !== null;
-    
-    if (isButtonClick) {
-      // Let the button handle its own click - don't interfere with relationship finder
-      console.log('Button click detected, skipping relationship finder logic');
-      return;
-    }
-    
-    // Handle relationship path finding
+    // PRIORITY: Handle relationship path finding first
+    // This takes precedence over normal click handling when we're in "find relationship" mode
     if (pathStartMember === 'waiting') {
       // First member selected
       setPathStartMember(node.id);
       toast.info('Now click on the second member to find the relationship');
+      return; // Don't process normal click
     } else if (pathStartMember && pathStartMember !== node.id) {
       // Second member selected - find path
       const pathResult = findPath(pathStartMember, node.id);
@@ -1543,10 +1512,24 @@ const FamilyTreeRenderer: React.FC<FamilyTreeRendererProps> = ({
         toast.error('No relationship path found between these members');
       }
       setPathStartMember(null);
-    } else {
-      // Normal click
-      onNodeClick(node as FamilyMemberNodeType);
+      return; // Don't process normal click
     }
+    
+    // Check if the click target is a button or interactive element
+    // If so, don't process as normal click - let the button handle it
+    const target = event.target as HTMLElement;
+    const isButtonClick = target.closest('button:not(.family-member-node)') !== null || 
+                         target.tagName === 'BUTTON' ||
+                         target.closest('a') !== null;
+    
+    if (isButtonClick) {
+      // Let the button handle its own click
+      console.log('Button click detected, skipping normal click logic');
+      return;
+    }
+    
+    // Normal click - show member details
+    onNodeClick(node as FamilyMemberNodeType);
   }, [onNodeClick, pathStartMember, findPath]);
 
   // Box selection mouse handlers
@@ -2416,7 +2399,7 @@ const FamilyTreeRenderer: React.FC<FamilyTreeRendererProps> = ({
                 snapToGrid={true}
                 snapGrid={[15, 15]}
                 defaultEdgeOptions={{ type: 'smoothstep' }}
-                multiSelectionKeyCode="Meta"
+                multiSelectionKeyCode={['Shift', 'Control', 'Meta']}
                 deleteKeyCode="Delete"
                 fitViewOptions={{ padding: 0.2 }}
                 style={{ 
@@ -2614,6 +2597,17 @@ const FamilyTreeRenderer: React.FC<FamilyTreeRendererProps> = ({
                       <GenealogyIcon className="h-4 w-4 mr-1" />
                       Genealogy Tree
                     </Button>
+                    
+                    <Button
+                      size="sm"
+                      variant="default"
+                      onClick={handleBeautifyLayout}
+                      className="h-8 text-xs bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-medium"
+                      title="Beautify Tree - Optimize layout with oldest ancestors on top, spouses together, children centered"
+                    >
+                      <SparklesIcon className="h-4 w-4 mr-1" />
+                      Beautify Tree
+                    </Button>
                   </div>
                   
                   {/* Collapse/Expand Controls */}
@@ -2650,6 +2644,31 @@ const FamilyTreeRenderer: React.FC<FamilyTreeRendererProps> = ({
                     onOrientationChange={setOrientation}
                   />
                 </Panel>
+                
+                {/* Multi-selection indicator - Expanded view */}
+                {selectedNodesCount > 0 && (
+                  <Panel position="bottom-left" className="bg-white p-3 rounded-lg shadow-lg border border-blue-200">
+                    <div className="flex flex-col gap-2">
+                      <div className="flex items-center gap-2">
+                        <div className="w-3 h-3 bg-blue-500 rounded-full animate-pulse"></div>
+                        <span className="text-sm font-medium text-blue-700">
+                          {selectedNodesCount} member{selectedNodesCount > 1 ? 's' : ''} selected
+                        </span>
+                      </div>
+                      <div className="text-xs text-gray-500">
+                        Drag to move together • Click elsewhere to deselect
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={handleClearSelection}
+                        className="h-7 text-xs border-blue-400 text-blue-600 hover:bg-blue-50"
+                      >
+                        Clear Selection
+                      </Button>
+                    </div>
+                  </Panel>
+                )}
                 
                 {focusMode && (
                   <Panel position="bottom-center" className="bg-white p-2 rounded-md shadow-sm">
@@ -2736,7 +2755,7 @@ const FamilyTreeRenderer: React.FC<FamilyTreeRendererProps> = ({
           snapToGrid={true}
           snapGrid={[15, 15]}
           defaultEdgeOptions={{ type: 'smoothstep' }}
-          multiSelectionKeyCode="Meta"
+          multiSelectionKeyCode={['Shift', 'Control', 'Meta']}
           deleteKeyCode="Delete"
           fitViewOptions={{ padding: 0.2 }}
           style={{ 
@@ -2798,6 +2817,7 @@ const FamilyTreeRenderer: React.FC<FamilyTreeRendererProps> = ({
             onSmartLayout={handleSmartLayout}
             onHierarchyLayout={handleHierarchyLayout}
             onGenealogicalLayout={handleGenealogicalLayout}
+            onBeautifyLayout={handleBeautifyLayout}
           />
           
           <TreeCollapseControls
@@ -2838,10 +2858,24 @@ const FamilyTreeRenderer: React.FC<FamilyTreeRendererProps> = ({
                 Click two members to find how they're related
               </div>
               {pathStartMember ? (
-                <div className="flex flex-col gap-1">
-                  <div className="text-xs text-blue-600 mb-1">
-                    First member selected. Click another member...
-                  </div>
+                <div className="flex flex-col gap-2 p-2 bg-blue-50 rounded-lg border border-blue-200">
+                  {pathStartMember === 'waiting' ? (
+                    <div className="text-xs text-blue-700 font-medium">
+                      👆 Click on the first family member...
+                    </div>
+                  ) : (
+                    <>
+                      <div className="text-xs text-blue-700">
+                        <span className="font-medium">First member:</span>{' '}
+                        <span className="bg-blue-100 px-1.5 py-0.5 rounded">
+                          {familyMembers.find(m => m.id === pathStartMember)?.firstName || 'Unknown'}
+                        </span>
+                      </div>
+                      <div className="text-xs text-blue-600 font-medium">
+                        👆 Now click the second member to find relationship...
+                      </div>
+                    </>
+                  )}
                   <Button
                     size="sm"
                     variant="outline"
@@ -2849,7 +2883,7 @@ const FamilyTreeRenderer: React.FC<FamilyTreeRendererProps> = ({
                       setPathStartMember(null);
                       setHighlightedPath([]);
                     }}
-                    className="h-7 text-xs"
+                    className="h-7 text-xs border-blue-300 text-blue-600 hover:bg-blue-100"
                   >
                     Cancel
                   </Button>
@@ -2869,25 +2903,76 @@ const FamilyTreeRenderer: React.FC<FamilyTreeRendererProps> = ({
                   Find Relationship
                 </Button>
               )}
-              {highlightedPath.length > 0 && (
-                <div className="mt-2 p-2 bg-purple-50 rounded text-xs">
-                  <div className="font-semibold text-purple-800 mb-1">Relationship Found:</div>
-                  <div className="text-purple-700">
-                    {findPath(highlightedPath[0], highlightedPath[highlightedPath.length - 1])?.relationshipDescription || 'Related'}
+              {highlightedPath.length > 0 && (() => {
+                const pathResult = findPath(highlightedPath[0], highlightedPath[highlightedPath.length - 1]);
+                const fromMember = familyMembers.find(m => m.id === highlightedPath[0]);
+                const toMember = familyMembers.find(m => m.id === highlightedPath[highlightedPath.length - 1]);
+                
+                return (
+                  <div className="mt-2 p-3 bg-gradient-to-br from-purple-50 to-indigo-50 rounded-lg text-xs border border-purple-200">
+                    <div className="font-semibold text-purple-800 mb-2 flex items-center gap-1">
+                      <NetworkIcon className="h-4 w-4" />
+                      Relationship Found
+                    </div>
+                    
+                    {/* Main relationship description */}
+                    <div className="text-purple-900 font-medium text-sm mb-2">
+                      {pathResult?.relationshipDescription || 'Related'}
+                    </div>
+                    
+                    {/* Blood relative indicator */}
+                    {pathResult && (
+                      <div className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs mb-2 ${
+                        pathResult.isBloodRelative 
+                          ? 'bg-red-100 text-red-700' 
+                          : 'bg-blue-100 text-blue-700'
+                      }`}>
+                        {pathResult.isBloodRelative ? '🩸 Blood Relative' : '💍 Related by Marriage'}
+                      </div>
+                    )}
+                    
+                    {/* Path visualization */}
+                    {pathResult && pathResult.detailedPath.length > 0 && (
+                      <div className="mt-2 pt-2 border-t border-purple-200">
+                        <div className="text-purple-700 font-medium mb-1">Connection Path:</div>
+                        <div className="flex flex-wrap items-center gap-1">
+                          <span className="bg-white px-1.5 py-0.5 rounded border border-purple-300 text-purple-800">
+                            {fromMember?.firstName || 'Unknown'}
+                          </span>
+                          {pathResult.detailedPath.map((step, idx) => {
+                            const stepMember = familyMembers.find(m => m.id === step.toId);
+                            return (
+                              <React.Fragment key={idx}>
+                                <span className="text-purple-500 text-xs">
+                                  → <span className="italic">{step.description}</span> →
+                                </span>
+                                <span className="bg-white px-1.5 py-0.5 rounded border border-purple-300 text-purple-800">
+                                  {stepMember?.firstName || 'Unknown'}
+                                </span>
+                              </React.Fragment>
+                            );
+                          })}
+                        </div>
+                        <div className="text-purple-600 mt-1">
+                          {pathResult.distance} step{pathResult.distance !== 1 ? 's' : ''} apart
+                        </div>
+                      </div>
+                    )}
+                    
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => {
+                        setHighlightedPath([]);
+                        setPathStartMember(null);
+                      }}
+                      className="h-7 text-xs mt-2 w-full bg-purple-100 hover:bg-purple-200 text-purple-700"
+                    >
+                      Clear Relationship
+                    </Button>
                   </div>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => {
-                      setHighlightedPath([]);
-                      setPathStartMember(null);
-                    }}
-                    className="h-6 text-xs mt-1 w-full"
-                  >
-                    Clear
-                  </Button>
-                </div>
-              )}
+                );
+              })()}
             </div>
             
             {/* Pedigree Type Buttons */}
@@ -2961,6 +3046,31 @@ const FamilyTreeRenderer: React.FC<FamilyTreeRendererProps> = ({
             onOrientationChange={setOrientation}
           />
         </Panel>
+        
+        {/* Multi-selection indicator */}
+        {selectedNodesCount > 0 && (
+          <Panel position="bottom-left" className="bg-white p-3 rounded-lg shadow-lg border border-blue-200">
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 bg-blue-500 rounded-full animate-pulse"></div>
+                <span className="text-sm font-medium text-blue-700">
+                  {selectedNodesCount} member{selectedNodesCount > 1 ? 's' : ''} selected
+                </span>
+              </div>
+              <div className="text-xs text-gray-500">
+                Drag to move together • Click elsewhere to deselect
+              </div>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleClearSelection}
+                className="h-7 text-xs border-blue-400 text-blue-600 hover:bg-blue-50"
+              >
+                Clear Selection
+              </Button>
+            </div>
+          </Panel>
+        )}
         
         {focusMode && (
           <Panel position="bottom-center" className="bg-white p-2 rounded-md shadow-sm">

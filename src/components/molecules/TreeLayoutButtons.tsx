@@ -1,17 +1,19 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { TreePine, GitBranch } from 'lucide-react';
+import { TreePine, GitBranch, Sparkles } from 'lucide-react';
 
 interface TreeLayoutButtonsProps {
   onSmartLayout: () => void;
   onHierarchyLayout: () => void;
   onGenealogicalLayout: () => void;
+  onBeautifyLayout?: () => void;
 }
 
 export const TreeLayoutButtons: React.FC<TreeLayoutButtonsProps> = ({
   onSmartLayout,
   onHierarchyLayout,
   onGenealogicalLayout,
+  onBeautifyLayout,
 }) => {
   return (
     <div className="flex flex-col gap-1 border-t border-gray-200 pt-2 mt-1">
@@ -48,7 +50,19 @@ export const TreeLayoutButtons: React.FC<TreeLayoutButtonsProps> = ({
         <GitBranch className="h-4 w-4 mr-1" />
         Genealogy Tree
       </Button>
+      
+      {onBeautifyLayout && (
+        <Button
+          size="sm"
+          variant="default"
+          onClick={onBeautifyLayout}
+          className="h-8 text-xs bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-medium"
+          title="Beautify Tree - Optimize layout with oldest ancestors on top, spouses together, children centered"
+        >
+          <Sparkles className="h-4 w-4 mr-1" />
+          Beautify Tree
+        </Button>
+      )}
     </div>
   );
 };
-
