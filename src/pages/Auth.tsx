@@ -8,6 +8,9 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
+import { checkRateLimit, RateLimits } from "@/utils/rateLimiter";
+import { sanitizeErrorMessage } from "@/utils/errorHandler";
+import { logger } from "@/utils/logger";
 
 const Auth = () => {
   const [email, setEmail] = useState("");
@@ -50,6 +53,18 @@ const Auth = () => {
       return;
     }
     
+    // Check rate limit before attempting sign in
+    const rateLimitResult = checkRateLimit(`auth:signin:${email}`, 'AUTH');
+    if (!rateLimitResult.allowed) {
+      const waitTime = Math.ceil((rateLimitResult.resetAt - Date.now()) / 1000);
+      toast({
+        title: "Too many attempts",
+        description: `Please wait ${waitTime} second${waitTime !== 1 ? 's' : ''} before trying again.`,
+        variant: "destructive",
+      });
+      return;
+    }
+    
     setIsLoading(true);
     
     try {
@@ -59,6 +74,7 @@ const Auth = () => {
         throw error;
       }
       
+      logger.log('User signed in successfully:', email);
       toast({
         title: "Welcome back!",
         description: "You've successfully signed in.",
@@ -66,7 +82,8 @@ const Auth = () => {
       
       navigate("/");
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : "Please check your credentials and try again.";
+      logger.error('Sign in failed:', error);
+      const errorMessage = sanitizeErrorMessage(error);
       toast({
         title: "Sign in failed",
         description: errorMessage,
@@ -140,6 +157,18 @@ const Auth = () => {
       return;
     }
     
+    // Check rate limit before attempting sign up
+    const rateLimitResult = checkRateLimit(`auth:signup:${email}`, 'AUTH');
+    if (!rateLimitResult.allowed) {
+      const waitTime = Math.ceil((rateLimitResult.resetAt - Date.now()) / 1000);
+      toast({
+        title: "Too many attempts",
+        description: `Please wait ${waitTime} second${waitTime !== 1 ? 's' : ''} before trying again.`,
+        variant: "destructive",
+      });
+      return;
+    }
+    
     setIsLoading(true);
     
     try {
@@ -147,12 +176,14 @@ const Auth = () => {
       
       if (error) throw error;
       
+      logger.log('User account created:', email);
       toast({
         title: "Account created!",
         description: "Please check your email to confirm your account.",
       });
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : "Could not create your account. Please try again.";
+      logger.error('Sign up failed:', error);
+      const errorMessage = sanitizeErrorMessage(error);
       toast({
         title: "Sign up failed",
         description: errorMessage,

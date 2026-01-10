@@ -42,5 +42,7 @@ export default defineConfig(({ mode }) => ({
     },
     // Increase chunk size warning limit
     chunkSizeWarningLimit: 1000,
+    // Note: Console statements are handled by logger utility
+    // For additional removal, consider using vite-plugin-remove-console in production
   },
 }));
