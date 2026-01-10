@@ -49,6 +49,9 @@ interface FamilyMemberNodeProps {
     isMergeNode?: boolean;
     hiddenDescendantCount?: number;
     isCollapsed?: boolean;
+    isPathHighlighted?: boolean;
+    isPathStart?: boolean;
+    isPathFindingMode?: boolean;
   };
   selected: boolean;
   isDragging?: boolean;
@@ -136,10 +139,17 @@ const FamilyMemberNode = ({ data, selected, isDragging, isBeingDragged, onEdit: 
       return;
     }
     
+    // If in path finding mode, don't expand - let the click bubble up to React Flow
+    // so the relationship finder can handle it
+    if (data.isPathFindingMode) {
+      // Don't stop propagation - let React Flow's onNodeClick handle this
+      return;
+    }
+    
     // Regular click - toggle expansion
     e.stopPropagation(); // Prevent React Flow from handling this as a node click
     setIsExpanded(prev => !prev);
-  }, []);
+  }, [data.isPathFindingMode]);
 
   const handleCloseExpanded = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
@@ -572,6 +582,9 @@ export default memo(FamilyMemberNode, (prevProps, nextProps) => {
     prevProps.data.deathDate === nextProps.data.deathDate &&
     prevProps.data.avatar === nextProps.data.avatar &&
     prevProps.data.isCurrentUser === nextProps.data.isCurrentUser &&
+    prevProps.data.isPathFindingMode === nextProps.data.isPathFindingMode &&
+    prevProps.data.isPathHighlighted === nextProps.data.isPathHighlighted &&
+    prevProps.data.isPathStart === nextProps.data.isPathStart &&
     prevProps.selected === nextProps.selected &&
     prevProps.isDragging === nextProps.isDragging &&
     prevProps.isBeingDragged === nextProps.isBeingDragged
