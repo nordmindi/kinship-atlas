@@ -28,15 +28,19 @@ import { getAccessibleStorageUrl } from '@/utils/storageUrl';
 interface MediaManagerProps {
   onSelectMedia?: (media: MediaItem) => void;
   selectedMediaId?: string;
+  selectedMediaIds?: string[];
   showUploadButton?: boolean;
   filterByType?: 'image' | 'document' | 'audio' | 'video';
+  multiSelect?: boolean;
 }
 
 const MediaManager: React.FC<MediaManagerProps> = ({
   onSelectMedia,
   selectedMediaId,
+  selectedMediaIds = [],
   showUploadButton = true,
-  filterByType
+  filterByType,
+  multiSelect = false
 }) => {
   const [mediaItems, setMediaItems] = useState<MediaItem[]>([]);
   const [loading, setLoading] = useState(false);
@@ -291,13 +295,19 @@ const MediaManager: React.FC<MediaManagerProps> = ({
           </div>
         ) : (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {filteredMedia.map((item) => (
+            {filteredMedia.map((item) => {
+              const isSelected = selectedMediaId === item.id || selectedMediaIds.includes(item.id);
+              return (
               <Card
                 key={item.id}
                 className={`cursor-pointer transition-all hover:shadow-md ${
-                  selectedMediaId === item.id ? 'ring-2 ring-primary' : ''
+                  isSelected ? 'ring-2 ring-primary' : ''
                 }`}
-                onClick={() => onSelectMedia?.(item)}
+                onClick={() => {
+                  if (onSelectMedia) {
+                    onSelectMedia(item);
+                  }
+                }}
               >
                 <CardContent className="p-3">
                   <div className="aspect-square mb-2 bg-muted rounded-md overflow-hidden relative">
@@ -446,7 +456,8 @@ const MediaManager: React.FC<MediaManagerProps> = ({
                   </div>
                 </CardContent>
               </Card>
-            ))}
+            );
+            })}
           </div>
         )}
       </div>

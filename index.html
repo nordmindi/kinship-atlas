@@ -28,8 +28,8 @@
       script-src 'self' 'unsafe-inline' https://cdn.gpteng.co;
       style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
       font-src 'self' https://fonts.gstatic.com;
-      img-src 'self' data: https: blob:;
-      connect-src 'self' https://*.supabase.co https://*.supabase.in wss://*.supabase.co wss://*.supabase.in;
+      img-src 'self' data: https: blob: http://localhost:*;
+      connect-src 'self' http://localhost:* ws://localhost:* https://*.supabase.co https://*.supabase.in wss://*.supabase.co wss://*.supabase.in https://nominatim.openstreetmap.org;
       frame-src 'none';
       object-src 'none';
       base-uri 'self';
@@ -37,7 +37,7 @@
       upgrade-insecure-requests;
     ">
     <meta http-equiv="X-Content-Type-Options" content="nosniff">
-    <meta http-equiv="X-Frame-Options" content="DENY">
+    <!-- X-Frame-Options is set via HTTP headers in vercel.json, not via meta tag -->
     <meta http-equiv="X-XSS-Protection" content="1; mode=block">
     <meta http-equiv="Referrer-Policy" content="strict-origin-when-cross-origin">
     
