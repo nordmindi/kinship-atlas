@@ -38,11 +38,14 @@ import {
   FileText, 
   Image as ImageIcon,
   Upload,
-  Trash2
+  Trash2,
+  FolderOpen
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { storyService } from '@/services/storyService';
 import { Artifact, CreateArtifactRequest } from '@/types/stories';
+import { getUserMedia, MediaItem } from '@/services/mediaService';
+import MediaManager from '@/components/media/MediaManager';
 
 interface ArtifactManagerProps {
   selectedArtifactIds: string[];
@@ -69,6 +72,8 @@ const ArtifactManager: React.FC<ArtifactManagerProps> = ({
   const [isLoading, setIsLoading] = useState(true);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [selectedMediaIds, setSelectedMediaIds] = useState<string[]>([]);
+  const [showMediaLibrary, setShowMediaLibrary] = useState(false);
 
   const form = useForm<ArtifactFormValues>({
     resolver: zodResolver(artifactSchema),
@@ -115,6 +120,7 @@ const ArtifactManager: React.FC<ArtifactManagerProps> = ({
         dateAcquired: values.dateAcquired || undefined,
         condition: values.condition || undefined,
         locationStored: values.locationStored || undefined,
+        mediaIds: selectedMediaIds.length > 0 ? selectedMediaIds : undefined,
       };
 
       const result = await storyService.createArtifact(request);
@@ -124,6 +130,7 @@ const ArtifactManager: React.FC<ArtifactManagerProps> = ({
           description: 'Artifact created successfully'
         });
         form.reset();
+        setSelectedMediaIds([]);
         setIsCreateDialogOpen(false);
         await loadArtifacts();
         // Automatically add to selected artifacts
@@ -435,11 +442,38 @@ const ArtifactManager: React.FC<ArtifactManagerProps> = ({
                 />
               </div>
 
+              {/* Media Selection */}
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Media (Optional)</Label>
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowMediaLibrary(true)}
+                    className="flex-1"
+                  >
+                    <FolderOpen className="h-4 w-4 mr-2" />
+                    Select from Library
+                  </Button>
+                </div>
+                {selectedMediaIds.length > 0 && (
+                  <div className="mt-2">
+                    <p className="text-xs text-muted-foreground mb-2">
+                      {selectedMediaIds.length} media item{selectedMediaIds.length !== 1 ? 's' : ''} selected
+                    </p>
+                  </div>
+                )}
+              </div>
+
               <DialogFooter>
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => setIsCreateDialogOpen(false)}
+                  onClick={() => {
+                    setIsCreateDialogOpen(false);
+                    setSelectedMediaIds([]);
+                  }}
                 >
                   Cancel
                 </Button>
@@ -449,6 +483,35 @@ const ArtifactManager: React.FC<ArtifactManagerProps> = ({
               </DialogFooter>
             </form>
           </Form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Media Library Dialog */}
+      <Dialog open={showMediaLibrary} onOpenChange={setShowMediaLibrary}>
+        <DialogContent className="max-w-4xl max-h-[80vh]">
+          <DialogHeader>
+            <DialogTitle>Select Media for Artifact</DialogTitle>
+            <DialogDescription>
+              Choose existing media to attach to this artifact
+            </DialogDescription>
+          </DialogHeader>
+          <div className="max-h-[60vh] overflow-auto">
+            <MediaManager
+              onSelectMedia={(media) => {
+                if (!selectedMediaIds.includes(media.id)) {
+                  setSelectedMediaIds(prev => [...prev, media.id]);
+                }
+              }}
+              selectedMediaIds={selectedMediaIds}
+              showUploadButton={false}
+              multiSelect={true}
+            />
+          </div>
+          <div className="flex justify-end gap-2 pt-4 border-t">
+            <Button variant="outline" onClick={() => setShowMediaLibrary(false)}>
+              Done
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </Card>

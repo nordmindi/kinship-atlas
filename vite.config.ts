@@ -34,22 +34,23 @@ export default defineConfig(({ mode }) => ({
     rollupOptions: {
       output: {
         manualChunks: (id) => {
-          // React core libraries
+          // React core libraries - keep together to avoid circular deps
           if (id.includes('node_modules/react/') || id.includes('node_modules/react-dom/') || id.includes('node_modules/react-router-dom/')) {
             return 'react-vendor';
           }
           
-          // React Query
+          // React Query - keep with React
           if (id.includes('node_modules/@tanstack/react-query')) {
-            return 'query-vendor';
+            return 'react-vendor';
           }
           
-          // Supabase
+          // Supabase - standalone
           if (id.includes('node_modules/@supabase/')) {
             return 'supabase-vendor';
           }
           
           // ReactFlow - heavy library, only used in tree view
+          // Keep @xyflow and reactflow together
           if (id.includes('node_modules/@xyflow/') || id.includes('node_modules/reactflow/')) {
             return 'flow-vendor';
           }
@@ -60,6 +61,7 @@ export default defineConfig(({ mode }) => ({
           }
           
           // TipTap - rich text editor, only used in story editing
+          // Keep all tiptap packages together
           if (id.includes('node_modules/@tiptap/')) {
             return 'tiptap-vendor';
           }
@@ -79,30 +81,15 @@ export default defineConfig(({ mode }) => ({
             return 'radix-vendor';
           }
           
-          // Form libraries
+          // Form libraries - keep together as they depend on each other
           if (id.includes('node_modules/react-hook-form/') || 
               id.includes('node_modules/@hookform/') ||
               id.includes('node_modules/zod/')) {
             return 'form-vendor';
           }
           
-          // Date utilities
-          if (id.includes('node_modules/date-fns/') || id.includes('node_modules/react-day-picker/')) {
-            return 'date-vendor';
-          }
-          
-          // Other UI utilities
-          if (id.includes('node_modules/lucide-react/') ||
-              id.includes('node_modules/class-variance-authority/') ||
-              id.includes('node_modules/clsx/') ||
-              id.includes('node_modules/tailwind-merge/')) {
-            return 'ui-utils-vendor';
-          }
-          
-          // Other vendor libraries
-          if (id.includes('node_modules/')) {
-            return 'vendor';
-          }
+          // Let Vite handle the rest automatically to avoid circular deps
+          // This is safer than forcing everything into chunks
         },
       },
     },

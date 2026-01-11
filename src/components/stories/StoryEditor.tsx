@@ -45,7 +45,8 @@ import {
   ChevronDown,
   ChevronUp,
   Users,
-  Loader2
+  Loader2,
+  FolderOpen
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { FamilyMember, FamilyGroup } from '@/types';
@@ -53,8 +54,10 @@ import { useFamilyTree } from '@/contexts/FamilyTreeContext';
 import { CreateStoryRequest, UpdateStoryRequest, FamilyStory } from '@/types/stories';
 import { storyService } from '@/services/storyService';
 import { familyGroupService } from '@/services/familyGroupService';
+import { getUserMedia, MediaItem } from '@/services/mediaService';
 import LocationPicker from './LocationPicker';
 import ArtifactManager from './ArtifactManager';
+import MediaManager from '@/components/media/MediaManager';
 
 const storySchema = z.object({
   title: z.string().min(1, 'Title is required').max(200, 'Title is too long'),
@@ -98,6 +101,8 @@ const StoryEditor: React.FC<StoryEditorProps> = ({
   const [selectedGroupIds, setSelectedGroupIds] = useState<string[]>([]);
   const [availableGroups, setAvailableGroups] = useState<FamilyGroup[]>([]);
   const [groupsLoading, setGroupsLoading] = useState(false);
+  const [showMediaLibrary, setShowMediaLibrary] = useState(false);
+  const [availableMedia, setAvailableMedia] = useState<MediaItem[]>([]);
 
   const form = useForm<StoryFormValues>({
     resolver: zodResolver(storySchema),
@@ -153,6 +158,8 @@ const StoryEditor: React.FC<StoryEditorProps> = ({
       
       // Load available groups
       loadGroups();
+      // Load available media
+      loadAvailableMedia();
       // Ensure we have latest members when opening
       const hasMembers = familyMembers && familyMembers.length > 0;
       if (!hasMembers) {
@@ -175,6 +182,29 @@ const StoryEditor: React.FC<StoryEditorProps> = ({
       });
     } finally {
       setGroupsLoading(false);
+    }
+  };
+
+  const loadAvailableMedia = async () => {
+    try {
+      const media = await getUserMedia();
+      setAvailableMedia(media);
+    } catch (error) {
+      console.error('Error loading media:', error);
+    }
+  };
+
+  const handleSelectExistingMedia = (media: MediaItem) => {
+    if (!uploadedMedia.includes(media.id)) {
+      setUploadedMedia(prev => [...prev, media.id]);
+      setUploadedMediaPreview(prev => [
+        ...prev,
+        { id: media.id, url: media.url, fileName: media.fileName || media.caption || 'media' }
+      ]);
+      toast({
+        title: 'Media added',
+        description: 'Media selected from library'
+      });
     }
   };
 
@@ -527,49 +557,94 @@ const StoryEditor: React.FC<StoryEditorProps> = ({
                   Media (Optional)
                 </CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center">
-                  <Upload className="h-8 w-8 mx-auto mb-2 text-gray-400" />
-                  <p className="text-sm text-gray-600 mb-2">
-                    Upload photos, documents, or other media
-                  </p>
-                  <input
-                    type="file"
-                    multiple
-                    accept="image/*,.pdf,.doc,.docx"
-                    onChange={(e) => {
-                      if (e.target.files) {
-                        Array.from(e.target.files).forEach(handleFileUpload);
-                      }
-                    }}
-                    className="hidden"
-                    id="media-upload"
-                  />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => document.getElementById('media-upload')?.click()}
-                  >
-                    Choose Files
-                  </Button>
+              <CardContent className="space-y-4">
+                <div className="flex gap-2">
+                  <div className="flex-1 border-2 border-dashed border-gray-300 rounded-lg p-4 text-center">
+                    <Upload className="h-8 w-8 mx-auto mb-2 text-gray-400" />
+                    <p className="text-sm text-gray-600 mb-2">
+                      Upload new photos, documents, or other media
+                    </p>
+                    <input
+                      type="file"
+                      multiple
+                      accept="image/*,.pdf,.doc,.docx"
+                      onChange={(e) => {
+                        if (e.target.files) {
+                          Array.from(e.target.files).forEach(handleFileUpload);
+                        }
+                      }}
+                      className="hidden"
+                      id="media-upload"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => document.getElementById('media-upload')?.click()}
+                    >
+                      <Upload className="h-4 w-4 mr-2" />
+                      Upload Files
+                    </Button>
+                  </div>
+                  <div className="flex-1 border-2 border-dashed border-gray-300 rounded-lg p-4 text-center">
+                    <FolderOpen className="h-8 w-8 mx-auto mb-2 text-gray-400" />
+                    <p className="text-sm text-gray-600 mb-2">
+                      Select from your media library
+                    </p>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setShowMediaLibrary(true)}
+                    >
+                      <FolderOpen className="h-4 w-4 mr-2" />
+                      Browse Library
+                    </Button>
+                  </div>
                 </div>
 
                 {uploadedMediaPreview.length > 0 && (
-                  <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-                    {uploadedMediaPreview.map(m => (
-                      <div key={m.id} className="relative group border rounded-md overflow-hidden">
-                        <img src={m.url} alt={m.fileName || 'uploaded media'} className="w-full h-24 object-cover" />
-                        <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition">
-                          <Button type="button" size="icon" variant="destructive" onClick={() => removeUploadedMedia(m.id)}>
-                            <X className="h-4 w-4" />
-                          </Button>
+                  <div className="mt-4">
+                    <p className="text-sm font-medium mb-2">Selected Media ({uploadedMediaPreview.length}):</p>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                      {uploadedMediaPreview.map(m => (
+                        <div key={m.id} className="relative group border rounded-md overflow-hidden">
+                          <img src={m.url} alt={m.fileName || 'uploaded media'} className="w-full h-24 object-cover" />
+                          <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition">
+                            <Button type="button" size="icon" variant="destructive" onClick={() => removeUploadedMedia(m.id)}>
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
                   </div>
                 )}
               </CardContent>
             </Card>
+
+            {/* Media Library Dialog */}
+            <Dialog open={showMediaLibrary} onOpenChange={setShowMediaLibrary}>
+              <DialogContent className="max-w-4xl max-h-[80vh]">
+                <DialogHeader>
+                  <DialogTitle>Select Media from Library</DialogTitle>
+                  <DialogDescription>
+                    Choose existing media to attach to this story
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="max-h-[60vh] overflow-auto">
+                  <MediaManager
+                    onSelectMedia={handleSelectExistingMedia}
+                    selectedMediaIds={uploadedMedia}
+                    showUploadButton={false}
+                    multiSelect={true}
+                  />
+                </div>
+                <div className="flex justify-end gap-2 pt-4 border-t">
+                  <Button variant="outline" onClick={() => setShowMediaLibrary(false)}>
+                    Done
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
 
             {/* Location Picker */}
             <LocationPicker
