@@ -35,6 +35,7 @@ export default defineConfig(({ mode }) => ({
       output: {
         manualChunks: (id) => {
           // React core libraries - keep together to avoid circular deps
+          // MUST be loaded first before any React-dependent libraries
           if (id.includes('node_modules/react/') || id.includes('node_modules/react-dom/') || id.includes('node_modules/react-router-dom/')) {
             return 'react-vendor';
           }
@@ -47,12 +48,6 @@ export default defineConfig(({ mode }) => ({
           // Supabase - standalone
           if (id.includes('node_modules/@supabase/')) {
             return 'supabase-vendor';
-          }
-          
-          // ReactFlow - heavy library, only used in tree view
-          // Keep @xyflow and reactflow together
-          if (id.includes('node_modules/@xyflow/') || id.includes('node_modules/reactflow/')) {
-            return 'flow-vendor';
           }
           
           // Mapbox - heavy library, only used in map page
@@ -88,8 +83,10 @@ export default defineConfig(({ mode }) => ({
             return 'form-vendor';
           }
           
-          // Let Vite handle the rest automatically to avoid circular deps
-          // This is safer than forcing everything into chunks
+          // NOTE: ReactFlow (@xyflow/react) is NOT manually chunked
+          // It will be bundled with the lazy-loaded FamilyTreeViewPage
+          // This ensures React is loaded first before ReactFlow tries to use it
+          // Let Vite handle ReactFlow chunking automatically to maintain proper dependencies
         },
       },
     },
