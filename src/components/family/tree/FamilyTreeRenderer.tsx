@@ -1317,12 +1317,6 @@ const FamilyTreeRenderer: React.FC<FamilyTreeRendererProps> = ({
   }, [getActiveInstance, nodesState, familyMembers, setNodes, restoreCallbacks]);
 
   const handleInit = useCallback((instance: ReactFlowInstance, isExpandedMode: boolean = false) => {
-    console.log('ReactFlow initialized:', {
-      viewport: instance.getViewport(),
-      nodes: nodes.length,
-      edges: edges.length,
-      isExpandedMode
-    });
     
     // Store instance in appropriate ref
     if (isExpandedMode) {
@@ -1348,7 +1342,6 @@ const FamilyTreeRenderer: React.FC<FamilyTreeRendererProps> = ({
 
   // Smart layout reorganization - intelligently arrange nodes after drag operations
   const handleSmartLayout = useCallback(() => {
-    console.log('Applying Smart Layout...');
     
     if (!familyMembers || familyMembers.length === 0) {
       console.warn('No family members available for smart layout');
@@ -2123,16 +2116,7 @@ const FamilyTreeRenderer: React.FC<FamilyTreeRendererProps> = ({
   }, []);
 
   // Debug logging
-  useEffect(() => {
-    console.log('FamilyTreeRenderer render:', {
-      nodesCount: nodes.length,
-      edgesCount: edges.length,
-      hasContainer: !!containerRef.current,
-      sampleNode: nodes[0],
-      sampleEdge: edges[0],
-      isMobile
-    });
-  }, [nodes, edges, isMobile]);
+  // Debug logging removed for production
   
   // Selected node for keyboard navigation
   const [selectedNodeForKeyboard, setSelectedNodeForKeyboard] = useState<string | null>(null);

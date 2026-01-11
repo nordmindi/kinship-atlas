@@ -74,8 +74,6 @@ const validateAndRefreshSession = async (): Promise<{ id: string; email?: string
  */
 export const getFamilyMembers = async (): Promise<FamilyMember[]> => {
   try {
-    console.log('🔍 Fetching family members from Supabase...');
-    
     // Build select query - handle missing columns gracefully
     const selectFields = `
         id,
@@ -99,20 +97,15 @@ export const getFamilyMembers = async (): Promise<FamilyMember[]> => {
       .select(selectFields)
       .order('first_name');
 
-    console.log('📊 Family members query result:', { data, error });
-
     if (error) {
       console.error('❌ Error fetching family members:', error);
       throw error;
     }
 
     // Get relations for all family members
-    console.log('🔗 Fetching relations...');
     const { data: relationsData, error: relationsError } = await supabase
       .from('relations')
       .select('id, from_member_id, to_member_id, relation_type');
-    
-    console.log('📊 Relations query result:', { relationsData, relationsError });
     
     if (relationsError) {
       console.error('❌ Error fetching relations:', relationsError);
@@ -228,7 +221,6 @@ export const getFamilyMembers = async (): Promise<FamilyMember[]> => {
       };
     });
     
-    console.log('✅ Successfully transformed family members:', transformedMembers.length, transformedMembers);
     return transformedMembers;
   } catch (error) {
     console.error('Error fetching family members:', error);

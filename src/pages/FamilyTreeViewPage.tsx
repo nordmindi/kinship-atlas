@@ -45,18 +45,14 @@ const FamilyTreeViewPage = () => {
       setLoadError(null);
 
       try {
-        console.log('Loading family members for user:', user.id);
-
         // Load real family members from Supabase
         const members = await getFamilyMembers();
-        console.log('Loaded family members:', members.length, members);
 
         setFamilyMembers(members);
 
         // Find the current user in the family members (you may need to implement user-family member mapping)
         const currentMember = members.find(member => member.id === user.id) || members[0];
         setCurrentUserMember(currentMember || null);
-        console.log('Current user member:', currentMember);
 
       } catch (error) {
         console.error('Error loading family members:', error);
