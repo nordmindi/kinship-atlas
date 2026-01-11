@@ -14,11 +14,14 @@ vi.mock('../userService', () => ({
 
 // Import storyService after mocking userService
 import { storyService } from '../storyService'
+import { isCurrentUserAdmin } from '../userService'
 
 describe('StoryService', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     vi.restoreAllMocks()
+    // Reset isCurrentUserAdmin to default (non-admin)
+    vi.mocked(isCurrentUserAdmin).mockResolvedValue(false)
   })
 
   describe('createStory', () => {
@@ -772,6 +775,238 @@ describe('StoryService', () => {
 
       expect(result.success).toBe(false)
       expect(result.error).toContain('logged in')
+    })
+  })
+
+  describe('updateArtifact', () => {
+    it('should update an artifact successfully', async () => {
+      const mockUser = { id: 'user-123', email: 'test@example.com' }
+      
+      vi.mocked(supabase.auth.getUser).mockResolvedValue({
+        data: { user: mockUser },
+        error: null
+      })
+
+      const queryBuilder: any = {
+        update: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis()
+      }
+
+      queryBuilder.eq.mockImplementation((key: string) => {
+        if (key === 'owner_id') {
+          return Promise.resolve({ data: null, error: null })
+        }
+        return queryBuilder
+      })
+
+      vi.mocked(supabase.from).mockImplementation((table: string) => {
+        if (table === 'artifacts') {
+          return queryBuilder as any
+        }
+        if (table === 'artifact_media') {
+          return {
+            delete: vi.fn().mockResolvedValue({ error: null }),
+            insert: vi.fn().mockResolvedValue({ error: null })
+          } as any
+        }
+        return {} as any
+      })
+
+      // Mock getArtifact to return the updated artifact
+      vi.spyOn(storyService, 'getArtifact').mockResolvedValue({
+        id: 'artifact-123',
+        name: 'Updated Artifact',
+        description: 'Updated description',
+        artifactType: 'document',
+        dateCreated: '2020-01-01',
+        dateAcquired: undefined,
+        condition: 'Excellent',
+        locationStored: 'Archive',
+        ownerId: 'user-123',
+        createdAt: '2024-01-01T00:00:00Z',
+        updatedAt: '2024-01-01T00:00:00Z',
+        attrs: null,
+        media: []
+      })
+
+      const result = await storyService.updateArtifact({
+        id: 'artifact-123',
+        name: 'Updated Artifact',
+        description: 'Updated description',
+        condition: 'Excellent'
+      })
+
+      expect(result.success).toBe(true)
+      expect(result.artifact?.name).toBe('Updated Artifact')
+      expect(result.artifact?.condition).toBe('Excellent')
+    })
+
+    it('should return error if user is not authenticated', async () => {
+      vi.mocked(supabase.auth.getUser).mockResolvedValue({
+        data: { user: null },
+        error: null
+      })
+
+      vi.mocked(supabase.auth.getSession).mockResolvedValue({
+        data: { session: null },
+        error: null
+      })
+
+      const result = await storyService.updateArtifact({
+        id: 'artifact-123',
+        name: 'Updated Artifact'
+      })
+
+      expect(result.success).toBe(false)
+      expect(result.error).toContain('logged in')
+    })
+  })
+
+  describe('deleteArtifact', () => {
+    it('should delete an artifact successfully as owner', async () => {
+      const mockUser = { id: 'user-123', email: 'test@example.com' }
+      
+      vi.mocked(supabase.auth.getUser).mockResolvedValue({
+        data: { user: mockUser },
+        error: null
+      })
+
+      // Mock isCurrentUserAdmin to return false (regular user)
+      vi.mocked(isCurrentUserAdmin).mockResolvedValue(false)
+
+      const queryBuilder: any = {
+        delete: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis()
+      }
+
+      queryBuilder.eq.mockImplementation((key: string) => {
+        if (key === 'owner_id') {
+          return Promise.resolve({ data: null, error: null })
+        }
+        return queryBuilder
+      })
+
+      vi.mocked(supabase.from).mockReturnValue(queryBuilder as any)
+
+      const result = await storyService.deleteArtifact('artifact-123')
+
+      expect(result.success).toBe(true)
+      expect(queryBuilder.eq).toHaveBeenCalledWith('id', 'artifact-123')
+      expect(queryBuilder.eq).toHaveBeenCalledWith('owner_id', 'user-123')
+    })
+
+    it('should delete an artifact successfully as admin', async () => {
+      const mockUser = { id: 'admin-123', email: 'admin@example.com' }
+      
+      vi.mocked(supabase.auth.getUser).mockResolvedValue({
+        data: { user: mockUser },
+        error: null
+      })
+
+      // Mock isCurrentUserAdmin to return true (admin)
+      vi.mocked(isCurrentUserAdmin).mockResolvedValue(true)
+
+      const queryBuilder: any = {
+        delete: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockResolvedValue({ data: null, error: null })
+      }
+
+      vi.mocked(supabase.from).mockReturnValue(queryBuilder as any)
+
+      const result = await storyService.deleteArtifact('artifact-123')
+
+      expect(result.success).toBe(true)
+      expect(queryBuilder.eq).toHaveBeenCalledWith('id', 'artifact-123')
+      // Admin should not have owner_id check - only one eq call for id
+      const eqCalls = queryBuilder.eq.mock.calls
+      expect(eqCalls.length).toBe(1)
+      expect(eqCalls[0][0]).toBe('id')
+    })
+
+    it('should return error if user is not authenticated', async () => {
+      vi.mocked(supabase.auth.getUser).mockResolvedValue({
+        data: { user: null },
+        error: null
+      })
+
+      vi.mocked(supabase.auth.getSession).mockResolvedValue({
+        data: { session: null },
+        error: null
+      })
+
+      const result = await storyService.deleteArtifact('artifact-123')
+
+      expect(result.success).toBe(false)
+      expect(result.error).toContain('logged in')
+    })
+
+    it('should handle database errors', async () => {
+      const mockUser = { id: 'user-123', email: 'test@example.com' }
+      
+      vi.mocked(supabase.auth.getUser).mockResolvedValue({
+        data: { user: mockUser },
+        error: null
+      })
+
+      vi.mocked(isCurrentUserAdmin).mockResolvedValue(false)
+
+      const queryBuilder: any = {
+        delete: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis()
+      }
+
+      queryBuilder.eq.mockImplementation((key: string) => {
+        if (key === 'owner_id') {
+          return Promise.resolve({ 
+            data: null, 
+            error: { message: 'Database error', code: '23503' } 
+          })
+        }
+        return queryBuilder
+      })
+
+      vi.mocked(supabase.from).mockReturnValue(queryBuilder as any)
+
+      const result = await storyService.deleteArtifact('artifact-123')
+
+      expect(result.success).toBe(false)
+      expect(result.error).toContain('Failed to delete artifact')
+    })
+
+    it('should handle table not found error', async () => {
+      const mockUser = { id: 'user-123', email: 'test@example.com' }
+      
+      vi.mocked(supabase.auth.getUser).mockResolvedValue({
+        data: { user: mockUser },
+        error: null
+      })
+
+      vi.mocked(isCurrentUserAdmin).mockResolvedValue(false)
+
+      const queryBuilder: any = {
+        delete: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis()
+      }
+
+      queryBuilder.eq.mockImplementation((key: string) => {
+        if (key === 'owner_id') {
+          return Promise.resolve({ 
+            data: null, 
+            error: { 
+              message: 'relation "artifacts" does not exist', 
+              code: '42P01' 
+            } 
+          })
+        }
+        return queryBuilder
+      })
+
+      vi.mocked(supabase.from).mockReturnValue(queryBuilder as any)
+
+      const result = await storyService.deleteArtifact('artifact-123')
+
+      expect(result.success).toBe(false)
+      expect(result.error).toContain('Artifacts feature is not available')
     })
   })
 })
