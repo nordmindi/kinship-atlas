@@ -25,6 +25,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { AuthLoadingState } from "@/components/auth/AuthLoadingState";
+import OnboardingFlow from "@/components/onboarding/OnboardingFlow";
+import { useOnboarding } from "@/hooks/useOnboarding";
 
 // Component for displaying family member in overview
 const FamilyMemberOverviewCard = ({ member, onClick }: { member: FamilyMember; onClick: () => void }) => {
@@ -71,6 +73,8 @@ const Index = () => {
   const [activeTab, setActiveTab] = useState("home");
   const [searchQuery, setSearchQuery] = useState("");
   const { selectedMemberId, setSelectedMemberId } = useFamilyTree();
+  const { shouldShowOnboarding, isChecking, markOnboardingComplete } = useOnboarding();
+  const [showOnboarding, setShowOnboarding] = useState(false);
 
   // Use TanStack Query hooks for data fetching
   const { data: familyMembers = [], isLoading: membersLoading, error: membersError } = useFamilyMembers();
@@ -79,6 +83,20 @@ const Index = () => {
   const { timeline = [], isLoading: timelineLoading } = useFamilyTimeline(memberIds);
 
   const isLoading = authLoading || membersLoading || storiesLoading || timelineLoading;
+
+  // Show onboarding when it should be shown
+  useEffect(() => {
+    if (!isChecking && shouldShowOnboarding) {
+      setShowOnboarding(true);
+    }
+  }, [shouldShowOnboarding, isChecking]);
+
+  const handleOnboardingComplete = async () => {
+    const success = await markOnboardingComplete();
+    if (success) {
+      setShowOnboarding(false);
+    }
+  };
 
   useEffect(() => {
     if (!familyMembers.length) {
@@ -161,12 +179,18 @@ const Index = () => {
   };
 
   return (
-    <MobileLayout
-      currentUser={user ? {
-        name: user.email?.split('@')[0] || 'User',
-        email: user.email || ''
-      } : undefined}
-    >
+    <>
+      <OnboardingFlow
+        isOpen={showOnboarding}
+        onClose={() => setShowOnboarding(false)}
+        onComplete={handleOnboardingComplete}
+      />
+      <MobileLayout
+        currentUser={user ? {
+          name: user.email?.split('@')[0] || 'User',
+          email: user.email || ''
+        } : undefined}
+      >
       {/* Search Section with proper container */}
       <div className="bg-gradient-to-r from-heritage-purple-light/30 to-heritage-purple-light/50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
@@ -471,6 +495,7 @@ const Index = () => {
         </div>
       )}
     </MobileLayout>
+    </>
   );
 };
 

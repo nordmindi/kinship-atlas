@@ -5,7 +5,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 // import { Separator } from '@/components/ui/separator';
 import {
   DropdownMenu,
@@ -37,6 +36,9 @@ import { performCompleteLogout } from '@/utils/authUtils';
 import { uploadMedia } from '@/services/mediaService';
 import { updateUserProfile } from '@/services/userService';
 import { supabase } from '@/integrations/supabase/client';
+import { useOnboarding } from '@/hooks/useOnboarding';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 
 interface UserProfileProps {
   variant?: 'dropdown' | 'page';
@@ -47,8 +49,10 @@ const UserProfile: React.FC<UserProfileProps> = ({
   variant = 'dropdown',
   onProfileClick
 }) => {
-  const { user, signOut, refreshUserProfile } = useAuth();
+  const { user, signOut, refreshUserProfile, isEditor } = useAuth();
   const [isSigningOut, setIsSigningOut] = useState(false);
+  const { isOnboardingEnabled, isOnboardingCompleted, toggleOnboardingEnabled, restartOnboarding } = useOnboarding();
+  const [isUpdatingOnboarding, setIsUpdatingOnboarding] = useState(false);
 
   // Edit mode state
   const [isEditing, setIsEditing] = useState(false);
@@ -412,6 +416,47 @@ const UserProfile: React.FC<UserProfileProps> = ({
             </div>
 
             <hr className="my-4" />
+
+            {/* Onboarding Settings - Only for Editor role */}
+            {isEditor && (
+              <div className="bg-heritage-purple-light/10 rounded-lg p-4 mb-4 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label htmlFor="onboarding-enabled" className="text-base font-semibold">
+                      Onboarding Tutorial
+                    </Label>
+                    <p className="text-sm text-muted-foreground">
+                      Enable or disable the onboarding tutorial
+                    </p>
+                  </div>
+                  <Switch
+                    id="onboarding-enabled"
+                    checked={isOnboardingEnabled}
+                    onCheckedChange={async (checked) => {
+                      setIsUpdatingOnboarding(true);
+                      await toggleOnboardingEnabled(checked);
+                      setIsUpdatingOnboarding(false);
+                    }}
+                    disabled={isUpdatingOnboarding}
+                  />
+                </div>
+                {isOnboardingCompleted && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={async () => {
+                      setIsUpdatingOnboarding(true);
+                      await restartOnboarding();
+                      setIsUpdatingOnboarding(false);
+                    }}
+                    disabled={isUpdatingOnboarding}
+                    className="w-full"
+                  >
+                    Restart Onboarding Tutorial
+                  </Button>
+                )}
+              </div>
+            )}
 
             <div className="flex flex-col sm:flex-row gap-3">
               {!isEditing && (

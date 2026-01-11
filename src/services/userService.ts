@@ -2,6 +2,21 @@ import { supabase } from '@/integrations/supabase/client';
 import { UserProfile } from '@/types';
 
 /**
+ * Map database user profile (snake_case) to TypeScript UserProfile (camelCase)
+ */
+const mapUserProfile = (data: any): UserProfile => {
+  return {
+    id: data.id,
+    role: data.role,
+    displayName: data.display_name,
+    createdAt: data.created_at || new Date().toISOString(),
+    updatedAt: data.updated_at || new Date().toISOString(),
+    onboardingCompleted: data.onboarding_completed ?? false,
+    onboardingEnabled: data.onboarding_enabled ?? true,
+  };
+};
+
+/**
  * Get user profile with role information
  * Returns null if profile doesn't exist or if there's a critical error
  * Throws an error if there's an infinite recursion or policy error that requires logout
@@ -23,6 +38,8 @@ export const getUserProfile = async (userId: string): Promise<UserProfile | null
           role: 'viewer',
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
+          onboardingCompleted: false,
+          onboardingEnabled: true,
         };
       }
       
@@ -31,7 +48,7 @@ export const getUserProfile = async (userId: string): Promise<UserProfile | null
         console.warn('User profile not found, attempting to create it:', userId);
         try {
           // Call the ensure_user_profile function to create the profile
-          const { error: createError } = await supabase.rpc('ensure_user_profile', {
+          const { error: createError } = await (supabase.rpc as any)('ensure_user_profile', {
             user_id: userId
           });
           
@@ -53,7 +70,7 @@ export const getUserProfile = async (userId: string): Promise<UserProfile | null
               return null;
             }
             
-            return newProfile as unknown as UserProfile;
+            return mapUserProfile(newProfile);
           }
           
           // Retry fetching the profile after creation
@@ -68,7 +85,7 @@ export const getUserProfile = async (userId: string): Promise<UserProfile | null
             return null;
           }
           
-          return retryData as unknown as UserProfile;
+          return mapUserProfile(retryData);
         } catch (createErr) {
           console.error('Exception creating user profile:', createErr);
           return null;
@@ -97,7 +114,7 @@ export const getUserProfile = async (userId: string): Promise<UserProfile | null
       console.warn('User profile not found for user:', userId);
       // Try to create it
       try {
-        const { error: createError } = await supabase.rpc('ensure_user_profile', {
+        const { error: createError } = await (supabase.rpc as any)('ensure_user_profile', {
           user_id: userId
         });
         
@@ -109,7 +126,10 @@ export const getUserProfile = async (userId: string): Promise<UserProfile | null
             .eq('id', userId)
             .single();
           
-          return retryData as unknown as UserProfile || null;
+          if (retryData) {
+            return mapUserProfile(retryData);
+          }
+          return null;
         }
       } catch (err) {
         console.error('Error creating profile:', err);
@@ -117,7 +137,7 @@ export const getUserProfile = async (userId: string): Promise<UserProfile | null
       return null;
     }
 
-    return data as unknown as UserProfile;
+    return mapUserProfile(data);
   } catch (error) {
     console.error('Error fetching user profile:', error);
     return null;
@@ -140,6 +160,14 @@ export const updateUserProfile = async (userId: string, updates: Partial<UserPro
     
     if (updates.role !== undefined) {
       dbUpdates.role = updates.role;
+    }
+
+    if (updates.onboardingCompleted !== undefined) {
+      dbUpdates.onboarding_completed = updates.onboardingCompleted;
+    }
+
+    if (updates.onboardingEnabled !== undefined) {
+      dbUpdates.onboarding_enabled = updates.onboardingEnabled;
     }
 
     const { error } = await supabase
@@ -603,6 +631,108 @@ export const updateUserDisplayName = async (
     return { success: true };
   } catch (error) {
     console.error('Error updating display name:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'An unexpected error occurred'
+    };
+  }
+};
+
+/**
+ * Complete onboarding for the current user
+ */
+export const completeOnboarding = async (): Promise<{ success: boolean; error?: string }> => {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      return {
+        success: false,
+        error: 'User not authenticated'
+      };
+    }
+
+    const result = await updateUserProfile(user.id, {
+      onboardingCompleted: true
+    });
+
+    if (!result) {
+      return {
+        success: false,
+        error: 'Failed to update onboarding status'
+      };
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error('Error completing onboarding:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'An unexpected error occurred'
+    };
+  }
+};
+
+/**
+ * Update onboarding enabled setting for the current user
+ */
+export const updateOnboardingEnabled = async (enabled: boolean): Promise<{ success: boolean; error?: string }> => {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      return {
+        success: false,
+        error: 'User not authenticated'
+      };
+    }
+
+    const result = await updateUserProfile(user.id, {
+      onboardingEnabled: enabled
+    });
+
+    if (!result) {
+      return {
+        success: false,
+        error: 'Failed to update onboarding setting'
+      };
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error('Error updating onboarding setting:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'An unexpected error occurred'
+    };
+  }
+};
+
+/**
+ * Reset onboarding for the current user (mark as not completed)
+ */
+export const resetOnboarding = async (): Promise<{ success: boolean; error?: string }> => {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      return {
+        success: false,
+        error: 'User not authenticated'
+      };
+    }
+
+    const result = await updateUserProfile(user.id, {
+      onboardingCompleted: false
+    });
+
+    if (!result) {
+      return {
+        success: false,
+        error: 'Failed to reset onboarding status'
+      };
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error('Error resetting onboarding:', error);
     return {
       success: false,
       error: error instanceof Error ? error.message : 'An unexpected error occurred'

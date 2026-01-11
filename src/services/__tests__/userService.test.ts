@@ -41,7 +41,8 @@ describe('UserService', () => {
 
       expect(result).toBeTruthy()
       expect(result?.id).toBe('user-123')
-      expect(result?.email).toBe('test@example.com')
+      expect(result?.role).toBe('family_member')
+      // Email is not part of UserProfile type - it's only in the database
     })
 
     it('should return null on error', async () => {

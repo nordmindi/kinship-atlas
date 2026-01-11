@@ -16,6 +16,8 @@ export interface UserProfile {
   displayName?: string;
   createdAt: string;
   updatedAt: string;
+  onboardingCompleted?: boolean;
+  onboardingEnabled?: boolean;
 }
 
 export interface FamilyMember {

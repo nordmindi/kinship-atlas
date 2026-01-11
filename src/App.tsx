@@ -32,6 +32,7 @@ const LegacyStoriesPage = lazy(() => import("./pages/LegacyStoriesPage"));
 const StoryDetailPage = lazy(() => import("./pages/StoryDetailPage"));
 const FamilyGroupsPage = lazy(() => import("./pages/FamilyGroupsPage"));
 const AllFamilyMembersPage = lazy(() => import("./pages/AllFamilyMembersPage"));
+const HelpPage = lazy(() => import("./pages/HelpPage"));
 
 // Loading fallback component
 const PageLoader = () => (
@@ -148,6 +149,11 @@ const App = () => (
                   <Route path="/family-groups" element={
                     <ProtectedRoute>
                       <FamilyGroupsPage />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/help" element={
+                    <ProtectedRoute>
+                      <HelpPage />
                     </ProtectedRoute>
                   } />
                   
