@@ -39,6 +39,8 @@ CREATE TABLE IF NOT EXISTS public.user_profiles (
     id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
     role TEXT DEFAULT 'viewer' CHECK (role IN ('admin', 'editor', 'viewer')),
     display_name TEXT,
+    onboarding_completed BOOLEAN DEFAULT false,
+    onboarding_enabled BOOLEAN DEFAULT true,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -78,8 +80,8 @@ ALTER COLUMN role SET DEFAULT 'viewer';
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
-    INSERT INTO public.user_profiles (id, role, display_name)
-    VALUES (NEW.id, 'viewer', COALESCE(NEW.raw_user_meta_data->>'display_name', NEW.email))
+    INSERT INTO public.user_profiles (id, role, display_name, onboarding_completed, onboarding_enabled)
+    VALUES (NEW.id, 'viewer', COALESCE(NEW.raw_user_meta_data->>'display_name', NEW.email), false, true)
     ON CONFLICT (id) DO NOTHING;
     RETURN NEW;
 END;
@@ -94,11 +96,13 @@ CREATE TRIGGER on_auth_user_created
 
 -- Create profiles for existing users who don't have one
 -- This handles users created before the migration ran
-INSERT INTO public.user_profiles (id, role, display_name)
+INSERT INTO public.user_profiles (id, role, display_name, onboarding_completed, onboarding_enabled)
 SELECT 
     au.id,
     'viewer'::TEXT,
-    COALESCE(au.raw_user_meta_data->>'display_name', au.email)
+    COALESCE(au.raw_user_meta_data->>'display_name', au.email),
+    true,  -- Existing users have completed onboarding
+    true   -- Onboarding enabled by default
 FROM auth.users au
 WHERE NOT EXISTS (
     SELECT 1 FROM public.user_profiles up WHERE up.id = au.id
@@ -1427,11 +1431,13 @@ BEGIN
     END IF;
     
     -- Create profile for the user
-    INSERT INTO public.user_profiles (id, role, display_name)
+    INSERT INTO public.user_profiles (id, role, display_name, onboarding_completed, onboarding_enabled)
     SELECT 
         au.id,
         'viewer'::TEXT,
-        COALESCE(au.raw_user_meta_data->>'display_name', au.email)
+        COALESCE(au.raw_user_meta_data->>'display_name', au.email),
+        false,  -- New users haven't completed onboarding
+        true    -- Onboarding enabled by default
     FROM auth.users au
     WHERE au.id = user_id
     ON CONFLICT (id) DO NOTHING;
@@ -1440,8 +1446,8 @@ BEGIN
 EXCEPTION
     WHEN OTHERS THEN
         -- If we can't access auth.users, try creating with minimal info
-        INSERT INTO public.user_profiles (id, role, display_name)
-        VALUES (user_id, 'viewer', NULL)
+        INSERT INTO public.user_profiles (id, role, display_name, onboarding_completed, onboarding_enabled)
+        VALUES (user_id, 'viewer', NULL, false, true)
         ON CONFLICT (id) DO NOTHING;
         RETURN TRUE;
 END;

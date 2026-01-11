@@ -6,6 +6,7 @@
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { FamilyMember } from '@/types';
 import { familyRelationshipManager, RelationshipType, resolveRelationshipDirection } from '@/services/familyRelationshipManager';
 import { Button } from '@/components/ui/button';
@@ -87,6 +88,7 @@ const RelationshipManager: React.FC<RelationshipManagerProps> = ({
   onRelationshipChanged,
   canAddRelationship = true
 }) => {
+  const navigate = useNavigate();
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [selectedMember, setSelectedMember] = useState<FamilyMember | null>(null);
   const [selectedRelationshipType, setSelectedRelationshipType] = useState<RelationshipType>('parent');
@@ -329,8 +331,13 @@ const RelationshipManager: React.FC<RelationshipManagerProps> = ({
             <div className="space-y-4">
               {currentMember.relations.map((relation) => {
                 const connectedMemberName = getConnectedMemberName(relation);
+                const connectedMemberId = relation.personId;
                 return (
-                  <div key={relation.id} className="flex items-center justify-between p-4 border rounded-xl hover:shadow-md transition-shadow bg-white">
+                  <div 
+                    key={relation.id} 
+                    className="flex items-center justify-between p-4 border rounded-xl hover:shadow-md transition-shadow bg-white cursor-pointer"
+                    onClick={() => navigate(`/family-member/${connectedMemberId}`)}
+                  >
                     <div className="flex items-center gap-4 flex-1">
                       <div className="p-2 rounded-lg bg-gray-50">
                         {getRelationshipIcon(relation.type)}
@@ -349,10 +356,13 @@ const RelationshipManager: React.FC<RelationshipManagerProps> = ({
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => handleDeleteRelationship(
-                        relation.id, 
-                        connectedMemberName
-                      )}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeleteRelationship(
+                          relation.id, 
+                          connectedMemberName
+                        );
+                      }}
                       className="text-red-600 hover:text-red-700 hover:bg-red-50 p-2 ml-2"
                     >
                       <Trash2 className="h-4 w-4" />

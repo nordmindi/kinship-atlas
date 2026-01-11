@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { X, Menu, Home, Users, Image, Map, Clock, BookOpen, Crown, User, LogOut, History, Upload, Download, FolderTree } from 'lucide-react';
+import { X, Menu, Home, Users, Image, Map, Clock, BookOpen, Crown, User, LogOut, History, Upload, Download, FolderTree, HelpCircle } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useAuth } from '@/contexts/AuthContext';
@@ -192,10 +192,19 @@ const MobileLayout: React.FC<MobileLayoutProps> = ({
             <span>Export Family Data</span>
           </a>
           
+          <a
+            href="/help"
+            className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-heritage-purple-light text-heritage-dark hover:text-heritage-purple transition-colors border-t border-heritage-purple/20 mt-2 pt-3"
+            onClick={() => setIsDrawerOpen(false)}
+          >
+            <HelpCircle size={18} />
+            <span>Help</span>
+          </a>
+          
           {isAdmin && (
             <a
               href="/admin"
-              className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-heritage-purple-light text-heritage-dark hover:text-heritage-purple transition-colors border-t border-heritage-purple/20 mt-2 pt-3"
+              className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-heritage-purple-light text-heritage-dark hover:text-heritage-purple transition-colors"
               onClick={() => setIsDrawerOpen(false)}
             >
               <Crown size={18} />
