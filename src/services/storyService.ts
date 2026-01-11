@@ -534,7 +534,86 @@ class StoryService {
         return [];
       }
 
-      return data.map(this.transformStoryData);
+      // Fetch artifacts for all stories
+      const storiesWithArtifacts = await Promise.all(
+        data.map(async (storyData) => {
+          const story = this.transformStoryData(storyData);
+          
+          // Fetch artifacts for this story
+          let artifacts: Artifact[] = [];
+          try {
+            const { data: storyArtifactsData, error: storyArtifactsError } = await (supabase as any)
+              .from('story_artifacts')
+              .select('artifact_id')
+              .eq('story_id', story.id);
+
+            if (!storyArtifactsError && storyArtifactsData && storyArtifactsData.length > 0) {
+              const artifactIds = storyArtifactsData.map((sa: any) => sa.artifact_id).filter(Boolean);
+              
+              if (artifactIds.length > 0) {
+                const { data: artifactsData, error: artifactsError } = await (supabase as any)
+                  .from('artifacts')
+                  .select('*')
+                  .in('id', artifactIds);
+
+                if (!artifactsError && artifactsData && artifactsData.length > 0) {
+                  // Fetch media for artifacts
+                  const mediaMap: Record<string, Media[]> = {};
+                  try {
+                    const { data: artifactMediaData } = await (supabase as any)
+                      .from('artifact_media')
+                      .select('artifact_id, media_id')
+                      .in('artifact_id', artifactIds);
+
+                    if (artifactMediaData && artifactMediaData.length > 0) {
+                      const mediaIds = artifactMediaData.map((am: any) => am.media_id).filter(Boolean);
+                      if (mediaIds.length > 0) {
+                        const { data: mediaData } = await (supabase as any)
+                          .from('media')
+                          .select('*')
+                          .in('id', mediaIds);
+
+                        if (mediaData) {
+                          const mediaById: Record<string, Media> = {};
+                          mediaData.forEach((m: any) => {
+                            mediaById[m.id] = m;
+                          });
+
+                          artifactMediaData.forEach((am: any) => {
+                            if (am.artifact_id && am.media_id && mediaById[am.media_id]) {
+                              if (!mediaMap[am.artifact_id]) {
+                                mediaMap[am.artifact_id] = [];
+                              }
+                              mediaMap[am.artifact_id].push(mediaById[am.media_id]);
+                            }
+                          });
+                        }
+                      }
+                    }
+                  } catch (mediaErr) {
+                    console.warn('Could not fetch artifact media:', mediaErr);
+                  }
+
+                  artifacts = artifactsData.map((artifactData: any) => {
+                    const artifact = this.transformArtifactData(artifactData);
+                    if (artifact) {
+                      artifact.media = mediaMap[artifact.id] || [];
+                    }
+                    return artifact;
+                  }).filter(Boolean);
+                }
+              }
+            }
+          } catch (artifactsErr) {
+            console.warn('Could not fetch artifacts for story:', artifactsErr);
+          }
+
+          story.artifacts = artifacts;
+          return story;
+        })
+      );
+
+      return storiesWithArtifacts;
     } catch (error) {
       console.error('Error fetching all stories:', error);
       return [];
@@ -1233,6 +1312,96 @@ class StoryService {
     }
   }
 
+  async updateArtifact(request: UpdateArtifactRequest): Promise<{ success: boolean; artifact?: Artifact; error?: string }> {
+    try {
+      let { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        const { data: sessionData } = await supabase.auth.getSession();
+        user = sessionData.session?.user ?? null;
+      }
+      if (!user) {
+        return { success: false, error: 'You must be logged in to update artifacts' };
+      }
+
+      // Check if user is admin - admins can edit any artifact
+      const isAdmin = await isCurrentUserAdmin();
+
+      // Build update data
+      const updateData: any = {};
+      if (request.name !== undefined) updateData.name = request.name;
+      if (request.description !== undefined) updateData.description = request.description;
+      if (request.artifactType !== undefined) updateData.artifact_type = request.artifactType;
+      if (request.dateCreated !== undefined) updateData.date_created = request.dateCreated || null;
+      if (request.dateAcquired !== undefined) updateData.date_acquired = request.dateAcquired || null;
+      if (request.condition !== undefined) updateData.condition = request.condition;
+      if (request.locationStored !== undefined) updateData.location_stored = request.locationStored;
+
+      // Build the query - admins can update any artifact, others can only update their own
+      let updateQuery = (supabase as any)
+        .from('artifacts')
+        .update(updateData)
+        .eq('id', request.id);
+      
+      if (!isAdmin) {
+        updateQuery = updateQuery.eq('owner_id', user.id);
+      }
+
+      const { error: artifactError } = await updateQuery;
+
+      if (artifactError) {
+        if (artifactError.code === '42P01' || 
+            artifactError.message?.includes('does not exist') ||
+            artifactError.message?.includes('relation')) {
+          return { 
+            success: false, 
+            error: 'Artifacts feature is not available. Please restart Supabase to refresh the schema cache.' 
+          };
+        }
+        return { success: false, error: 'Failed to update artifact in database' };
+      }
+
+      // Update media if provided
+      if (request.mediaIds !== undefined) {
+        try {
+          // Delete existing media
+          const { error: deleteError } = await (supabase as any)
+            .from('artifact_media')
+            .delete()
+            .eq('artifact_id', request.id);
+
+          if (deleteError && deleteError.code !== '42P01') {
+            console.error('Error deleting artifact media:', deleteError);
+          }
+
+          // Add new media
+          if (request.mediaIds.length > 0) {
+            const { error: mediaError } = await (supabase as any)
+              .from('artifact_media')
+              .insert(
+                request.mediaIds.map(mediaId => ({
+                  artifact_id: request.id,
+                  media_id: mediaId
+                }))
+              );
+
+            if (mediaError) {
+              console.error('Error updating artifact media:', mediaError);
+            }
+          }
+        } catch (mediaErr) {
+          console.warn('Error updating artifact media:', mediaErr);
+        }
+      }
+
+      // Fetch the updated artifact
+      const artifact = await this.getArtifact(request.id);
+      return { success: true, artifact: artifact || undefined };
+    } catch (error) {
+      console.error('Error updating artifact:', error);
+      return { success: false, error: 'An unexpected error occurred while updating the artifact' };
+    }
+  }
+
   async getAllArtifacts(): Promise<Artifact[]> {
     try {
       // Fetch artifacts first
@@ -1305,6 +1474,53 @@ class StoryService {
     } catch (error) {
       console.error('Error fetching artifacts:', error);
       return [];
+    }
+  }
+
+  async deleteArtifact(artifactId: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      let { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        const { data: sessionData } = await supabase.auth.getSession();
+        user = sessionData.session?.user ?? null;
+      }
+      if (!user) {
+        return { success: false, error: 'You must be logged in to delete artifacts' };
+      }
+
+      // Check if user is admin - admins can delete any artifact
+      const isAdmin = await isCurrentUserAdmin();
+
+      // Build the delete query - admins can delete any artifact, others can only delete their own
+      let deleteQuery = (supabase as any)
+        .from('artifacts')
+        .delete()
+        .eq('id', artifactId);
+      
+      // Only enforce owner_id check if user is not admin
+      // RLS policies will handle the actual permission enforcement
+      if (!isAdmin) {
+        deleteQuery = deleteQuery.eq('owner_id', user.id);
+      }
+
+      const { error } = await deleteQuery;
+
+      if (error) {
+        if (error.code === '42P01' || 
+            error.message?.includes('does not exist') ||
+            error.message?.includes('relation')) {
+          return { 
+            success: false, 
+            error: 'Artifacts feature is not available. Please restart Supabase to refresh the schema cache.' 
+          };
+        }
+        return { success: false, error: 'Failed to delete artifact from database' };
+      }
+
+      return { success: true };
+    } catch (error) {
+      console.error('Error deleting artifact:', error);
+      return { success: false, error: 'An unexpected error occurred while deleting the artifact' };
     }
   }
 

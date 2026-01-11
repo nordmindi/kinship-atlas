@@ -7,7 +7,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { ArrowLeft, Calendar, User, Users, Edit, Trash2, Eye, Package, FileText, Image as ImageIcon, BookOpen, Tag, Download, MapPin, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { ArrowLeft, Calendar, User, Users, Edit, Trash2, Eye, Package, FileText, Image as ImageIcon, BookOpen, Tag, Download, MapPin, ChevronLeft, ChevronRight, Loader2, ExternalLink, Link as LinkIcon } from "lucide-react";
+import { toast } from '@/hooks/use-toast';
 import { storyService } from "@/services/storyService";
 import { getUserProfile } from "@/services/userService";
 import { usePermissions } from "@/hooks/usePermissions";
@@ -120,7 +122,7 @@ const MediaThumbnail: React.FC<{
 const StoryDetailPage = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { user, isLoading: authLoading } = useAuth();
+  const { user, isLoading: authLoading, isAdmin } = useAuth();
   const { canEditStory } = usePermissions();
   const { data: familyMembers = [] } = useFamilyMembers();
   const { data: story, isLoading: storyLoading, error: storyError, refetch: refetchStory } = useStory(id || null);
@@ -168,6 +170,33 @@ const StoryDetailPage = () => {
 
   const handleCancelEdit = () => {
     setIsEditing(false);
+  };
+
+  const handleDeleteArtifact = async (artifactId: string, artifactName: string) => {
+    try {
+      const result = await storyService.deleteArtifact(artifactId);
+      if (result.success) {
+        toast({
+          title: "Success",
+          description: `Artifact "${artifactName}" has been deleted.`,
+        });
+        // Refetch the story to update the artifacts list
+        refetchStory();
+      } else {
+        toast({
+          title: "Error",
+          description: result.error || "Failed to delete artifact.",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      console.error('Error deleting artifact:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete artifact.",
+        variant: "destructive"
+      });
+    }
   };
 
   const getRoleColor = (role: string) => {
@@ -383,10 +412,21 @@ const StoryDetailPage = () => {
           {story.media && story.media.length > 0 && (
             <Card className="shadow-sm border-heritage-purple/10">
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <ImageIcon className="h-5 w-5" />
-                  Media ({story.media.length})
-                </CardTitle>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="flex items-center gap-2">
+                    <ImageIcon className="h-5 w-5" />
+                    Media ({story.media.length})
+                  </CardTitle>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => navigate('/media')}
+                    className="text-sm"
+                  >
+                    <ExternalLink className="h-4 w-4 mr-1" />
+                    View All Media
+                  </Button>
+                </div>
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
@@ -473,7 +513,41 @@ const StoryDetailPage = () => {
                             {getArtifactIcon()}
                           </div>
                           <div className="flex-1 min-w-0">
-                            <h4 className="font-semibold text-base mb-1">{artifact.name}</h4>
+                            <div className="flex items-center justify-between mb-1">
+                              <h4 className="font-semibold text-base">{artifact.name}</h4>
+                              {isAdmin && (
+                                <AlertDialog>
+                                  <AlertDialogTrigger asChild>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-6 w-6 p-0 hover:bg-red-50 hover:text-red-600"
+                                      aria-label={`Delete artifact ${artifact.name}`}
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  </AlertDialogTrigger>
+                                  <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                      <AlertDialogTitle>Delete Artifact</AlertDialogTitle>
+                                      <AlertDialogDescription>
+                                        Are you sure you want to delete "{artifact.name}"? 
+                                        This action cannot be undone.
+                                      </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                      <AlertDialogAction
+                                        onClick={() => handleDeleteArtifact(artifact.id, artifact.name)}
+                                        className="bg-destructive text-destructive-foreground"
+                                      >
+                                        Delete
+                                      </AlertDialogAction>
+                                    </AlertDialogFooter>
+                                  </AlertDialogContent>
+                                </AlertDialog>
+                              )}
+                            </div>
                             {artifact.description && (
                               <p className="text-sm opacity-90 mb-2">{artifact.description}</p>
                             )}
@@ -504,34 +578,76 @@ const StoryDetailPage = () => {
                               <div className="mt-3">
                                 <p className="text-xs font-medium mb-2 opacity-75">Artifact Media:</p>
                                 <div className="grid grid-cols-3 gap-2">
-                                  {artifact.media.map(media => (
-                                    <div
-                                      key={media.id}
-                                      className="relative border rounded overflow-hidden bg-white"
-                                    >
-                                      {media.media_type === 'image' && media.url ? (
-                                        <img
-                                          src={media.url}
-                                          alt={media.caption || 'Artifact media'}
-                                          className="w-full h-16 object-cover"
-                                          onError={(e) => {
-                                            const target = e.currentTarget as HTMLImageElement;
-                                            const nextElement = target.nextElementSibling as HTMLElement;
-                                            target.style.display = 'none';
-                                            if (nextElement) nextElement.style.display = 'flex';
-                                          }}
-                                        />
-                                      ) : null}
-                                      <div 
-                                        className="w-full h-16 flex items-center justify-center bg-gray-50"
-                                        style={{ display: media.media_type === 'image' && media.url ? 'none' : 'flex' }}
+                                  {artifact.media.map(media => {
+                                    const mediaId = media.id;
+                                    const isImage = media.media_type === 'image';
+                                    const imageUrl = imageUrls[mediaId] || media.url;
+                                    
+                                    return (
+                                      <div
+                                        key={media.id}
+                                        className="relative border rounded overflow-hidden bg-white cursor-pointer hover:shadow-md transition-shadow"
+                                        onClick={async () => {
+                                          const accessibleUrl = imageUrls[media.id] || (media.url ? await getAccessibleStorageUrl(media.url) : null);
+                                          setSelectedMedia({
+                                            id: media.id,
+                                            url: accessibleUrl || media.url || '',
+                                            caption: media.caption,
+                                            fileName: media.file_name,
+                                            media_type: media.media_type
+                                          });
+                                          setSelectedMediaIndex(0);
+                                        }}
                                       >
-                                        <span className="text-sm">
-                                          {media.media_type === 'image' ? '🖼️' : '📎'}
-                                        </span>
+                                        {isImage && imageUrl ? (
+                                          <>
+                                            <img
+                                              src={imageUrl}
+                                              alt={media.caption || 'Artifact media'}
+                                              className="w-full h-16 object-cover"
+                                              onError={async (e) => {
+                                                const target = e.currentTarget as HTMLImageElement;
+                                                if (media.url && imageUrl !== media.url) {
+                                                  try {
+                                                    const signedUrl = await getAccessibleStorageUrl(media.url);
+                                                    if (signedUrl && signedUrl !== imageUrl) {
+                                                      target.src = signedUrl;
+                                                      setImageUrls(prev => ({ ...prev, [mediaId]: signedUrl }));
+                                                      return;
+                                                    }
+                                                  } catch (error) {
+                                                    console.error('Error getting signed URL:', error);
+                                                  }
+                                                }
+                                                target.style.display = 'none';
+                                                const nextElement = target.nextElementSibling as HTMLElement;
+                                                if (nextElement) nextElement.style.display = 'flex';
+                                              }}
+                                              onLoad={() => {
+                                                if (!imageUrls[mediaId] && media.url) {
+                                                  getAccessibleStorageUrl(media.url).then(url => {
+                                                    if (url) {
+                                                      setImageUrls(prev => ({ ...prev, [mediaId]: url }));
+                                                    }
+                                                  }).catch(() => {});
+                                                }
+                                              }}
+                                            />
+                                            <div 
+                                              className="w-full h-16 flex items-center justify-center bg-gray-50"
+                                              style={{ display: 'none' }}
+                                            >
+                                              <ImageIcon className="h-6 w-6 text-gray-400" />
+                                            </div>
+                                          </>
+                                        ) : (
+                                          <div className="w-full h-16 flex items-center justify-center bg-gray-50">
+                                            <FileText className="h-6 w-6 text-gray-400" />
+                                          </div>
+                                        )}
                                       </div>
-                                    </div>
-                                  ))}
+                                    );
+                                  })}
                                 </div>
                               </div>
                             )}
