@@ -95,13 +95,6 @@ const FamilyTreeGraph: React.FC<EnhancedFamilyTreeGraphProps> = ({
       );
       const edges = buildTreeEdges(members, memberGenerations, processed);
 
-      console.log('Tree data built:', {
-        membersCount: members.length,
-        nodesCount: nodes.length,
-        edgesCount: edges.length,
-        generations: Array.from(generations.keys()),
-        rootMember: rootMember.firstName + ' ' + rootMember.lastName
-      });
 
       return { nodes, edges };
     } catch (error) {
@@ -128,7 +121,6 @@ const FamilyTreeGraph: React.FC<EnhancedFamilyTreeGraphProps> = ({
   // Handle ReactFlow initialization
   const handleInit = useCallback((instance: ReactFlowInstance) => {
     setReactFlowInstance(instance);
-    console.log('ReactFlow instance initialized');
   }, []);
 
   // Auto-fit view when tree data changes

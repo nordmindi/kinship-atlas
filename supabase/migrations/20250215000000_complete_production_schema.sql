@@ -753,7 +753,10 @@ CREATE POLICY "Users can update their own artifacts" ON public.artifacts
 
 DROP POLICY IF EXISTS "Users can delete their own artifacts" ON public.artifacts;
 CREATE POLICY "Users can delete their own artifacts" ON public.artifacts
-    FOR DELETE USING (auth.uid() = owner_id);
+    FOR DELETE USING (
+        auth.uid() = owner_id OR
+        public.is_user_admin(auth.uid())
+    );
 
 -- RLS policies for story_artifacts
 DROP POLICY IF EXISTS "Users can view all story artifacts" ON public.story_artifacts;

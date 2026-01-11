@@ -58,7 +58,6 @@ class LayoutService {
             });
 
           if (!dbError) {
-            console.log('✅ Layout saved to database');
             // Also save to localStorage as backup
             localStorage.setItem(this.STORAGE_KEY, JSON.stringify(layoutState));
             return;
@@ -72,7 +71,6 @@ class LayoutService {
 
       // Fallback to localStorage
       localStorage.setItem(this.STORAGE_KEY, JSON.stringify(layoutState));
-      console.log('Layout state saved to localStorage:', layoutState);
     } catch (error) {
       console.error('Failed to save layout state:', error);
     }
@@ -100,7 +98,6 @@ class LayoutService {
               lastUpdated: layoutData.updated_at || new Date().toISOString(),
               userId: currentUserId
             };
-            console.log('✅ Layout loaded from database');
             // Also sync to localStorage as backup
             localStorage.setItem(this.STORAGE_KEY, JSON.stringify(layoutState));
             return layoutState;
