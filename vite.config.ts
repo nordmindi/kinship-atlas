@@ -33,10 +33,76 @@ export default defineConfig(({ mode }) => ({
     sourcemap: false,
     rollupOptions: {
       output: {
-        manualChunks: {
-          'react-vendor': ['react', 'react-dom', 'react-router-dom'],
-          'supabase-vendor': ['@supabase/supabase-js'],
-          'ui-vendor': ['@radix-ui/react-dialog', '@radix-ui/react-dropdown-menu', '@radix-ui/react-select'],
+        manualChunks: (id) => {
+          // React core libraries
+          if (id.includes('node_modules/react/') || id.includes('node_modules/react-dom/') || id.includes('node_modules/react-router-dom/')) {
+            return 'react-vendor';
+          }
+          
+          // React Query
+          if (id.includes('node_modules/@tanstack/react-query')) {
+            return 'query-vendor';
+          }
+          
+          // Supabase
+          if (id.includes('node_modules/@supabase/')) {
+            return 'supabase-vendor';
+          }
+          
+          // ReactFlow - heavy library, only used in tree view
+          if (id.includes('node_modules/@xyflow/') || id.includes('node_modules/reactflow/')) {
+            return 'flow-vendor';
+          }
+          
+          // Mapbox - heavy library, only used in map page
+          if (id.includes('node_modules/mapbox-gl/')) {
+            return 'mapbox-vendor';
+          }
+          
+          // TipTap - rich text editor, only used in story editing
+          if (id.includes('node_modules/@tiptap/')) {
+            return 'tiptap-vendor';
+          }
+          
+          // XLSX - Excel library, only used in import/export
+          if (id.includes('node_modules/xlsx/')) {
+            return 'xlsx-vendor';
+          }
+          
+          // Recharts - charting library
+          if (id.includes('node_modules/recharts/')) {
+            return 'recharts-vendor';
+          }
+          
+          // Radix UI components - group all together
+          if (id.includes('node_modules/@radix-ui/')) {
+            return 'radix-vendor';
+          }
+          
+          // Form libraries
+          if (id.includes('node_modules/react-hook-form/') || 
+              id.includes('node_modules/@hookform/') ||
+              id.includes('node_modules/zod/')) {
+            return 'form-vendor';
+          }
+          
+          // Date utilities
+          if (id.includes('node_modules/date-fns/') || id.includes('node_modules/react-day-picker/')) {
+            return 'date-vendor';
+          }
+          
+          // Other UI utilities
+          if (id.includes('node_modules/lucide-react/') ||
+              id.includes('node_modules/class-variance-authority/') ||
+              id.includes('node_modules/clsx/') ||
+              id.includes('node_modules/tailwind-merge/')) {
+            return 'ui-utils-vendor';
+          }
+          
+          // Other vendor libraries
+          if (id.includes('node_modules/')) {
+            return 'vendor';
+          }
         },
       },
     },

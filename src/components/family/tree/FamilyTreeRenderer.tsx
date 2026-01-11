@@ -163,6 +163,9 @@ const FamilyTreeRenderer: React.FC<FamilyTreeRendererProps> = ({
     onViewTimeline?: (memberId: string) => void;
   }>>(new Map());
   
+  // Track which nodes have already been logged to prevent duplicate logs
+  const loggedNodesRef = useRef<Set<string>>(new Set());
+  
   // Function to preserve callbacks from nodes
   const preserveCallbacks = useCallback((nodes: Node[]) => {
     nodes.forEach(node => {
@@ -174,13 +177,15 @@ const FamilyTreeRenderer: React.FC<FamilyTreeRendererProps> = ({
       const onViewTimeline = nodeWithCallbacks.onViewTimeline || (nodeWithCallbacks.data as any)?.onViewTimeline;
       
       if (onEdit || onViewProfile || onAddRelation || onViewTimeline) {
+        const wasAlreadyPreserved = callbacksRef.current.has(node.id);
         callbacksRef.current.set(node.id, {
           onEdit,
           onViewProfile,
           onAddRelation,
           onViewTimeline,
         });
-        if (import.meta.env.DEV) {
+        // Only log when callbacks are first preserved (not on every update)
+        if (import.meta.env.DEV && !wasAlreadyPreserved) {
           console.log('💾 Preserved callbacks for node', node.id, {
             onEdit: !!onEdit,
             onViewProfile: !!onViewProfile,
@@ -252,14 +257,24 @@ const FamilyTreeRenderer: React.FC<FamilyTreeRendererProps> = ({
         }
       };
       
-      if (import.meta.env.DEV) {
-        console.log('✅ Restored callbacks for node', node.id, {
-          onEdit: !!restored.onEdit,
-          onViewProfile: !!restored.onViewProfile,
-          onAddRelation: !!restored.onAddRelation,
-          onViewTimeline: !!restored.onViewTimeline,
-          'dataHasCallbacks': !!(restored.data as any).onEdit
-        });
+      // Only log once per node to avoid console spam
+      // Log only when callbacks are actually being restored (not on every update)
+      if (import.meta.env.DEV && !loggedNodesRef.current.has(node.id)) {
+        // Check if node was missing callbacks before restoration
+        const nodeHadCallbacks = !!(node as any).onEdit || !!(node as any).onViewProfile || 
+                                 !!(node.data as any)?.onEdit || !!(node.data as any)?.onViewProfile;
+        
+        // Only log if callbacks were missing and are now being restored
+        if (!nodeHadCallbacks && (restored.onEdit || restored.onViewProfile || restored.onAddRelation || restored.onViewTimeline)) {
+          console.log('✅ Restored callbacks for node', node.id, {
+            onEdit: !!restored.onEdit,
+            onViewProfile: !!restored.onViewProfile,
+            onAddRelation: !!restored.onAddRelation,
+            onViewTimeline: !!restored.onViewTimeline,
+            'dataHasCallbacks': !!(restored.data as any).onEdit
+          });
+          loggedNodesRef.current.add(node.id);
+        }
       }
       
       return restored;
