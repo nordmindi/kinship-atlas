@@ -77,9 +77,11 @@
 }
 
 .family-tree .react-flow__edge-path[data-relationship="sibling"] {
-  stroke: #9C27B0;
+  stroke: #9C27B0; /* Full siblings - purple */
   stroke-dasharray: 5,5;
 }
+
+/* Half siblings will use inline styles (amber/orange) from FamilyRelationshipEdge component */
 
 /* Enhanced Node styles with smooth animations */
 .family-member-node {

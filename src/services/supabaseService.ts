@@ -105,7 +105,7 @@ export const getFamilyMembers = async (): Promise<FamilyMember[]> => {
     // Get relations for all family members
     const { data: relationsData, error: relationsError } = await supabase
       .from('relations')
-      .select('id, from_member_id, to_member_id, relation_type');
+      .select('id, from_member_id, to_member_id, relation_type, sibling_type');
     
     if (relationsError) {
       console.error('❌ Error fetching relations:', relationsError);
@@ -143,6 +143,7 @@ export const getFamilyMembers = async (): Promise<FamilyMember[]> => {
               id: rel.id,
               type: perspectiveType,
               personId: rel.to_member_id,
+              siblingType: rel.relation_type === 'sibling' ? (rel.sibling_type as 'full' | 'half' | undefined) : undefined,
             };
           } else {
             // If this member is the "to" person, reverse the relation type
@@ -167,6 +168,7 @@ export const getFamilyMembers = async (): Promise<FamilyMember[]> => {
               id: rel.id,
               type: reversedType,
               personId: rel.from_member_id,
+              siblingType: rel.relation_type === 'sibling' ? (rel.sibling_type as 'full' | 'half' | undefined) : undefined,
             };
           }
         });

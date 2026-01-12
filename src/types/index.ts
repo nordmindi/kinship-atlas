@@ -54,6 +54,7 @@ export interface Relation {
   type: 'parent' | 'child' | 'spouse' | 'sibling';
   personId: string;
   date?: string; // Marriage date or other relationship date
+  siblingType?: 'full' | 'half'; // For sibling relationships: 'full' if share both parents, 'half' if share one parent
 }
 
 export interface GeoLocation {

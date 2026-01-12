@@ -52,6 +52,7 @@ export interface FamilyMemberNode extends ReactFlowNode {
 export interface FamilyRelationshipEdge extends Edge {
   data?: {
     relationshipType: 'parent' | 'child' | 'spouse' | 'sibling';
+    siblingType?: 'full' | 'half'; // For sibling relationships: 'full' if share both parents, 'half' if share one parent
     mergeInfo?: {
       // For parent-child edges: indicates this edge should merge with another parent's edge
       hasMerge: boolean;

@@ -188,8 +188,12 @@ CREATE TABLE IF NOT EXISTS public.relations (
     from_member_id UUID REFERENCES public.family_members(id) ON DELETE CASCADE,
     to_member_id UUID REFERENCES public.family_members(id) ON DELETE CASCADE,
     relation_type TEXT CHECK (relation_type IN ('parent', 'child', 'spouse', 'sibling')),
+    sibling_type TEXT CHECK (sibling_type IN ('full', 'half')) DEFAULT NULL,
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Add comment to document the sibling_type column
+COMMENT ON COLUMN public.relations.sibling_type IS 'For sibling relationships: "full" if siblings share both parents, "half" if they share one parent. NULL if not determined.';
 
 -- Create locations table
 CREATE TABLE IF NOT EXISTS public.locations (
@@ -210,6 +214,8 @@ CREATE INDEX IF NOT EXISTS idx_family_members_branch_root ON public.family_membe
 CREATE INDEX IF NOT EXISTS idx_family_members_is_root ON public.family_members(is_root_member);
 CREATE INDEX IF NOT EXISTS idx_relations_from_member ON public.relations(from_member_id);
 CREATE INDEX IF NOT EXISTS idx_relations_to_member ON public.relations(to_member_id);
+CREATE INDEX IF NOT EXISTS idx_relations_sibling_type ON public.relations(relation_type, sibling_type) 
+WHERE relation_type = 'sibling';
 CREATE INDEX IF NOT EXISTS idx_locations_family_member ON public.locations(family_member_id);
 CREATE INDEX IF NOT EXISTS idx_locations_current ON public.locations(current_residence);
 
@@ -272,6 +278,35 @@ CREATE POLICY "Users can view all relations" ON public.relations
 DROP POLICY IF EXISTS "Admins and editors can insert relations" ON public.relations;
 CREATE POLICY "Admins and editors can insert relations" ON public.relations
     FOR INSERT WITH CHECK (
+        public.is_user_admin(auth.uid()) OR
+        (
+            public.is_user_editor(auth.uid()) AND (
+                EXISTS (
+                    SELECT 1 FROM public.family_members 
+                    WHERE id = from_member_id AND (
+                        created_by = auth.uid() OR
+                        branch_root IN (
+                            SELECT id FROM public.family_members 
+                            WHERE created_by = auth.uid() OR is_root_member = TRUE
+                        )
+                    )
+                ) OR EXISTS (
+                    SELECT 1 FROM public.family_members 
+                    WHERE id = to_member_id AND (
+                        created_by = auth.uid() OR
+                        branch_root IN (
+                            SELECT id FROM public.family_members 
+                            WHERE created_by = auth.uid() OR is_root_member = TRUE
+                        )
+                    )
+                )
+            )
+        )
+    );
+
+DROP POLICY IF EXISTS "Admins and editors can update relations" ON public.relations;
+CREATE POLICY "Admins and editors can update relations" ON public.relations
+    FOR UPDATE USING (
         public.is_user_admin(auth.uid()) OR
         (
             public.is_user_editor(auth.uid()) AND (
