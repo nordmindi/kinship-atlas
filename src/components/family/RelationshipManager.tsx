@@ -31,7 +31,8 @@ import {
   UserCheck,
   Users2,
   CheckSquare,
-  Square
+  Square,
+  Edit2
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -97,6 +98,9 @@ const RelationshipManager: React.FC<RelationshipManagerProps> = ({
   const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
   const [selectedSuggestions, setSelectedSuggestions] = useState<Set<number>>(new Set());
   const [isBulkAdding, setIsBulkAdding] = useState(false);
+  const [editingRelationshipId, setEditingRelationshipId] = useState<string | null>(null);
+  const [editingSiblingType, setEditingSiblingType] = useState<'full' | 'half' | null>(null);
+  const [isUpdating, setIsUpdating] = useState(false);
 
   const loadSuggestions = useCallback(async () => {
     setIsLoadingSuggestions(true);
@@ -190,6 +194,50 @@ const RelationshipManager: React.FC<RelationshipManagerProps> = ({
     } catch (error) {
       console.error('Error deleting relationship:', error);
       toast.error('An unexpected error occurred');
+    }
+  };
+
+  const handleEditSiblingType = (relationshipId: string, currentSiblingType?: 'full' | 'half') => {
+    setEditingRelationshipId(relationshipId);
+    setEditingSiblingType(currentSiblingType || null);
+  };
+
+  const handleUpdateSiblingType = async () => {
+    if (!editingRelationshipId) return;
+
+    console.log('🔄 Updating sibling type:', {
+      relationshipId: editingRelationshipId,
+      siblingType: editingSiblingType
+    });
+
+    setIsUpdating(true);
+    try {
+      const result = await familyRelationshipManager.updateRelationship(
+        editingRelationshipId,
+        { siblingType: editingSiblingType }
+      );
+
+      console.log('Update result:', result);
+
+      if (result.success) {
+        toast.success('Relationship updated', {
+          description: `Sibling type has been updated to ${editingSiblingType || 'auto-determined'}`
+        });
+        setEditingRelationshipId(null);
+        setEditingSiblingType(null);
+        // Force a refresh by calling the callback
+        onRelationshipChanged();
+      } else {
+        console.error('Update failed:', result.error);
+        toast.error('Failed to update relationship', {
+          description: result.error
+        });
+      }
+    } catch (error) {
+      console.error('Error updating relationship:', error);
+      toast.error('An unexpected error occurred');
+    } finally {
+      setIsUpdating(false);
     }
   };
 
@@ -347,26 +395,63 @@ const RelationshipManager: React.FC<RelationshipManagerProps> = ({
                           <p className="font-semibold text-lg text-gray-900">
                             {connectedMemberName}
                           </p>
+                          {relation.type === 'sibling' && relation.siblingType && (
+                            <p className="text-sm text-muted-foreground mt-1">
+                              {relation.siblingType === 'full' ? 'Full sibling' : 'Half sibling'}
+                            </p>
+                          )}
                         </div>
-                        <Badge className={`${getRelationshipColor(relation.type)} px-3 py-1 text-sm font-medium whitespace-nowrap`}>
-                          {relation.type}
-                        </Badge>
+                        <div className="flex items-center gap-2">
+                          <Badge className={`${getRelationshipColor(relation.type)} px-3 py-1 text-sm font-medium whitespace-nowrap`}>
+                            {relation.type}
+                          </Badge>
+                          {relation.type === 'sibling' && (
+                            <Badge 
+                              variant="outline" 
+                              className={`text-xs px-2 py-1 ${
+                                relation.siblingType === 'full' 
+                                  ? 'bg-purple-50 text-purple-700 border-purple-300' 
+                                  : relation.siblingType === 'half'
+                                  ? 'bg-amber-50 text-amber-700 border-amber-300'
+                                  : 'bg-gray-50 text-gray-700 border-gray-300'
+                              }`}
+                            >
+                              {relation.siblingType === 'full' ? 'Full' : relation.siblingType === 'half' ? 'Half' : 'Unknown'}
+                            </Badge>
+                          )}
+                        </div>
                       </div>
                     </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDeleteRelationship(
-                          relation.id, 
-                          connectedMemberName
-                        );
-                      }}
-                      className="text-red-600 hover:text-red-700 hover:bg-red-50 p-2 ml-2"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                    <div className="flex items-center gap-1">
+                      {relation.type === 'sibling' && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleEditSiblingType(relation.id, relation.siblingType);
+                          }}
+                          className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 p-2"
+                          title="Edit sibling type"
+                        >
+                          <Edit2 className="h-4 w-4" />
+                        </Button>
+                      )}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteRelationship(
+                            relation.id, 
+                            connectedMemberName
+                          );
+                        }}
+                        className="text-red-600 hover:text-red-700 hover:bg-red-50 p-2"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
                 );
               })}
@@ -469,6 +554,69 @@ const RelationshipManager: React.FC<RelationshipManagerProps> = ({
         </DialogContent>
       </Dialog>
       )}
+
+      {/* Edit Sibling Type Dialog */}
+      <Dialog open={editingRelationshipId !== null} onOpenChange={(open) => {
+        if (!open) {
+          setEditingRelationshipId(null);
+          setEditingSiblingType(null);
+        }
+      }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit Sibling Type</DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="sibling-type-select">Sibling Type</Label>
+              <Select 
+                value={editingSiblingType || 'auto'} 
+                onValueChange={(value) => {
+                  setEditingSiblingType(value === 'auto' ? null : (value as 'full' | 'half'));
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="auto">
+                    Auto-detect (based on shared parents)
+                  </SelectItem>
+                  <SelectItem value="full">
+                    Full Sibling (share both parents)
+                  </SelectItem>
+                  <SelectItem value="half">
+                    Half Sibling (share one parent)
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-sm text-muted-foreground mt-2">
+                Full siblings share both parents. Half siblings share one parent (same mother or same father).
+              </p>
+            </div>
+
+            <div className="flex gap-2 justify-end">
+              <Button 
+                variant="outline"
+                onClick={() => {
+                  setEditingRelationshipId(null);
+                  setEditingSiblingType(null);
+                }}
+                disabled={isUpdating}
+              >
+                Cancel
+              </Button>
+              <Button 
+                onClick={handleUpdateSiblingType}
+                disabled={isUpdating}
+              >
+                {isUpdating ? 'Updating...' : 'Update'}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Relationship Suggestions */}
       {suggestions.length > 0 && (

@@ -2,6 +2,7 @@
 import React from 'react';
 import { FamilyMember } from '@/types';
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Trash2 } from "lucide-react";
 import { familyRelationshipManager } from '@/services/familyRelationshipManager';
 import { toast } from '@/hooks/use-toast';
@@ -56,7 +57,21 @@ const MemberRelationships: React.FC<MemberRelationshipsProps> = ({ member, allMe
                 key={relation.id} 
                 className="flex items-center justify-between p-2 bg-white rounded-lg border border-heritage-purple/20"
               >
-                <span>{relativeName}</span>
+                <div className="flex items-center gap-2">
+                  <span>{relativeName}</span>
+                  {relation.type === 'sibling' && relation.siblingType && (
+                    <Badge 
+                      variant="outline" 
+                      className={`text-xs px-2 py-0.5 ${
+                        relation.siblingType === 'full' 
+                          ? 'bg-purple-50 text-purple-700 border-purple-300' 
+                          : 'bg-amber-50 text-amber-700 border-amber-300'
+                      }`}
+                    >
+                      {relation.siblingType === 'full' ? 'Full' : 'Half'}
+                    </Badge>
+                  )}
+                </div>
                 <Button 
                   variant="ghost" 
                   size="icon"

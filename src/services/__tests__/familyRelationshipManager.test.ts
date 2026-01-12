@@ -422,4 +422,569 @@ describe('FamilyRelationshipManager', () => {
       expect(result).toHaveLength(0)
     })
   })
+
+  describe('determineSiblingType', () => {
+    it('should detect full siblings (share both parents)', async () => {
+      const mockMembers = [
+        { id: 'sibling-1', first_name: 'John', last_name: 'Smith', birth_date: '1990-01-01', gender: 'male' },
+        { id: 'sibling-2', first_name: 'Jane', last_name: 'Smith', birth_date: '1992-01-01', gender: 'female' }
+      ]
+
+      let relationsCallCount = 0
+      const insertSelectBuilder = {
+        single: vi.fn().mockResolvedValue({
+          data: { id: 'rel-123', sibling_type: 'full' },
+          error: null
+        })
+      }
+      const insertBuilder = {
+        insert: vi.fn().mockReturnValue({
+          select: vi.fn().mockReturnValue(insertSelectBuilder)
+        })
+      }
+
+      // Mock for determineSiblingType queries
+      // The query is: .select('to_member_id').eq('from_member_id', id).eq('relation_type', 'parent')
+      const createParentQueryMock = (parents: string[]) => {
+        const mockEq2 = vi.fn().mockResolvedValue({
+          data: parents.map(id => ({ to_member_id: id })),
+          error: null
+        })
+        const mockEq1 = vi.fn().mockReturnValue({
+          eq: mockEq2
+        })
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: mockEq1
+          })
+        }
+      }
+
+      vi.mocked(supabase.from).mockImplementation((table: string) => {
+        if (table === 'family_members') {
+          return {
+            select: vi.fn().mockReturnThis(),
+            in: vi.fn().mockResolvedValue({
+              data: mockMembers,
+              error: null
+            })
+          } as any
+        }
+        if (table === 'relations') {
+          const callNum = ++relationsCallCount
+          if (callNum === 1) {
+            // checkExistingRelationship
+            return {
+              select: vi.fn().mockReturnThis(),
+              eq: vi.fn().mockReturnThis(),
+              maybeSingle: vi.fn().mockResolvedValue({
+                data: null,
+                error: null
+              })
+            } as any
+          }
+          if (callNum === 2) {
+            // determineSiblingType - first sibling's parents (both parents shared)
+            return createParentQueryMock(['parent-1', 'parent-2']) as any
+          }
+          if (callNum === 3) {
+            // determineSiblingType - second sibling's parents (both parents shared)
+            return createParentQueryMock(['parent-1', 'parent-2']) as any
+          }
+          // insert relationship
+          return insertBuilder as any
+        }
+        return {} as any
+      })
+
+      const request = {
+        fromMemberId: 'sibling-1',
+        toMemberId: 'sibling-2',
+        relationshipType: 'sibling' as const
+      }
+
+      const result = await familyRelationshipManager.createRelationship(request)
+
+      expect(result.success).toBe(true)
+      // Verify that sibling_type was included in the insert
+      expect(insertBuilder.insert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          sibling_type: 'full'
+        })
+      )
+    })
+
+    it('should detect half siblings (share one parent)', async () => {
+      const mockMembers = [
+        { id: 'sibling-1', first_name: 'John', last_name: 'Smith', birth_date: '1990-01-01', gender: 'male' },
+        { id: 'sibling-2', first_name: 'Jane', last_name: 'Doe', birth_date: '1992-01-01', gender: 'female' }
+      ]
+
+      let relationsCallCount = 0
+      const insertSelectBuilder = {
+        single: vi.fn().mockResolvedValue({
+          data: { id: 'rel-123', sibling_type: 'half' },
+          error: null
+        })
+      }
+      const insertBuilder = {
+        insert: vi.fn().mockReturnValue({
+          select: vi.fn().mockReturnValue(insertSelectBuilder)
+        })
+      }
+
+      const createParentQueryMock = (parents: string[]) => {
+        const mockEq2 = vi.fn().mockResolvedValue({
+          data: parents.map(id => ({ to_member_id: id })),
+          error: null
+        })
+        const mockEq1 = vi.fn().mockReturnValue({
+          eq: mockEq2
+        })
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: mockEq1
+          })
+        }
+      }
+
+      vi.mocked(supabase.from).mockImplementation((table: string) => {
+        if (table === 'family_members') {
+          return {
+            select: vi.fn().mockReturnThis(),
+            in: vi.fn().mockResolvedValue({
+              data: mockMembers,
+              error: null
+            })
+          } as any
+        }
+        if (table === 'relations') {
+          const callNum = ++relationsCallCount
+          if (callNum === 1) {
+            // checkExistingRelationship
+            return {
+              select: vi.fn().mockReturnThis(),
+              eq: vi.fn().mockReturnThis(),
+              maybeSingle: vi.fn().mockResolvedValue({
+                data: null,
+                error: null
+              })
+            } as any
+          }
+          if (callNum === 2) {
+            // determineSiblingType - first sibling's parents
+            return createParentQueryMock(['parent-1', 'parent-2']) as any
+          }
+          if (callNum === 3) {
+            // determineSiblingType - second sibling's parents (only shares parent-1)
+            return createParentQueryMock(['parent-1', 'parent-3']) as any
+          }
+          // insert relationship
+          return insertBuilder as any
+        }
+        return {} as any
+      })
+
+      const request = {
+        fromMemberId: 'sibling-1',
+        toMemberId: 'sibling-2',
+        relationshipType: 'sibling' as const
+      }
+
+      const result = await familyRelationshipManager.createRelationship(request)
+
+      expect(result.success).toBe(true)
+      // Verify that sibling_type was set to 'half'
+      expect(insertBuilder.insert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          sibling_type: 'half'
+        })
+      )
+    })
+
+    it('should return null when siblings have no shared parents', async () => {
+      const mockMembers = [
+        { id: 'sibling-1', first_name: 'John', last_name: 'Smith', birth_date: '1990-01-01', gender: 'male' },
+        { id: 'sibling-2', first_name: 'Jane', last_name: 'Doe', birth_date: '1992-01-01', gender: 'female' }
+      ]
+
+      let relationsCallCount = 0
+      const insertSelectBuilder = {
+        single: vi.fn().mockResolvedValue({
+          data: { id: 'rel-123', sibling_type: null },
+          error: null
+        })
+      }
+      const insertBuilder = {
+        insert: vi.fn().mockReturnValue({
+          select: vi.fn().mockReturnValue(insertSelectBuilder)
+        })
+      }
+
+      const createParentQueryMock = (parents: string[]) => {
+        const mockEq2 = vi.fn().mockResolvedValue({
+          data: parents.map(id => ({ to_member_id: id })),
+          error: null
+        })
+        const mockEq1 = vi.fn().mockReturnValue({
+          eq: mockEq2
+        })
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: mockEq1
+          })
+        }
+      }
+
+      vi.mocked(supabase.from).mockImplementation((table: string) => {
+        if (table === 'family_members') {
+          return {
+            select: vi.fn().mockReturnThis(),
+            in: vi.fn().mockResolvedValue({
+              data: mockMembers,
+              error: null
+            })
+          } as any
+        }
+        if (table === 'relations') {
+          const callNum = ++relationsCallCount
+          if (callNum === 1) {
+            // checkExistingRelationship
+            return {
+              select: vi.fn().mockReturnThis(),
+              eq: vi.fn().mockReturnThis(),
+              maybeSingle: vi.fn().mockResolvedValue({
+                data: null,
+                error: null
+              })
+            } as any
+          }
+          if (callNum === 2) {
+            // determineSiblingType - first sibling's parents
+            return createParentQueryMock(['parent-1', 'parent-2']) as any
+          }
+          if (callNum === 3) {
+            // determineSiblingType - second sibling's parents (completely different)
+            return createParentQueryMock(['parent-3', 'parent-4']) as any
+          }
+          // insert relationship
+          return insertBuilder as any
+        }
+        return {} as any
+      })
+
+      const request = {
+        fromMemberId: 'sibling-1',
+        toMemberId: 'sibling-2',
+        relationshipType: 'sibling' as const
+      }
+
+      const result = await familyRelationshipManager.createRelationship(request)
+
+      expect(result.success).toBe(true)
+      // When no shared parents, sibling_type should not be included (or be null)
+      expect(insertBuilder.insert).toHaveBeenCalled()
+    })
+  })
+
+  describe('updateRelationship', () => {
+    it('should update sibling type successfully', async () => {
+      let callCount = 0
+      const mockRelationship = {
+        id: 'rel-123',
+        from_member_id: 'sibling-1',
+        to_member_id: 'sibling-2',
+        relation_type: 'sibling',
+        sibling_type: null
+      }
+
+      vi.mocked(supabase.from).mockImplementation((table: string) => {
+        if (table === 'relations') {
+          callCount++
+          if (callCount === 1) {
+            // Fetch relationship
+            return {
+              select: vi.fn().mockReturnThis(),
+              eq: vi.fn().mockReturnThis(),
+              single: vi.fn().mockResolvedValue({
+                data: mockRelationship,
+                error: null
+              })
+            } as any
+          }
+          if (callCount === 2) {
+            // Update main relationship
+            return {
+              update: vi.fn().mockReturnThis(),
+              eq: vi.fn().mockReturnThis(),
+              select: vi.fn().mockReturnThis(),
+              single: vi.fn().mockResolvedValue({
+                data: { ...mockRelationship, sibling_type: 'full' },
+                error: null
+              })
+            } as any
+          }
+          if (callCount === 3) {
+            // Update reciprocal relationship
+            return {
+              update: vi.fn().mockReturnThis(),
+              eq: vi.fn().mockReturnThis().mockReturnThis().mockReturnThis(),
+              select: vi.fn().mockResolvedValue({
+                data: [{ ...mockRelationship, sibling_type: 'full' }],
+                error: null
+              })
+            } as any
+          }
+        }
+        return {} as any
+      })
+
+      const result = await familyRelationshipManager.updateRelationship('rel-123', {
+        siblingType: 'full'
+      })
+
+      expect(result.success).toBe(true)
+    })
+
+    it('should update sibling type to half', async () => {
+      let callCount = 0
+      const mockRelationship = {
+        id: 'rel-123',
+        from_member_id: 'sibling-1',
+        to_member_id: 'sibling-2',
+        relation_type: 'sibling',
+        sibling_type: 'full'
+      }
+
+      vi.mocked(supabase.from).mockImplementation((table: string) => {
+        if (table === 'relations') {
+          callCount++
+          if (callCount === 1) {
+            // Fetch relationship
+            return {
+              select: vi.fn().mockReturnThis(),
+              eq: vi.fn().mockReturnThis(),
+              single: vi.fn().mockResolvedValue({
+                data: mockRelationship,
+                error: null
+              })
+            } as any
+          }
+          if (callCount === 2) {
+            // Update main relationship
+            return {
+              update: vi.fn().mockReturnThis(),
+              eq: vi.fn().mockReturnThis(),
+              select: vi.fn().mockReturnThis(),
+              single: vi.fn().mockResolvedValue({
+                data: { ...mockRelationship, sibling_type: 'half' },
+                error: null
+              })
+            } as any
+          }
+          if (callCount === 3) {
+            // Update reciprocal relationship
+            return {
+              update: vi.fn().mockReturnThis(),
+              eq: vi.fn().mockReturnThis().mockReturnThis().mockReturnThis(),
+              select: vi.fn().mockResolvedValue({
+                data: [{ ...mockRelationship, sibling_type: 'half' }],
+                error: null
+              })
+            } as any
+          }
+        }
+        return {} as any
+      })
+
+      const result = await familyRelationshipManager.updateRelationship('rel-123', {
+        siblingType: 'half'
+      })
+
+      expect(result.success).toBe(true)
+    })
+
+    it('should auto-detect sibling type when set to null', async () => {
+      let callCount = 0
+      const mockRelationship = {
+        id: 'rel-123',
+        from_member_id: 'sibling-1',
+        to_member_id: 'sibling-2',
+        relation_type: 'sibling',
+        sibling_type: 'half'
+      }
+
+      const createParentQueryMock = (parents: string[]) => {
+        const mockEq2 = vi.fn().mockResolvedValue({
+          data: parents.map(id => ({ to_member_id: id })),
+          error: null
+        })
+        const mockEq1 = vi.fn().mockReturnValue({
+          eq: mockEq2
+        })
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: mockEq1
+          })
+        }
+      }
+
+      vi.mocked(supabase.from).mockImplementation((table: string) => {
+        if (table === 'relations') {
+          callCount++
+          if (callCount === 1) {
+            // Fetch relationship
+            return {
+              select: vi.fn().mockReturnThis(),
+              eq: vi.fn().mockReturnThis(),
+              single: vi.fn().mockResolvedValue({
+                data: mockRelationship,
+                error: null
+              })
+            } as any
+          }
+          if (callCount === 2) {
+            // determineSiblingType - first sibling's parents
+            return createParentQueryMock(['parent-1', 'parent-2']) as any
+          }
+          if (callCount === 3) {
+            // determineSiblingType - second sibling's parents
+            return createParentQueryMock(['parent-1', 'parent-2']) as any
+          }
+          if (callCount === 4) {
+            // Update main relationship
+            return {
+              update: vi.fn().mockReturnThis(),
+              eq: vi.fn().mockReturnThis(),
+              select: vi.fn().mockReturnThis(),
+              single: vi.fn().mockResolvedValue({
+                data: { ...mockRelationship, sibling_type: 'full' },
+                error: null
+              })
+            } as any
+          }
+          if (callCount === 5) {
+            // Update reciprocal relationship
+            return {
+              update: vi.fn().mockReturnThis(),
+              eq: vi.fn().mockReturnThis().mockReturnThis().mockReturnThis(),
+              select: vi.fn().mockResolvedValue({
+                data: [{ ...mockRelationship, sibling_type: 'full' }],
+                error: null
+              })
+            } as any
+          }
+        }
+        return {} as any
+      })
+
+      const result = await familyRelationshipManager.updateRelationship('rel-123', {
+        siblingType: null
+      })
+
+      expect(result.success).toBe(true)
+    })
+
+    it('should return error when relationship not found', async () => {
+      vi.mocked(supabase.from).mockImplementation((table: string) => {
+        if (table === 'relations') {
+          return {
+            select: vi.fn().mockReturnThis(),
+            eq: vi.fn().mockReturnThis(),
+            single: vi.fn().mockResolvedValue({
+              data: null,
+              error: { message: 'Not found' }
+            })
+          } as any
+        }
+        return {} as any
+      })
+
+      const result = await familyRelationshipManager.updateRelationship('rel-123', {
+        siblingType: 'full'
+      })
+
+      expect(result.success).toBe(false)
+      expect(result.error).toBe('Relationship not found')
+    })
+
+    it('should return error when trying to update non-sibling relationship', async () => {
+      const mockRelationship = {
+        id: 'rel-123',
+        from_member_id: 'parent-1',
+        to_member_id: 'child-1',
+        relation_type: 'parent',
+        sibling_type: null
+      }
+
+      vi.mocked(supabase.from).mockImplementation((table: string) => {
+        if (table === 'relations') {
+          return {
+            select: vi.fn().mockReturnThis(),
+            eq: vi.fn().mockReturnThis(),
+            single: vi.fn().mockResolvedValue({
+              data: mockRelationship,
+              error: null
+            })
+          } as any
+        }
+        return {} as any
+      })
+
+      const result = await familyRelationshipManager.updateRelationship('rel-123', {
+        siblingType: 'full'
+      })
+
+      expect(result.success).toBe(false)
+      expect(result.error).toBe('Can only update sibling_type for sibling relationships')
+    })
+
+    it('should handle database errors during update', async () => {
+      let callCount = 0
+      const mockRelationship = {
+        id: 'rel-123',
+        from_member_id: 'sibling-1',
+        to_member_id: 'sibling-2',
+        relation_type: 'sibling',
+        sibling_type: null
+      }
+
+      vi.mocked(supabase.from).mockImplementation((table: string) => {
+        if (table === 'relations') {
+          callCount++
+          if (callCount === 1) {
+            // Fetch relationship
+            return {
+              select: vi.fn().mockReturnThis(),
+              eq: vi.fn().mockReturnThis(),
+              single: vi.fn().mockResolvedValue({
+                data: mockRelationship,
+                error: null
+              })
+            } as any
+          }
+          if (callCount === 2) {
+            // Update main relationship - return error
+            return {
+              update: vi.fn().mockReturnThis(),
+              eq: vi.fn().mockReturnThis(),
+              select: vi.fn().mockReturnThis(),
+              single: vi.fn().mockResolvedValue({
+                data: null,
+                error: { message: 'Database error' }
+              })
+            } as any
+          }
+        }
+        return {} as any
+      })
+
+      const result = await familyRelationshipManager.updateRelationship('rel-123', {
+        siblingType: 'full'
+      })
+
+      expect(result.success).toBe(false)
+      expect(result.error).toContain('Failed to update relationship')
+    })
+  })
 })

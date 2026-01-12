@@ -2,7 +2,8 @@ import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 
 // Determine which Supabase instance to use based on VITE_SUPABASE_MODE
-const SUPABASE_MODE = import.meta.env.VITE_SUPABASE_MODE || 'local';
+// In production (Vercel), default to 'remote' if not explicitly set
+const SUPABASE_MODE = import.meta.env.VITE_SUPABASE_MODE || (import.meta.env.PROD ? 'remote' : 'local');
 
 // Get configuration based on mode
 const getSupabaseConfig = () => {
@@ -49,7 +50,10 @@ if (!config.url) {
 }
 
 if (!config.anonKey) {
-  throw new Error(`Missing Supabase Anon Key. Please set VITE_SUPABASE_ANON_KEY_${SUPABASE_MODE.toUpperCase()} or VITE_SUPABASE_ANON_KEY in your .env.local file.`);
+  const envVarName = SUPABASE_MODE === 'remote' 
+    ? 'VITE_SUPABASE_ANON_KEY_REMOTE or VITE_SUPABASE_ANON_KEY' 
+    : 'VITE_SUPABASE_ANON_KEY_LOCAL or VITE_SUPABASE_ANON_KEY';
+  throw new Error(`Missing Supabase Anon Key. Please set ${envVarName} in your environment variables. For production, ensure VITE_SUPABASE_MODE=remote and VITE_SUPABASE_ANON_KEY_REMOTE is set.`);
 }
 
 // CRITICAL: Clean up old sessions BEFORE creating the client

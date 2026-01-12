@@ -197,14 +197,27 @@ export const buildTreeEdges = (
             markerEnd = 'url(#arrow-parent)';
             break;
           case 'sibling':
-            edgeStyle = { 
-              stroke: '#9333ea', 
-              strokeWidth: 2.5, 
-              strokeDasharray: '6,3',
-              strokeLinecap: 'round' as const,
-              strokeLinejoin: 'round' as const,
-              strokeOpacity: 0.8
-            };
+            // Different colors for full vs half siblings
+            if (relation.siblingType === 'half') {
+              edgeStyle = { 
+                stroke: '#f59e0b', // Amber-500 - half siblings
+                strokeWidth: 2.5, 
+                strokeDasharray: '4,4',
+                strokeLinecap: 'round' as const,
+                strokeLinejoin: 'round' as const,
+                strokeOpacity: 0.8
+              };
+            } else {
+              // Full siblings (default) or undefined (fallback)
+              edgeStyle = { 
+                stroke: '#9333ea', // Purple-600 - full siblings
+                strokeWidth: 2.5, 
+                strokeDasharray: '6,3',
+                strokeLinecap: 'round' as const,
+                strokeLinejoin: 'round' as const,
+                strokeOpacity: 0.8
+              };
+            }
             markerEnd = 'url(#arrow-default)';
             break;
           default:
@@ -284,6 +297,7 @@ export const buildTreeEdges = (
           markerEnd,
           data: {
             relationshipType: relationshipType as 'parent' | 'child' | 'spouse' | 'sibling',
+            siblingType: relationshipType === 'sibling' ? relation.siblingType : undefined,
             mergeInfo
           }
         };

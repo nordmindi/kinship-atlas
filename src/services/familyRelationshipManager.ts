@@ -296,11 +296,22 @@ class FamilyRelationshipManager {
       // Determine whether the metadata column is available before inserting
       const metadataSupported = Boolean(request.metadata) && await this.supportsMetadataColumn();
 
-      const basePayload = {
+      // For sibling relationships, determine if they are full or half siblings
+      let siblingType: 'full' | 'half' | null = null;
+      if (request.relationshipType === 'sibling') {
+        siblingType = await this.determineSiblingType(request.fromMemberId, request.toMemberId);
+      }
+
+      const basePayload: Record<string, unknown> = {
         from_member_id: request.fromMemberId,
         to_member_id: request.toMemberId,
         relation_type: request.relationshipType
       };
+
+      // Add sibling_type if it's a sibling relationship
+      if (siblingType) {
+        basePayload.sibling_type = siblingType;
+      }
 
       const insertPayload = metadataSupported
         ? { ...basePayload, metadata: request.metadata }
@@ -469,6 +480,113 @@ class FamilyRelationshipManager {
 
     } catch (error) {
       console.error('Error deleting relationship:', error);
+      return {
+        success: false,
+        error: 'An unexpected error occurred'
+      };
+    }
+  }
+
+  /**
+   * Update a relationship between two family members
+   * Currently supports updating sibling_type for sibling relationships
+   */
+  async updateRelationship(
+    relationshipId: string, 
+    updates: { siblingType?: 'full' | 'half' | null }
+  ): Promise<{ success: boolean; error?: string }> {
+    try {
+      // Get the relationship to verify it exists
+      const { data: relationship, error: fetchError } = await supabase
+        .from('relations')
+        .select('*')
+        .eq('id', relationshipId)
+        .single();
+
+      if (fetchError || !relationship) {
+        console.error('❌ Relationship not found:', relationshipId, fetchError);
+        return {
+          success: false,
+          error: 'Relationship not found'
+        };
+      }
+
+      // Validate that we're updating a sibling relationship if siblingType is provided
+      if (updates.siblingType !== undefined && relationship.relation_type !== 'sibling') {
+        return {
+          success: false,
+          error: 'Can only update sibling_type for sibling relationships'
+        };
+      }
+
+      // If updating sibling type and it's null, recalculate it
+      let siblingType = updates.siblingType;
+      if (updates.siblingType === null && relationship.relation_type === 'sibling') {
+        siblingType = await this.determineSiblingType(
+          relationship.from_member_id,
+          relationship.to_member_id
+        );
+      }
+
+      // Build update payload
+      const updatePayload: Record<string, unknown> = {};
+      if (siblingType !== undefined) {
+        updatePayload.sibling_type = siblingType;
+      }
+
+      console.log('🔄 Updating relationship:', {
+        relationshipId,
+        updatePayload,
+        currentRelationship: relationship
+      });
+
+      // Update the relationship
+      const { data: updatedData, error: updateError } = await supabase
+        .from('relations')
+        .update(updatePayload)
+        .eq('id', relationshipId)
+        .select()
+        .single();
+
+      if (updateError) {
+        console.error('❌ Failed to update relationship:', updateError);
+        return {
+          success: false,
+          error: `Failed to update relationship: ${updateError.message}`
+        };
+      }
+
+      console.log('✅ Relationship updated:', updatedData);
+
+      // Also update the reciprocal relationship if it exists
+      if (siblingType !== undefined && relationship.relation_type === 'sibling') {
+        console.log('🔄 Updating reciprocal relationship:', {
+          from: relationship.to_member_id,
+          to: relationship.from_member_id,
+          siblingType
+        });
+
+        const { data: reciprocalData, error: reciprocalUpdateError } = await supabase
+          .from('relations')
+          .update({ sibling_type: siblingType })
+          .eq('from_member_id', relationship.to_member_id)
+          .eq('to_member_id', relationship.from_member_id)
+          .eq('relation_type', 'sibling')
+          .select();
+
+        if (reciprocalUpdateError) {
+          // Log but don't fail - the main relationship was updated
+          console.warn('⚠️ Could not update reciprocal relationship:', reciprocalUpdateError);
+        } else {
+          console.log('✅ Reciprocal relationship updated:', reciprocalData);
+        }
+      }
+
+      console.log('✅ Relationship updated successfully');
+      return { success: true };
+
+    } catch (error) {
+      console.error('Error updating relationship:', error);
       return {
         success: false,
         error: 'An unexpected error occurred'
@@ -840,6 +958,57 @@ class FamilyRelationshipManager {
         return 'sibling';
       default:
         return null;
+    }
+  }
+
+  /**
+   * Determine if two siblings are full siblings (share both parents) or half siblings (share one parent)
+   */
+  private async determineSiblingType(member1Id: string, member2Id: string): Promise<'full' | 'half' | null> {
+    try {
+      // Get all parent relationships for both members
+      const { data: relations1, error: error1 } = await supabase
+        .from('relations')
+        .select('to_member_id')
+        .eq('from_member_id', member1Id)
+        .eq('relation_type', 'parent');
+
+      const { data: relations2, error: error2 } = await supabase
+        .from('relations')
+        .select('to_member_id')
+        .eq('from_member_id', member2Id)
+        .eq('relation_type', 'parent');
+
+      if (error1 || error2 || !relations1 || !relations2) {
+        console.warn('Error fetching parent relationships for sibling type determination');
+        return null;
+      }
+
+      // Get parent IDs for both members
+      const parents1 = new Set(relations1.map(r => r.to_member_id));
+      const parents2 = new Set(relations2.map(r => r.to_member_id));
+
+      // If either member has no parents, we can't determine the type
+      if (parents1.size === 0 || parents2.size === 0) {
+        return null;
+      }
+
+      // Count how many parents they share
+      const sharedParents = [...parents1].filter(p => parents2.has(p));
+
+      if (sharedParents.length === 0) {
+        // No shared parents - this shouldn't happen for siblings, but return null
+        return null;
+      } else if (sharedParents.length === 1) {
+        // Share one parent - half siblings
+        return 'half';
+      } else {
+        // Share both parents (or more than 2, which is unusual but possible) - full siblings
+        return 'full';
+      }
+    } catch (error) {
+      console.error('Error determining sibling type:', error);
+      return null;
     }
   }
 }

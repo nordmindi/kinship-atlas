@@ -248,13 +248,25 @@ const FamilyRelationshipEdge = ({
           strokeOpacity: 0.9
         };
       case 'sibling':
-        return { 
-          ...baseStyle, 
-          stroke: '#9333ea', // Purple-600 - shared bond
-          strokeWidth: 2.5,
-          strokeDasharray: '6,3',
-          strokeOpacity: 0.8
-        };
+        // Different colors for full vs half siblings
+        if (data?.siblingType === 'half') {
+          return { 
+            ...baseStyle, 
+            stroke: '#f59e0b', // Amber-500 - half siblings (different color)
+            strokeWidth: 2.5,
+            strokeDasharray: '4,4',
+            strokeOpacity: 0.8
+          };
+        } else {
+          // Full siblings (default) or undefined (fallback)
+          return { 
+            ...baseStyle, 
+            stroke: '#9333ea', // Purple-600 - full siblings (shared bond)
+            strokeWidth: 2.5,
+            strokeDasharray: '6,3',
+            strokeOpacity: 0.8
+          };
+        }
       default:
         return { 
           ...baseStyle, 
