@@ -15,8 +15,10 @@ import {
   Users2,
   Plus,
   X,
-  MapPin
+  MapPin,
+  Users
 } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
 import { FamilyMember } from '@/types';
 import { getFamilyMembers } from '@/services/supabaseService';
 import { familyMemberService } from '@/services/familyMemberService';
@@ -44,6 +46,11 @@ const AddRelationshipDialog: React.FC<AddRelationshipDialogProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [activeTab, setActiveTab] = useState<'existing' | 'new'>('existing');
+  const [addBothParents, setAddBothParents] = useState(false);
+  const [selectedMother, setSelectedMother] = useState<FamilyMember | null>(null);
+  const [selectedFather, setSelectedFather] = useState<FamilyMember | null>(null);
+  const [searchQueryMother, setSearchQueryMother] = useState('');
+  const [searchQueryFather, setSearchQueryFather] = useState('');
 
   // New member form state
   const [newMemberForm, setNewMemberForm] = useState({
@@ -53,6 +60,25 @@ const AddRelationshipDialog: React.FC<AddRelationshipDialogProps> = ({
     deathDate: '',
     birthPlace: '',
     gender: 'other' as 'male' | 'female' | 'other'
+  });
+
+  // Separate forms for mother and father when adding both
+  const [motherForm, setMotherForm] = useState({
+    firstName: '',
+    lastName: '',
+    birthDate: '',
+    deathDate: '',
+    birthPlace: '',
+    gender: 'female' as 'male' | 'female' | 'other'
+  });
+
+  const [fatherForm, setFatherForm] = useState({
+    firstName: '',
+    lastName: '',
+    birthDate: '',
+    deathDate: '',
+    birthPlace: '',
+    gender: 'male' as 'male' | 'female' | 'other'
   });
 
   useEffect(() => {
@@ -112,6 +138,38 @@ const AddRelationshipDialog: React.FC<AddRelationshipDialogProps> = ({
     
     const fullName = `${member.firstName} ${member.lastName}`.toLowerCase();
     return fullName.includes(searchQuery.toLowerCase());
+  });
+
+  // Filter members for mother selection
+  const filteredMembersForMother = allMembers.filter(member => {
+    if (member.id === currentMember.id) return false;
+    if (selectedFather && member.id === selectedFather.id) return false; // Don't show father as mother option
+    
+    const currentMemberHasRelation = currentMember.relations.find(r => r.personId === member.id);
+    const targetMemberHasRelation = member.relations.find(r => r.personId === currentMember.id);
+    
+    if (currentMemberHasRelation || targetMemberHasRelation) return false;
+    
+    if (!searchQueryMother) return true;
+    
+    const fullName = `${member.firstName} ${member.lastName}`.toLowerCase();
+    return fullName.includes(searchQueryMother.toLowerCase());
+  });
+
+  // Filter members for father selection
+  const filteredMembersForFather = allMembers.filter(member => {
+    if (member.id === currentMember.id) return false;
+    if (selectedMother && member.id === selectedMother.id) return false; // Don't show mother as father option
+    
+    const currentMemberHasRelation = currentMember.relations.find(r => r.personId === member.id);
+    const targetMemberHasRelation = member.relations.find(r => r.personId === currentMember.id);
+    
+    if (currentMemberHasRelation || targetMemberHasRelation) return false;
+    
+    if (!searchQueryFather) return true;
+    
+    const fullName = `${member.firstName} ${member.lastName}`.toLowerCase();
+    return fullName.includes(searchQueryFather.toLowerCase());
   });
 
   const handleAddExistingMember = async (member: FamilyMember) => {
@@ -177,7 +235,184 @@ const AddRelationshipDialog: React.FC<AddRelationshipDialogProps> = ({
     }
   };
 
+  const handleAddBothParents = async () => {
+    if (!selectedMother && !selectedFather) {
+      toast({
+        title: "Error",
+        description: "Please select at least one parent.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsCreating(true);
+    try {
+      const results = await Promise.allSettled(
+        [
+          selectedMother && (async () => {
+            const direction = resolveRelationshipDirection(
+              currentMember.id,
+              selectedMother.id,
+              'parent'
+            );
+            return await familyRelationshipManager.createRelationshipSmart(
+              direction.fromMemberId,
+              direction.toMemberId,
+              direction.relationshipType
+            );
+          })(),
+          selectedFather && (async () => {
+            const direction = resolveRelationshipDirection(
+              currentMember.id,
+              selectedFather.id,
+              'parent'
+            );
+            return await familyRelationshipManager.createRelationshipSmart(
+              direction.fromMemberId,
+              direction.toMemberId,
+              direction.relationshipType
+            );
+          })()
+        ].filter(Boolean)
+      );
+
+      const successful = results.filter(r => r.status === 'fulfilled' && r.value.success).length;
+      const failed = results.length - successful;
+
+      if (successful > 0) {
+        let message = `Successfully added ${successful} parent(s)`;
+        if (failed > 0) {
+          message += `. ${failed} relationship(s) could not be created.`;
+        }
+        toast({
+          title: "Success",
+          description: message,
+        });
+        onRelationshipAdded();
+        onClose();
+      } else {
+        toast({
+          title: "Failed to create relationships",
+          description: "Could not add parents. Please try again.",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      console.error('Error adding parents:', error);
+      toast({
+        title: "Error",
+        description: "Failed to add parents. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsCreating(false);
+    }
+  };
+
   const handleCreateNewMember = async () => {
+    if (addBothParents && relationshipType === 'parent') {
+      // Handle creating both parents
+      if ((!motherForm.firstName || !motherForm.lastName) && (!fatherForm.firstName || !fatherForm.lastName)) {
+        toast({
+          title: "Error",
+          description: "Please provide information for at least one parent.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      setIsCreating(true);
+      try {
+        const results = await Promise.allSettled(
+          [
+            motherForm.firstName && motherForm.lastName && (async () => {
+              const memberData = {
+                firstName: motherForm.firstName,
+                lastName: motherForm.lastName,
+                birthDate: motherForm.birthDate || undefined,
+                deathDate: motherForm.deathDate || undefined,
+                birthPlace: motherForm.birthPlace || undefined,
+                gender: 'female' as const,
+              };
+              const result = await familyMemberService.createFamilyMember(memberData);
+              if (result.success && result.member) {
+                const direction = resolveRelationshipDirection(
+                  currentMember.id,
+                  result.member.id,
+                  'parent'
+                );
+                const relationshipResult = await familyRelationshipManager.createRelationshipSmart(
+                  direction.fromMemberId,
+                  direction.toMemberId,
+                  direction.relationshipType
+                );
+                return { member: result.member, relationship: relationshipResult };
+              }
+              return null;
+            })(),
+            fatherForm.firstName && fatherForm.lastName && (async () => {
+              const memberData = {
+                firstName: fatherForm.firstName,
+                lastName: fatherForm.lastName,
+                birthDate: fatherForm.birthDate || undefined,
+                deathDate: fatherForm.deathDate || undefined,
+                birthPlace: fatherForm.birthPlace || undefined,
+                gender: 'male' as const,
+              };
+              const result = await familyMemberService.createFamilyMember(memberData);
+              if (result.success && result.member) {
+                const direction = resolveRelationshipDirection(
+                  currentMember.id,
+                  result.member.id,
+                  'parent'
+                );
+                const relationshipResult = await familyRelationshipManager.createRelationshipSmart(
+                  direction.fromMemberId,
+                  direction.toMemberId,
+                  direction.relationshipType
+                );
+                return { member: result.member, relationship: relationshipResult };
+              }
+              return null;
+            })()
+          ].filter(Boolean)
+        );
+
+        const successful = results.filter(r => 
+          r.status === 'fulfilled' && 
+          r.value && 
+          r.value.relationship && 
+          r.value.relationship.success
+        ).length;
+
+        if (successful > 0) {
+          toast({
+            title: "Success",
+            description: `Successfully created and added ${successful} parent(s) to ${currentMember.firstName} ${currentMember.lastName}.`,
+          });
+          onRelationshipAdded();
+          onClose();
+        } else {
+          toast({
+            title: "Error",
+            description: "Failed to create parents. Please try again.",
+            variant: "destructive"
+          });
+        }
+      } catch (error) {
+        console.error('Error creating parents:', error);
+        toast({
+          title: "Error",
+          description: "Failed to create parents. Please try again.",
+          variant: "destructive"
+        });
+      } finally {
+        setIsCreating(false);
+      }
+      return;
+    }
+
+    // Original single member creation logic
     if (!newMemberForm.firstName || !newMemberForm.lastName) {
       toast({
         title: "Error",
@@ -276,7 +511,12 @@ const AddRelationshipDialog: React.FC<AddRelationshipDialogProps> = ({
 
   const handleClose = () => {
     setSearchQuery('');
+    setSearchQueryMother('');
+    setSearchQueryFather('');
     setActiveTab('existing');
+    setAddBothParents(false);
+    setSelectedMother(null);
+    setSelectedFather(null);
     setNewMemberForm({
       firstName: '',
       lastName: '',
@@ -284,6 +524,22 @@ const AddRelationshipDialog: React.FC<AddRelationshipDialogProps> = ({
       deathDate: '',
       birthPlace: '',
       gender: 'other'
+    });
+    setMotherForm({
+      firstName: '',
+      lastName: '',
+      birthDate: '',
+      deathDate: '',
+      birthPlace: '',
+      gender: 'female'
+    });
+    setFatherForm({
+      firstName: '',
+      lastName: '',
+      birthDate: '',
+      deathDate: '',
+      birthPlace: '',
+      gender: 'male'
     });
     onClose();
   };
@@ -309,17 +565,149 @@ const AddRelationshipDialog: React.FC<AddRelationshipDialogProps> = ({
 
           <TabsContent value="existing" className="flex-1 flex flex-col">
             <div className="space-y-4">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-                <Input
-                  placeholder="Search family members..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
+              {relationshipType === 'parent' && (
+                <div className="flex items-center space-x-2 p-3 bg-muted/30 rounded-lg border">
+                  <Checkbox
+                    id="addBothParents"
+                    checked={addBothParents}
+                    onCheckedChange={(checked) => {
+                      setAddBothParents(checked as boolean);
+                      if (!checked) {
+                        setSelectedMother(null);
+                        setSelectedFather(null);
+                        setSearchQueryMother('');
+                        setSearchQueryFather('');
+                      }
+                    }}
+                  />
+                  <label
+                    htmlFor="addBothParents"
+                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer flex items-center gap-2"
+                  >
+                    <Users className="h-4 w-4" />
+                    Add both parents (mother and father)
+                  </label>
+                </div>
+              )}
 
-              <div className="flex-1 overflow-auto space-y-2">
+              {addBothParents && relationshipType === 'parent' ? (
+                <div className="space-y-4">
+                  {/* Mother Selection */}
+                  <div>
+                    <Label className="mb-2 block">Select Mother (Optional)</Label>
+                    <div className="relative mb-2">
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+                      <Input
+                        placeholder="Search for mother..."
+                        value={searchQueryMother}
+                        onChange={(e) => setSearchQueryMother(e.target.value)}
+                        className="pl-10"
+                      />
+                    </div>
+                    {selectedMother && (
+                      <Card className="p-2 mb-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-medium">
+                            {selectedMother.firstName} {selectedMother.lastName}
+                          </span>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => setSelectedMother(null)}
+                            className="h-6 w-6 p-0"
+                          >
+                            <X className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      </Card>
+                    )}
+                    <div className="max-h-40 overflow-auto space-y-2">
+                      {filteredMembersForMother.map(member => (
+                        <Card
+                          key={member.id}
+                          className="cursor-pointer hover:shadow-md transition-shadow p-2"
+                          onClick={() => setSelectedMother(member)}
+                        >
+                          <div className="text-sm font-medium">
+                            {member.firstName} {member.lastName}
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            {getYearRange(member.birthDate, member.deathDate)}
+                          </div>
+                        </Card>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Father Selection */}
+                  <div>
+                    <Label className="mb-2 block">Select Father (Optional)</Label>
+                    <div className="relative mb-2">
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+                      <Input
+                        placeholder="Search for father..."
+                        value={searchQueryFather}
+                        onChange={(e) => setSearchQueryFather(e.target.value)}
+                        className="pl-10"
+                      />
+                    </div>
+                    {selectedFather && (
+                      <Card className="p-2 mb-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-medium">
+                            {selectedFather.firstName} {selectedFather.lastName}
+                          </span>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => setSelectedFather(null)}
+                            className="h-6 w-6 p-0"
+                          >
+                            <X className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      </Card>
+                    )}
+                    <div className="max-h-40 overflow-auto space-y-2">
+                      {filteredMembersForFather.map(member => (
+                        <Card
+                          key={member.id}
+                          className="cursor-pointer hover:shadow-md transition-shadow p-2"
+                          onClick={() => setSelectedFather(member)}
+                        >
+                          <div className="text-sm font-medium">
+                            {member.firstName} {member.lastName}
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            {getYearRange(member.birthDate, member.deathDate)}
+                          </div>
+                        </Card>
+                      ))}
+                    </div>
+                  </div>
+
+                  <Button
+                    onClick={handleAddBothParents}
+                    disabled={isCreating || (!selectedMother && !selectedFather)}
+                    className="w-full"
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    {isCreating ? 'Adding...' : 'Add Parent(s)'}
+                  </Button>
+                </div>
+              ) : (
+                <>
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+                    <Input
+                      placeholder="Search family members..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="pl-10"
+                    />
+                  </div>
+
+                  <div className="flex-1 overflow-auto space-y-2">
                 {isLoading ? (
                   <div className="text-center py-4">
                     <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary mx-auto mb-2"></div>
@@ -384,12 +772,172 @@ const AddRelationshipDialog: React.FC<AddRelationshipDialogProps> = ({
                   </div>
                 )}
               </div>
+                </>
+              )}
             </div>
           </TabsContent>
 
           <TabsContent value="new" className="flex-1 flex flex-col">
             <div className="space-y-4 flex-1">
-              <div className="grid grid-cols-2 gap-3">
+              {relationshipType === 'parent' && (
+                <div className="flex items-center space-x-2 p-3 bg-muted/30 rounded-lg border">
+                  <Checkbox
+                    id="addBothParentsNew"
+                    checked={addBothParents}
+                    onCheckedChange={(checked) => {
+                      setAddBothParents(checked as boolean);
+                      if (!checked) {
+                        setMotherForm({
+                          firstName: '',
+                          lastName: '',
+                          birthDate: '',
+                          deathDate: '',
+                          birthPlace: '',
+                          gender: 'female'
+                        });
+                        setFatherForm({
+                          firstName: '',
+                          lastName: '',
+                          birthDate: '',
+                          deathDate: '',
+                          birthPlace: '',
+                          gender: 'male'
+                        });
+                      }
+                    }}
+                  />
+                  <label
+                    htmlFor="addBothParentsNew"
+                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer flex items-center gap-2"
+                  >
+                    <Users className="h-4 w-4" />
+                    Create both parents (mother and father)
+                  </label>
+                </div>
+              )}
+
+              {addBothParents && relationshipType === 'parent' ? (
+                <div className="space-y-6">
+                  {/* Mother Form */}
+                  <div className="border rounded-lg p-4 space-y-3">
+                    <h3 className="font-medium text-sm mb-3">Mother Information</h3>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <Label htmlFor="motherFirstName">First Name</Label>
+                        <Input
+                          id="motherFirstName"
+                          value={motherForm.firstName}
+                          onChange={(e) => setMotherForm(prev => ({ ...prev, firstName: e.target.value }))}
+                          placeholder="First name"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="motherLastName">Last Name</Label>
+                        <Input
+                          id="motherLastName"
+                          value={motherForm.lastName}
+                          onChange={(e) => setMotherForm(prev => ({ ...prev, lastName: e.target.value }))}
+                          placeholder="Last name"
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <Label htmlFor="motherBirthDate">Birth Date</Label>
+                        <Input
+                          id="motherBirthDate"
+                          type="date"
+                          value={motherForm.birthDate}
+                          onChange={(e) => setMotherForm(prev => ({ ...prev, birthDate: e.target.value }))}
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="motherDeathDate">Death Date</Label>
+                        <Input
+                          id="motherDeathDate"
+                          type="date"
+                          value={motherForm.deathDate}
+                          onChange={(e) => setMotherForm(prev => ({ ...prev, deathDate: e.target.value }))}
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <Label htmlFor="motherBirthPlace">Birth Place</Label>
+                      <Input
+                        id="motherBirthPlace"
+                        value={motherForm.birthPlace}
+                        onChange={(e) => setMotherForm(prev => ({ ...prev, birthPlace: e.target.value }))}
+                        placeholder="City, Country"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Father Form */}
+                  <div className="border rounded-lg p-4 space-y-3">
+                    <h3 className="font-medium text-sm mb-3">Father Information</h3>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <Label htmlFor="fatherFirstName">First Name</Label>
+                        <Input
+                          id="fatherFirstName"
+                          value={fatherForm.firstName}
+                          onChange={(e) => setFatherForm(prev => ({ ...prev, firstName: e.target.value }))}
+                          placeholder="First name"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="fatherLastName">Last Name</Label>
+                        <Input
+                          id="fatherLastName"
+                          value={fatherForm.lastName}
+                          onChange={(e) => setFatherForm(prev => ({ ...prev, lastName: e.target.value }))}
+                          placeholder="Last name"
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <Label htmlFor="fatherBirthDate">Birth Date</Label>
+                        <Input
+                          id="fatherBirthDate"
+                          type="date"
+                          value={fatherForm.birthDate}
+                          onChange={(e) => setFatherForm(prev => ({ ...prev, birthDate: e.target.value }))}
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="fatherDeathDate">Death Date</Label>
+                        <Input
+                          id="fatherDeathDate"
+                          type="date"
+                          value={fatherForm.deathDate}
+                          onChange={(e) => setFatherForm(prev => ({ ...prev, deathDate: e.target.value }))}
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <Label htmlFor="fatherBirthPlace">Birth Place</Label>
+                      <Input
+                        id="fatherBirthPlace"
+                        value={fatherForm.birthPlace}
+                        onChange={(e) => setFatherForm(prev => ({ ...prev, birthPlace: e.target.value }))}
+                        placeholder="City, Country"
+                      />
+                    </div>
+                  </div>
+
+                  <Button
+                    onClick={handleCreateNewMember}
+                    disabled={isCreating || ((!motherForm.firstName || !motherForm.lastName) && (!fatherForm.firstName || !fatherForm.lastName))}
+                    className="w-full"
+                  >
+                    <UserPlus className="h-4 w-4 mr-2" />
+                    {isCreating ? 'Creating...' : 'Create & Add Parent(s)'}
+                  </Button>
+                </div>
+              ) : (
+                <>
+                  <div className="grid grid-cols-2 gap-3">
                 <div>
                   <Label htmlFor="firstName">First Name *</Label>
                   <Input
@@ -455,16 +1003,18 @@ const AddRelationshipDialog: React.FC<AddRelationshipDialogProps> = ({
                 </select>
               </div>
 
-              <div className="pt-4">
-                <Button
-                  onClick={handleCreateNewMember}
-                  disabled={isCreating || !newMemberForm.firstName || !newMemberForm.lastName}
-                  className="w-full"
-                >
-                  <UserPlus className="h-4 w-4 mr-2" />
-                  {isCreating ? 'Creating...' : `Create & Add as ${relationshipType}`}
-                </Button>
-              </div>
+                  <div className="pt-4">
+                    <Button
+                      onClick={handleCreateNewMember}
+                      disabled={isCreating || !newMemberForm.firstName || !newMemberForm.lastName}
+                      className="w-full"
+                    >
+                      <UserPlus className="h-4 w-4 mr-2" />
+                      {isCreating ? 'Creating...' : `Create & Add as ${relationshipType}`}
+                    </Button>
+                  </div>
+                </>
+              )}
             </div>
           </TabsContent>
         </Tabs>

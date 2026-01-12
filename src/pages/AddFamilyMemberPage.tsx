@@ -1,7 +1,9 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import MobileLayout from "@/components/layout/MobileLayout";
 import { useAuth } from "@/contexts/AuthContext";
-import AddFamilyMember from '@/components/family/AddFamilyMember';
+import AddFamilyMemberForm from '@/components/family/AddFamilyMemberForm';
+import { FamilyMember } from '@/types';
 
 /**
  * Add Family Member page.
@@ -12,6 +14,12 @@ import AddFamilyMember from '@/components/family/AddFamilyMember';
  */
 const AddFamilyMemberPage = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
+
+  const handleSuccess = (member: FamilyMember) => {
+    // Navigate back to home after successful creation
+    navigate('/');
+  };
 
   return (
     <MobileLayout 
@@ -22,7 +30,10 @@ const AddFamilyMemberPage = () => {
       showBackButton
       title="Add Family Member"
     >
-      <AddFamilyMember />
+      <AddFamilyMemberForm 
+        onSuccess={handleSuccess}
+        onCancel={() => navigate('/')}
+      />
     </MobileLayout>
   );
 };
