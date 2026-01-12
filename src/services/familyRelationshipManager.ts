@@ -62,6 +62,9 @@ export const resolveRelationshipDirection = (
 ): RelationshipDirection => {
   switch (relationshipType) {
     case 'parent':
+      // User wants to add a parent to current member
+      // So: selected member is parent, current member is child
+      // Relationship: selected -> current with type 'parent'
       return {
         fromMemberId: selectedMemberId,
         toMemberId: currentMemberId,
@@ -70,10 +73,13 @@ export const resolveRelationshipDirection = (
         selectedMemberRole: 'parent'
       };
     case 'child':
+      // User wants to add a child to current member
+      // So: current member is parent, selected member is child
+      // Relationship: current -> selected with type 'parent'
       return {
-        fromMemberId: selectedMemberId,
-        toMemberId: currentMemberId,
-        relationshipType: 'child',
+        fromMemberId: currentMemberId,
+        toMemberId: selectedMemberId,
+        relationshipType: 'parent',
         currentMemberRole: 'parent',
         selectedMemberRole: 'child'
       };
@@ -343,7 +349,29 @@ class FamilyRelationshipManager {
         };
       }
 
-      // Note: Reciprocal relationships are now automatically created by database triggers
+      // Create reciprocal relationship manually (since there's no database trigger)
+      const reciprocalType = this.getReciprocalRelationshipType(request.relationshipType);
+      if (reciprocalType) {
+        const reciprocalPayload: Record<string, unknown> = {
+          from_member_id: request.toMemberId,
+          to_member_id: request.fromMemberId,
+          relation_type: reciprocalType
+        };
+
+        // For sibling relationships, copy the sibling_type if it exists
+        if (request.relationshipType === 'sibling' && siblingType) {
+          reciprocalPayload.sibling_type = siblingType;
+        }
+
+        const { error: reciprocalError } = await supabase
+          .from('relations')
+          .insert(reciprocalPayload);
+
+        if (reciprocalError) {
+          // Log but don't fail - reciprocal might already exist
+          console.warn('Could not create reciprocal relationship:', reciprocalError);
+        }
+      }
 
       return {
         success: true,

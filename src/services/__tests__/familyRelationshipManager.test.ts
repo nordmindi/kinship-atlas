@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { familyRelationshipManager } from '../familyRelationshipManager'
+import { familyRelationshipManager, resolveRelationshipDirection } from '../familyRelationshipManager'
 import { supabase } from '@/integrations/supabase/client'
 
 describe('FamilyRelationshipManager', () => {
@@ -985,6 +985,331 @@ describe('FamilyRelationshipManager', () => {
 
       expect(result.success).toBe(false)
       expect(result.error).toContain('Failed to update relationship')
+    })
+  })
+
+  describe('resolveRelationshipDirection', () => {
+    it('should correctly resolve direction for parent relationship', () => {
+      const currentMemberId = 'current-member-id'
+      const selectedMemberId = 'selected-member-id'
+
+      const result = resolveRelationshipDirection(
+        currentMemberId,
+        selectedMemberId,
+        'parent'
+      )
+
+      // When adding a parent: selected member is parent, current member is child
+      // Relationship: selected -> current with type 'parent'
+      expect(result.fromMemberId).toBe(selectedMemberId)
+      expect(result.toMemberId).toBe(currentMemberId)
+      expect(result.relationshipType).toBe('parent')
+      expect(result.currentMemberRole).toBe('child')
+      expect(result.selectedMemberRole).toBe('parent')
+    })
+
+    it('should correctly resolve direction for child relationship', () => {
+      const currentMemberId = 'current-member-id'
+      const selectedMemberId = 'selected-member-id'
+
+      const result = resolveRelationshipDirection(
+        currentMemberId,
+        selectedMemberId,
+        'child'
+      )
+
+      // When adding a child: current member is parent, selected member is child
+      // Relationship: current -> selected with type 'parent'
+      expect(result.fromMemberId).toBe(currentMemberId)
+      expect(result.toMemberId).toBe(selectedMemberId)
+      expect(result.relationshipType).toBe('parent')
+      expect(result.currentMemberRole).toBe('parent')
+      expect(result.selectedMemberRole).toBe('child')
+    })
+
+    it('should correctly resolve direction for spouse relationship', () => {
+      const currentMemberId = 'current-member-id'
+      const selectedMemberId = 'selected-member-id'
+
+      const result = resolveRelationshipDirection(
+        currentMemberId,
+        selectedMemberId,
+        'spouse'
+      )
+
+      expect(result.fromMemberId).toBe(currentMemberId)
+      expect(result.toMemberId).toBe(selectedMemberId)
+      expect(result.relationshipType).toBe('spouse')
+      expect(result.currentMemberRole).toBe('spouse')
+      expect(result.selectedMemberRole).toBe('spouse')
+    })
+
+    it('should correctly resolve direction for sibling relationship', () => {
+      const currentMemberId = 'current-member-id'
+      const selectedMemberId = 'selected-member-id'
+
+      const result = resolveRelationshipDirection(
+        currentMemberId,
+        selectedMemberId,
+        'sibling'
+      )
+
+      expect(result.fromMemberId).toBe(currentMemberId)
+      expect(result.toMemberId).toBe(selectedMemberId)
+      expect(result.relationshipType).toBe('sibling')
+      expect(result.currentMemberRole).toBe('sibling')
+      expect(result.selectedMemberRole).toBe('sibling')
+    })
+  })
+
+  describe('createRelationship - child relationship direction', () => {
+    it('should create child relationship with correct direction (parent -> child)', async () => {
+      // This test ensures that when adding a child, the relationship is created
+      // as parent -> child, not child -> parent (which would be reversed)
+      const parentMember = {
+        id: 'parent-id',
+        first_name: 'Asha',
+        last_name: 'Ismail Hagi Farah',
+        birth_date: '1988-02-10',
+        gender: 'female'
+      }
+      const childMember = {
+        id: 'child-id',
+        first_name: 'Bilal',
+        last_name: 'Ibrahim',
+        birth_date: '2023-04-01',
+        gender: 'male'
+      }
+
+      const insertCalls: any[] = []
+      let relationsCallCount = 0
+
+      const insertSelectBuilder = {
+        single: vi.fn().mockResolvedValue({
+          data: { id: 'rel-123' },
+          error: null
+        })
+      }
+      const insertBuilder = {
+        insert: vi.fn((payload) => {
+          insertCalls.push(payload)
+          return {
+            select: vi.fn().mockReturnValue(insertSelectBuilder)
+          }
+        })
+      }
+
+      vi.mocked(supabase.from).mockImplementation((table: string) => {
+        if (table === 'family_members') {
+          return {
+            select: vi.fn().mockReturnThis(),
+            in: vi.fn().mockResolvedValue({
+              data: [parentMember, childMember],
+              error: null
+            })
+          } as any
+        }
+        if (table === 'relations') {
+          const callNum = ++relationsCallCount
+          if (callNum === 1) {
+            // checkExistingRelationship
+            return {
+              select: vi.fn().mockReturnThis(),
+              eq: vi.fn().mockReturnThis(),
+              maybeSingle: vi.fn().mockResolvedValue({
+                data: null,
+                error: null
+              })
+            } as any
+          }
+          if (callNum === 2) {
+            // checkCircularRelationship - no circular relationship
+            return {
+              select: vi.fn().mockReturnThis(),
+              or: vi.fn().mockReturnThis(),
+              in: vi.fn().mockResolvedValue({
+                data: [],
+                error: null
+              })
+            } as any
+          }
+          // insert relationship (callNum >= 3)
+          return insertBuilder as any
+        }
+        return {} as any
+      })
+
+      // Simulate adding a child: current member is parent, selected member is child
+      // Using resolveRelationshipDirection to get the correct direction
+      const direction = resolveRelationshipDirection(
+        parentMember.id, // current member (parent)
+        childMember.id,  // selected member (child)
+        'child'
+      )
+
+      const request = {
+        fromMemberId: direction.fromMemberId,
+        toMemberId: direction.toMemberId,
+        relationshipType: direction.relationshipType
+      }
+
+      const result = await familyRelationshipManager.createRelationship(request)
+
+      expect(result.success).toBe(true)
+      
+      // Verify the main relationship is created correctly: parent -> child with type 'parent'
+      const mainRelationship = insertCalls.find(call => 
+        call.from_member_id === parentMember.id && 
+        call.to_member_id === childMember.id
+      )
+      expect(mainRelationship).toBeDefined()
+      expect(mainRelationship.relation_type).toBe('parent')
+      expect(mainRelationship.from_member_id).toBe(parentMember.id)
+      expect(mainRelationship.to_member_id).toBe(childMember.id)
+
+      // Verify the reciprocal relationship is created: child -> parent with type 'child'
+      const reciprocalRelationship = insertCalls.find(call => 
+        call.from_member_id === childMember.id && 
+        call.to_member_id === parentMember.id
+      )
+      expect(reciprocalRelationship).toBeDefined()
+      expect(reciprocalRelationship.relation_type).toBe('child')
+      expect(reciprocalRelationship.from_member_id).toBe(childMember.id)
+      expect(reciprocalRelationship.to_member_id).toBe(parentMember.id)
+    })
+
+    it('should NOT create reversed relationship when adding child', async () => {
+      // This test specifically prevents the bug where child was added as parent
+      const parentMember = {
+        id: 'parent-id',
+        first_name: 'Asha',
+        last_name: 'Ismail Hagi Farah',
+        birth_date: '1988-02-10',
+        gender: 'female'
+      }
+      const childMember = {
+        id: 'child-id',
+        first_name: 'Bilal',
+        last_name: 'Ibrahim',
+        birth_date: '2023-04-01',
+        gender: 'male'
+      }
+
+      const insertCalls: any[] = []
+      let relationsCallCount = 0
+
+      const insertSelectBuilder = {
+        single: vi.fn().mockResolvedValue({
+          data: { id: 'rel-123' },
+          error: null
+        })
+      }
+      const insertBuilder = {
+        insert: vi.fn((payload) => {
+          insertCalls.push(payload)
+          return {
+            select: vi.fn().mockReturnValue(insertSelectBuilder)
+          }
+        })
+      }
+
+      vi.mocked(supabase.from).mockImplementation((table: string) => {
+        if (table === 'family_members') {
+          return {
+            select: vi.fn().mockReturnThis(),
+            in: vi.fn().mockResolvedValue({
+              data: [parentMember, childMember],
+              error: null
+            })
+          } as any
+        }
+        if (table === 'relations') {
+          const callNum = ++relationsCallCount
+          if (callNum === 1) {
+            // checkExistingRelationship
+            return {
+              select: vi.fn().mockReturnThis(),
+              eq: vi.fn().mockReturnThis(),
+              maybeSingle: vi.fn().mockResolvedValue({
+                data: null,
+                error: null
+              })
+            } as any
+          }
+          if (callNum === 2) {
+            // checkCircularRelationship
+            return {
+              select: vi.fn().mockReturnThis(),
+              or: vi.fn().mockReturnThis(),
+              in: vi.fn().mockResolvedValue({
+                data: [],
+                error: null
+              })
+            } as any
+          }
+          // insert relationship
+          return insertBuilder as any
+        }
+        return {} as any
+      })
+
+      // When user wants to add a child, resolveRelationshipDirection should return
+      // parent -> child with type 'parent', NOT child -> parent with type 'child'
+      const direction = resolveRelationshipDirection(
+        parentMember.id, // current member (parent)
+        childMember.id,  // selected member (child)
+        'child'
+      )
+
+      // Verify the direction is correct BEFORE creating the relationship
+      expect(direction.fromMemberId).toBe(parentMember.id)
+      expect(direction.toMemberId).toBe(childMember.id)
+      expect(direction.relationshipType).toBe('parent')
+      expect(direction.currentMemberRole).toBe('parent')
+      expect(direction.selectedMemberRole).toBe('child')
+
+      const request = {
+        fromMemberId: direction.fromMemberId,
+        toMemberId: direction.toMemberId,
+        relationshipType: direction.relationshipType
+      }
+
+      const result = await familyRelationshipManager.createRelationship(request)
+
+      expect(result.success).toBe(true)
+
+      // CRITICAL: Ensure the relationship is NOT reversed
+      // The main relationship should be parent -> child with type 'parent'
+      const mainRelationship = insertCalls.find(call => 
+        call.from_member_id === parentMember.id && 
+        call.to_member_id === childMember.id &&
+        call.relation_type === 'parent'
+      )
+      expect(mainRelationship).toBeDefined()
+      expect(mainRelationship.from_member_id).toBe(parentMember.id)
+      expect(mainRelationship.to_member_id).toBe(childMember.id)
+      expect(mainRelationship.relation_type).toBe('parent')
+
+      // Ensure the reciprocal relationship is created correctly: child -> parent with type 'child'
+      const reciprocalRelationship = insertCalls.find(call => 
+        call.from_member_id === childMember.id && 
+        call.to_member_id === parentMember.id &&
+        call.relation_type === 'child'
+      )
+      expect(reciprocalRelationship).toBeDefined()
+      expect(reciprocalRelationship.from_member_id).toBe(childMember.id)
+      expect(reciprocalRelationship.to_member_id).toBe(parentMember.id)
+      expect(reciprocalRelationship.relation_type).toBe('child')
+
+      // CRITICAL: Ensure we did NOT create a reversed relationship as the main one
+      // (i.e., child -> parent with type 'parent' should NOT be the first/main relationship)
+      const reversedMainRelationship = insertCalls.find(call => 
+        call.from_member_id === childMember.id && 
+        call.to_member_id === parentMember.id &&
+        call.relation_type === 'parent'
+      )
+      // This should NOT exist - the main relationship should be parent -> child
+      expect(reversedMainRelationship).toBeUndefined()
     })
   })
 })
