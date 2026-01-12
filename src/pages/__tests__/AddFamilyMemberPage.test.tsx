@@ -6,8 +6,8 @@ import AddFamilyMemberPage from '../AddFamilyMemberPage'
 import { useAuth } from '@/contexts/AuthContext'
 
 vi.mock('@/contexts/AuthContext')
-vi.mock('@/components/family/AddFamilyMember', () => ({
-  default: () => <div>AddFamilyMember Component</div>
+vi.mock('@/components/family/AddFamilyMemberForm', () => ({
+  default: () => <div>AddFamilyMemberForm Component</div>
 }))
 vi.mock('@/components/layout/MobileLayout', () => ({
   default: ({ children, title }: { children: React.ReactNode; title: string }) => (
@@ -57,7 +57,7 @@ describe('AddFamilyMemberPage', () => {
     renderWithRouter(<AddFamilyMemberPage />)
 
     expect(screen.getByText('Add Family Member')).toBeInTheDocument()
-    expect(screen.getByText('AddFamilyMember Component')).toBeInTheDocument()
+    expect(screen.getByText('AddFamilyMemberForm Component')).toBeInTheDocument()
   })
 
   it('should pass correct user info to MobileLayout', () => {
@@ -99,7 +99,7 @@ describe('AddFamilyMemberPage', () => {
 
     // Page should still render correctly
     expect(screen.getByText('Add Family Member')).toBeInTheDocument()
-    expect(screen.getByText('AddFamilyMember Component')).toBeInTheDocument()
+    expect(screen.getByText('AddFamilyMemberForm Component')).toBeInTheDocument()
   })
 
   it('should handle null user gracefully', () => {
@@ -118,6 +118,6 @@ describe('AddFamilyMemberPage', () => {
 
     // Should still render (with fallback values for user info)
     expect(screen.getByText('Add Family Member')).toBeInTheDocument()
-    expect(screen.getByText('AddFamilyMember Component')).toBeInTheDocument()
+    expect(screen.getByText('AddFamilyMemberForm Component')).toBeInTheDocument()
   })
 })

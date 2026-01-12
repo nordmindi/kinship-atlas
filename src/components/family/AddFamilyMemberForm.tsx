@@ -5,7 +5,7 @@
  * with proper validation and error handling.
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -19,8 +19,11 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
-import { UserPlus, MapPin, Calendar, User, FileText } from 'lucide-react';
+import { UserPlus, MapPin, Calendar, User, FileText, Users, X, Plus } from 'lucide-react';
 import LocationInput from '@/components/ui/location-input';
+import { getFamilyMembers } from '@/services/supabaseService';
+import { familyRelationshipManager, resolveRelationshipDirection, RelationshipType } from '@/services/familyRelationshipManager';
+import { toast } from '@/hooks/use-toast';
 
 const formSchema = z.object({
   firstName: z.string().min(1, 'First name is required').max(50, 'First name is too long'),
@@ -52,12 +55,21 @@ interface AddFamilyMemberFormProps {
   onCancel?: () => void;
 }
 
+interface RelationshipEntry {
+  id: string;
+  memberId: string;
+  relationshipType: RelationshipType;
+}
+
 const AddFamilyMemberForm: React.FC<AddFamilyMemberFormProps> = ({
   onSuccess,
   onCancel
 }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [existingMembers, setExistingMembers] = useState<FamilyMember[]>([]);
+  const [isLoadingMembers, setIsLoadingMembers] = useState(false);
+  const [relationships, setRelationships] = useState<RelationshipEntry[]>([]);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -74,6 +86,43 @@ const AddFamilyMemberForm: React.FC<AddFamilyMemberFormProps> = ({
       lng: '',
     },
   });
+
+  // Load existing family members for relationship selection
+  useEffect(() => {
+    const loadMembers = async () => {
+      setIsLoadingMembers(true);
+      try {
+        const members = await getFamilyMembers();
+        setExistingMembers(members);
+      } catch (error) {
+        console.error('Error loading family members:', error);
+      } finally {
+        setIsLoadingMembers(false);
+      }
+    };
+    loadMembers();
+  }, []);
+
+  const addRelationship = () => {
+    setRelationships([
+      ...relationships,
+      {
+        id: `rel-${Date.now()}-${Math.random()}`,
+        memberId: '',
+        relationshipType: 'parent'
+      }
+    ]);
+  };
+
+  const removeRelationship = (id: string) => {
+    setRelationships(relationships.filter(rel => rel.id !== id));
+  };
+
+  const updateRelationship = (id: string, field: 'memberId' | 'relationshipType', value: string) => {
+    setRelationships(relationships.map(rel => 
+      rel.id === id ? { ...rel, [field]: value } : rel
+    ));
+  };
 
   const onSubmit = async (values: FormValues) => {
     setIsSubmitting(true);
@@ -98,7 +147,49 @@ const AddFamilyMemberForm: React.FC<AddFamilyMemberFormProps> = ({
       const result = await familyMemberService.createFamilyMember(request);
 
       if (result.success && result.member) {
+        // Create relationships if any were specified
+        if (relationships.length > 0) {
+          const relationshipResults = await Promise.allSettled(
+            relationships
+              .filter(rel => rel.memberId) // Only process relationships with selected members
+              .map(async (rel) => {
+                const direction = resolveRelationshipDirection(
+                  result.member!.id,
+                  rel.memberId,
+                  rel.relationshipType
+                );
+
+                return await familyRelationshipManager.createRelationshipSmart(
+                  direction.fromMemberId,
+                  direction.toMemberId,
+                  direction.relationshipType
+                );
+              })
+          );
+
+          // Check for any failures
+          const failures = relationshipResults.filter(
+            (result) => result.status === 'rejected' || 
+            (result.status === 'fulfilled' && !result.value.success)
+          );
+
+          if (failures.length > 0) {
+            const successCount = relationshipResults.length - failures.length;
+            toast({
+              title: "Family member created",
+              description: `Member created successfully. ${successCount} relationship(s) added. Some relationships could not be created.`,
+              variant: "default"
+            });
+          } else if (relationshipResults.length > 0) {
+            toast({
+              title: "Success",
+              description: `Family member and ${relationshipResults.length} relationship(s) created successfully.`,
+            });
+          }
+        }
+
         form.reset();
+        setRelationships([]);
         onSuccess?.(result.member);
       } else {
         setError(result.error || 'Failed to create family member');
@@ -303,6 +394,92 @@ const AddFamilyMemberForm: React.FC<AddFamilyMemberFormProps> = ({
                   </FormItem>
                 )}
               />
+            </div>
+
+            <Separator />
+
+            {/* Relationships */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                  <Users className="h-4 w-4" />
+                  Relationships (Optional)
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={addRelationship}
+                  disabled={isSubmitting || isLoadingMembers}
+                >
+                  <Plus className="h-4 w-4 mr-1" />
+                  Add Relationship
+                </Button>
+              </div>
+
+              {relationships.length === 0 && (
+                <p className="text-sm text-muted-foreground">
+                  You can add relationships to existing family members after creating this member.
+                </p>
+              )}
+
+              {relationships.map((rel) => (
+                <div key={rel.id} className="flex gap-2 items-end p-3 border rounded-lg bg-muted/30">
+                  <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-sm font-medium mb-1 block">
+                        Family Member
+                      </label>
+                      <Select
+                        value={rel.memberId}
+                        onValueChange={(value) => updateRelationship(rel.id, 'memberId', value)}
+                        disabled={isSubmitting || isLoadingMembers}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select a family member" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {existingMembers.map((member) => (
+                            <SelectItem key={member.id} value={member.id}>
+                              {member.firstName} {member.lastName}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium mb-1 block">
+                        Relationship Type
+                      </label>
+                      <Select
+                        value={rel.relationshipType}
+                        onValueChange={(value) => updateRelationship(rel.id, 'relationshipType', value as RelationshipType)}
+                        disabled={isSubmitting}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="parent">Parent</SelectItem>
+                          <SelectItem value="child">Child</SelectItem>
+                          <SelectItem value="spouse">Spouse</SelectItem>
+                          <SelectItem value="sibling">Sibling</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => removeRelationship(rel.id)}
+                    disabled={isSubmitting}
+                    className="h-10 w-10 p-0"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              ))}
             </div>
 
             {/* Actions */}
